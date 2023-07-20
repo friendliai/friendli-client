@@ -1,0 +1,27 @@
+# pf checkpoint restore
+
+## Usage
+
+```bash
+pf checkpoint restore CHECKPOINT_ID
+```
+
+## Summary
+
+Restores deleted checkpoint (available within 24 hours from the deletion).
+
+When a checkpoint that is uploaded or generated from the training job is deleted,
+it is not physically deleted right away. Instead, it is soft-deleted and can be
+restored within 24 hours after the deletion. After the 24-hour retention period, it
+is hard-deleted and cannot be restored.
+
+:::caution
+When you delete a linked checkpoint, you cannot restore it. Instead, relink the
+original checkpoint using `pf checkpoint create`.
+:::
+
+## Arguments
+
+| Argument | Type | Summary | Default | Required | 
+|----------|------|---------|---------|----------|
+| **`checkpoint_id`** | UUID | ID of checkpoint to restore. | - | ✅ |

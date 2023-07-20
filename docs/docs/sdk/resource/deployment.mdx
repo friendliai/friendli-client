@@ -1,0 +1,342 @@
+# Deployment
+
+<a href="https://github.com/friendliai/periflow-client/tree/main/periflow/sdk/resource/deployment.py">
+    <img src="https://img.shields.io/badge/View%20source%20on%20GitHub-181717?style=for-the-badge&logo=Github" />
+</a>
+
+# _class_ `Deployment()`
+
+> Bases: ResourceAPI[V1Deployment, str]
+
+Deployment resource API.
+## Methods
+
+### _def_ `create`
+
+```python
+create(
+    checkpoint_id: UUID,
+    name: str,
+    gpu_type: GpuType,
+    cloud: CloudType,
+    region: str,
+    config: Dict[str, Any],
+    deployment_type: DeploymentType = DeploymentType.PROD,
+    description: Optional[str] = None,
+    default_request_config: Optional[Dict[str, Any]] = None,
+    security_level: DeploymentSecurityLevel = DeploymentSecurityLevel.PUBLIC,
+    logging: bool = False,
+    min_replicas: int = 1,
+    max_replicas: int = 1
+) -> V1Deployment
+```
+
+Creates a new deployment.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `checkpoint_id` | `UUID` | ID of checkpoint to deploy. | - | ❌ |
+| `name` | `str` | The name of deployment. | - | ❌ |
+| `gpu_type` | `GpuType` | Type of GPU. | - | ❌ |
+| `cloud` | `CloudType` | Type of cloud provider. | - | ❌ |
+| `region` | `str` | Cloud region to create a deployment. | - | ❌ |
+| `config` | `Dict[str, Any]` | Deployment configuration. | - | ❌ |
+| `deployment_type` | `DeploymentType` | Type of deployment. Defaults to DeploymentType.PROD. | `DeploymentType.PROD` | ✅ |
+| `description` | `Optional[str]` | Optional long description for the deployment. Defaults to None. | `None` | ✅ |
+| `default_request_config` | `Optional[Dict[str, Any]]` | Default request configuration (e.g., stop words, bad words). Defaults to None. | `None` | ✅ |
+| `security_level` | `DeploymentSecurityLevel` | Security level of deployment endpoint. Defaults to DeploymentSecurityLevel.PUBLIC. | `DeploymentSecurityLevel.PUBLIC` | ✅ |
+| `logging` | `bool` | When True, enables request-response logging for the deployment if it is set. Defaults to False. | `False` | ✅ |
+| `min_replicas` | `int` | The number of minimum replicas. Defaults to 1. | `1` | ✅ |
+| `max_replicas` | `int` | The number of maximum replicas. Defaults to 1. | `1` | ✅ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `V1Deployment` | The created deployment object. |
+#### Raises
+
+| Type | Description |
+|------|-------------|
+| `AuthenticationError` | Raised when project context is not configured. |
+| `InvalidConfigError` | Raised when any of the configurations (i.e., `config`, `default_request_config`, `min_replicas`, `max_replicas`) is invalid. |
+| `EntityTooLargeError` | Raised when the contents of `default_request_config` exceeds the 10GiB size limit. |
+| `LowServicePlanError` | Raised when the `deployment_type` is set to `Deployment.DEV` and service plan of the user's organization is not 'enterprise'. |
+
+#### Examples
+
+Basic usage:
+
+```python
+import periflow as pf
+
+# Set up PeriFlow context.
+pf.init(
+    api_key="YOUR_PERIFLOW_API_KEY",
+    project_name="my-project",
+)
+
+# Create a deployment at GCP asia-northest3 region wtih one A100 GPU.
+config = {
+    "max_batch_size": 256,
+    "max_token_count": 8146,
+}
+deployment = pf.Deployment.create(
+    checkpoint_id=UUID(190c117a-30ef-4c33-aad7-16f21bca0d63),
+    name="my-deployment",
+    gpu_type=GpuType.A100,
+    cloud=CloudType.GCP,
+    region="asia-northeast3",
+    config=config,
+)
+```
+
+The format of `config` should be:
+
+```python
+{
+    "orca_config": {
+        "max_batch_size": Optioanl[int],
+        "max_token_count": Optioanl[int],
+    }
+}
+```
+
+The format of `default_request_config` should be:
+
+```python
+{
+    "stop": Optional[List[str]],
+    "stop_tokens": Optional[List[int]],
+    "bad_words": Optional[List[str]],
+    "bad_word_tokens": Optional[List[int]]
+}
+```
+
+:::caution
+Note that `bad_words` and `bad_word_tokens` cannot be set at the same time. Similarly, `stop` and `stop_tokens` cannot be set at the same time.
+:::
+
+:::note
+When `min_replicas` and `max_replicas` are the same, deployment auto-scaling turns off.
+:::
+
+### _def_ `list`
+
+```python
+list(
+    limit: int = 20,
+    include_terminated: bool = False,
+    from_oldest: bool = False,
+    all_in_org: bool = False
+) -> List[V1Deployment]
+```
+
+Lists deployments.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `limit` | `int` | The maximum number of retrieved results. Defaults to 20. | `20` | ✅ |
+| `include_terminated` | `bool` | When True, includes the terminated deployments in the results. Defaults to False. | `False` | ✅ |
+| `from_oldest` | `bool` | List from the oldest deployment. Defaults to False. | `False` | ✅ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `List[V1Deployment]` | Retrieved deployments. |
+#### Raises
+
+| Type | Description |
+|------|-------------|
+| `AuthenticationError` | Raised when project context is not configured. |
+
+### _def_ `get`
+
+```python
+get(
+    id: str
+) -> V1Deployment
+```
+
+Gets deployment info.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `id` | `str` | ID of deployment to retrieve. | - | ❌ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `V1Deployment` | Retrieved deployment object. |
+
+### _def_ `stop`
+
+```python
+stop(
+    id: str
+) -> None
+```
+
+Stops a running deployment.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `id` | `str` | ID of deployment to stop. | - | ❌ |
+
+### _def_ `get_metrics`
+
+```python
+get_metrics(
+    id: str,
+    time_window: int = 60
+) -> Dict[str, Any]
+```
+
+Gets metrics of a deployment.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `id` | `str` | ID of deployment to get metrics. | - | ❌ |
+| `time_window` | `int` | Time window of results in seconds. Defaults to 60. | `60` | ✅ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `Dict[str, Any]` | Retrieved metrics data. |
+
+### _def_ `get_usage`
+
+```python
+get_usage(
+    since: datetime,
+    until: datetime
+) -> Dict[str, Any]
+```
+
+Gets usage info of a deployment.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `since` | `datetime` | Start datetime of the deployment usages to fetch. | - | ❌ |
+| `until` | `datetime` | End datetime of the deployment usages to fetch. | - | ❌ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `Dict[str, Any]` | Retrieved deployment usage info. |
+
+### _def_ `get_logs`
+
+```python
+get_logs(
+    id: str,
+    replica_index: int = 0
+) -> List[Dict[str, Any]]
+```
+
+Gets logs from a deployment.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `id` | `str` | ID of deployment to get logs. | - | ❌ |
+| `replica_index` | `int` | Index of deployment replica to retrieve logs. Defaults to 0. | `0` | ✅ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `List[Dict[str, Any]]` | Retrieved log data. |
+
+### _def_ `adjust_replica_config`
+
+```python
+adjust_replica_config(
+    id: str,
+    min_replicas: int,
+    max_replicas: int
+) -> None
+```
+
+Adjusts replica configuration of a running deployment.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `id` | `str` | ID of deployment to adjust the replica configuration. | - | ❌ |
+| `min_replicas` | `int` | Minimum replica count. | - | ❌ |
+| `max_replicas` | `int` | Maximum replica count. | - | ❌ |
+#### Raises
+
+| Type | Description |
+|------|-------------|
+| `InvalidConfigError` | Raised when any of the configurations (i.e., `min_replicas`, `max_replicas`) is invalid. |
+
+### _def_ `get_events`
+
+```python
+get_events(
+    id: str
+) -> List[Dict[str, Any]]
+```
+
+Gets events from a deployment.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `id` | `str` | ID of deployment to get events. | - | ❌ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `List[Dict[str, Any]]` | Deployment event info. |
+
+### _def_ `download_req_resp_logs`
+
+```python
+download_req_resp_logs(
+    id: str,
+    since: datetime,
+    until: datetime,
+    save_dir: Optional[str] = None
+) -> None
+```
+
+Downloads a file that has request-response logs.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `id` | `str` | ID of deployment. | - | ❌ |
+| `since` | `datetime` | Start time of request-response logs. | - | ❌ |
+| `until` | `datetime` | End time of request-response logs. | - | ❌ |
+| `save_dir` | `Optional[str]` | Path to save logs. Set to the current directory if it is `None`. Defaults to None. | `None` | ✅ |
+#### Raises
+
+| Type | Description |
+|------|-------------|
+| `InvalidPathError` | Raised when `save_dir` does not exist or is read-only. |
+| `InvalidConfigError` | Raised when `since` <= `until` is not satisfied. |
+| `NotFoundError` | Raised when the deployment request-response logs are not found for the given time range. |

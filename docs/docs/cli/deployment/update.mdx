@@ -1,0 +1,29 @@
+# pf deployment update
+
+## Usage
+
+```bash
+pf deployment update [OPTIONS] DEPLOYMENT_ID
+```
+
+## Summary
+
+Updates configuration of a deployment.
+
+:::tip
+To turn off the deployment autoscaling, set `--min-replicas` and
+`--max-replicas` to the same value.
+:::
+
+## Arguments
+
+| Argument | Type | Summary | Default | Required | 
+|----------|------|---------|---------|----------|
+| **`deployment_id`** | TEXT | ID of deployment to update. | - | ✅ |
+
+## Options
+
+| Option | Type | Summary | Default | Required |
+|--------|------|---------|---------|----------|
+| **`--min-replicas`**, **`-min`** | INTEGER | Set min_replicas of deployment. | - | ✅ |
+| **`--max-replicas`**, **`-max`** | INTEGER | Set max_replicas of deployment. | - | ✅ |

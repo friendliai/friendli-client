@@ -1,0 +1,9 @@
+{
+    "editor.tabSize": 2,
+    "editor.language.brackets": [
+    ],
+    "[python]": {
+        "editor.tabSize": 4,
+      },
+      "editor.detectIndentation": false
+}

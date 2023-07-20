@@ -1,0 +1,61 @@
+---
+sidebar_position: 1
+---
+
+# 👋 Introduction
+
+PeriFlow Client Python SDK provides a handy way to manage resources in PeriFlow system (e.g., checkpoints, deployments) and send requests to the deployment endpoints.
+
+## Examples
+
+This example shows how to create a deployment and send a completion API request to the created deployment with Python SDK.
+
+```python
+import periflow as pf
+
+
+# Set up PeriFlow context.
+pf.init(
+    api_key="YOUR_PERIFLOW_API_KEY",
+    project_name="my-project",
+)
+
+# Create a deployment at GCP asia-northest3 region wtih one A100 GPU.
+deployment = pf.Deployment.create(
+    checkpoint_id="YOUR_CHECKPOINT_ID",
+    name="my-deployment",
+    gpu_type="a100",
+    cloud="gcp",
+    region="asia-northeast3",
+    ...
+)
+```
+
+When the deployment becomes the "Healthy" status and ready to process inference requests, you can generate a completion with:
+
+```python
+# Generate a completion by sending an inference request to the deployment created above.
+api = pf.Completion(deployment_id=deployment.deployment_id)
+completion = api.create(
+    options=pf.V1CompletionOptions(
+        prompt="Python is a popular language for",
+        max_tokens=100,
+        top_p=0.8,
+        temperature=0.5,
+        no_repeat_ngram=3,
+    )
+)
+print(completion.choices[0].text)
+
+"""
+>>> Example Output:
+
+web development. It is also used for a variety of other applications.
+Python can be used to create desktop applications, web applications and mobile applications as well.
+Python is one of the most popular languages for data science.
+Data scientists use Python to analyze data.
+The Python ecosystem is very diverse.
+There are many libraries that can help you with your Python projects.
+You can also find many Python tutorials online.
+"""
+```

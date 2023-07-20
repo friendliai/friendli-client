@@ -1,0 +1,34 @@
+# pf checkpoint convert
+
+## Usage
+
+```bash
+pf checkpoint convert [OPTIONS]
+```
+
+## Summary
+
+Convert huggingface's model checkpoint to PeriFlow format.
+
+::: info
+When a checkpoint has Hugging Face format, it cannot be served right away. Instead,
+it needs to be converted to PeriFlow format for serving. From the orignal checkpoint,
+it is copied and converted to Periflow format checkpoint(*.h5).
+:::
+
+:::caution
+The `pf checkpoint convert` is available only when the package is installed with
+`pip install periflow-client[mllib]`.
+:::
+
+## Options
+
+| Option | Type | Summary | Default | Required |
+|--------|------|---------|---------|----------|
+| **`--model-name-or-path`**, **`-m`** | TEXT | Hugging Face pretrained model name or path to the saved model checkpoint. | - | ✅ |
+| **`--output-dir`**, **`-o`** | TEXT | Directory path to save the converted checkpoint and related configuration files. Three files will be created in the directory: `model.h5`, `tokenizer.json`, and `attr.yaml`. The `model.h5` is the converted checkpoint and can be renamed using the `--output-model-filename` option. The `tokenizer.json` is the PeriFlow-compatible tokenizer file, which should be uploaded along with the checkpoint file to tokenize the model input and output. The `attr.yaml` is the checkpoint attribute file, to be used when uploading the converted model to PeriFlow. You can designate the file name using the `--output-attr-filename` option. | - | ✅ |
+| **`--data-type`**, **`-dt`** | CHOICE: [bf16, fp16, fp32] | The data type of converted checkpoint. | - | ✅ |
+| `--cache-dir` | TEXT | Directory for downloading checkpoint. | None | ❌ |
+| `--dry-run` | BOOLEAN | Only check conversion avaliability. | False | ❌ |
+| `--output-model-filename` | TEXT | Name of the converted checkpoint file. | model.h5 | ❌ |
+| `--output-attr-filename` | TEXT | Name of the checkpoint attribute file. | attr.yaml | ❌ |

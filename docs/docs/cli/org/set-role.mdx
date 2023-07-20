@@ -1,0 +1,29 @@
+# pf org set-role
+
+## Usage
+
+```bash
+pf org set-role USERNAME ROLE
+```
+
+## Summary
+
+Set organization role of the user.
+
+The organization-level roles and privileges are as follows:
+
+|                          | Owner | Member |
+|--------------------------|-------|--------|
+| Collaborate with teams   | ✓     | ✓      |
+| Invite members           | ✓     | ✗      |
+| Assign roles             | ✓     | ✗      |
+| Create & delete projects | ✓     | ✗      |
+| Manage payments          | ✓     | ✗      |
+| Delete organization      | ✓     | ✗      |
+
+## Arguments
+
+| Argument | Type | Summary | Default | Required | 
+|----------|------|---------|---------|----------|
+| **`username`** | TEXT | Username to set role | - | ✅ |
+| **`role`** | CHOICE: [owner, member] | Organization role | - | ✅ |

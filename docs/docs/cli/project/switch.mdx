@@ -1,0 +1,25 @@
+# pf project switch
+
+## Usage
+
+```bash
+pf project switch NAME
+```
+
+## Summary
+
+Switch working project context.
+
+There can exist multiple projects under the organization, and each organization
+member can be included in multiple projects. You first need to select the working
+project context where you want to use the services.
+
+:::info
+Your working project context is written at `./periflow/project` file in your home directory.
+:::
+
+## Arguments
+
+| Argument | Type | Summary | Default | Required | 
+|----------|------|---------|---------|----------|
+| **`name`** | TEXT | Name of project to switch | - | ✅ |

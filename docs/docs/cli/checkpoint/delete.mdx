@@ -1,0 +1,31 @@
+# pf checkpoint delete
+
+## Usage
+
+```bash
+pf checkpoint delete [OPTIONS] CHECKPOINT_ID
+```
+
+## Summary
+
+Deletes the existing checkpoint.
+
+:::info
+Deleting linked checkpoints created with `pf checkpoint create` simply unlinks the
+checkpoint from the PeriFlow system. That is, it does not physically delete the
+checkpoint objects from the source cloud storage (your cloud storage).
+
+Checkpoints that are uploaded or generated from training jobs are physically deleted.
+:::
+
+## Arguments
+
+| Argument | Type | Summary | Default | Required | 
+|----------|------|---------|---------|----------|
+| **`checkpoint_id`** | UUID | ID of checkpoint to delete. | - | ✅ |
+
+## Options
+
+| Option | Type | Summary | Default | Required |
+|--------|------|---------|---------|----------|
+| `--force`, `-f` | BOOLEAN | Forcefully delete checkpoint without confirmation prompt. | False | ❌ |

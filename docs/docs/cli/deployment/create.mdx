@@ -1,0 +1,65 @@
+# pf deployment create
+
+## Usage
+
+```bash
+pf deployment create [OPTIONS]
+```
+
+## Summary
+
+Creates a deployment object by using model checkpoint.
+
+The deployment settings are described in a configuration YAML file, and the path of that file is
+passed to the `-f` option. The following is an example YAML file:
+
+```yaml
+orca_config:
+    max_batch_size: 384
+    max_token_count: 12288
+```
+
+:::tip
+To turn off the deployment autoscaling, set `--min-replicas` and
+`--max-replicas` to the same value.
+:::
+
+:::tip
+Use `pf vm list -s deployment` to find available cloud, region, and gpu-type.
+:::
+
+The default request-response configuration, such as stop tokens or bad words, is
+defined in a YAML file. The path of that file is passed to the `-drc` option.
+The format of the file is as follows.
+
+```json
+{
+    "stop": Optional[array[str]],
+    "stop_tokens": Optional[array[int]],
+    "bad_words": Optional[array[str]],
+    "bad_word_tokens": Optional[array[int]]
+}
+```
+
+:::caution
+Both `bad_words` and `bad_word_tokens` cannot be set at the same time. Also, both
+`stop` and `stop_tokens` cannot be set at the same time.
+:::
+
+## Options
+
+| Option | Type | Summary | Default | Required |
+|--------|------|---------|---------|----------|
+| **`--checkpoint-id`**, **`-i`** | UUID | Checkpoint id to deploy. | - | ✅ |
+| **`--name`**, **`-n`** | TEXT | The name of deployment.  | - | ✅ |
+| **`--gpu-type`**, **`-g`** | CHOICE: [a10g, a100] | The GPU type for the deployment. | - | ✅ |
+| **`--cloud`**, **`-c`** | CHOICE: [aws, azure, gcp] | Type of cloud. | - | ✅ |
+| **`--region`**, **`-r`** | TEXT | Region of cloud. | - | ✅ |
+| **`--config-file`**, **`-f`** | FILENAME | Path to configuration file. | - | ✅ |
+| `--type`, `-t` | CHOICE: [dev, prod] | Type of deployment. | DeploymentType.PROD | ❌ |
+| `--description`, `-d` | TEXT | Deployment description. | None | ❌ |
+| `--security-level`, `-sl` | CHOICE: [public, protected] | Security level of deployment endpoints | public | ❌ |
+| `--logging`, `-l` | BOOLEAN | Logging inference requests or not. | False | ❌ |
+| `--default-request-config-file`, `-drc` | FILENAME | Path to default request config | None | ❌ |
+| `--min-replicas`, `-min` | INTEGER | Number of minimum replicas. | 1 | ❌ |
+| `--max-replicas`, `-max` | INTEGER | Number of maximum replicas. | 1 | ❌ |

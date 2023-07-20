@@ -1,0 +1,41 @@
+# pf project set-role
+
+## Usage
+
+```bash
+pf project set-role USERNAME ROLE
+```
+
+## Summary
+
+Set project role for the user.
+
+Refer to the following table for the project-level roles and privileges.
+
+| | Admin | Maintainer | Developer | Guest |
+|-|-|-|-|-|
+| Add organization members to the project | ✓ | ✗ | ✗ | ✗ |
+| Assign project roles | ✓ | ✗ | ✗ | ✗ |
+| Delete project | ✓ | ✗ | ✗ | ✗ |
+| Delete & edit checkpoints | ✓ | ✗ | ✗ | ✗ |
+| Delete & edit datasets, credentials, jobs | ✓ | ✓ | ✗ | ✗ |
+| Creaete datasets, credentials | ✓ | ✓ | ✗ | ✗ |
+| Create checkpoints, deployments, jobs | ✓ | ✓ | ✓ | ✗ |
+| Read checkpoints, datasets, credentials, deployments, jobs | ✓ | ✓ | ✓ | ✓ |
+| Send inference requests to deployments | ✓ | ✓ | ✓ | ✓ |
+
+:::info
+Only the **Admin** users can assign roles to project members:
+:::
+
+:::info
+If you have the **Owner** role in the organization, you have full-access to all
+projects inside the organization.
+:::
+
+## Arguments
+
+| Argument | Type | Summary | Default | Required | 
+|----------|------|---------|---------|----------|
+| **`username`** | TEXT | Username to set project role | - | ✅ |
+| **`role`** | CHOICE: [admin, maintain, develop, guest] | Project role | - | ✅ |

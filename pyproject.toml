@@ -1,0 +1,141 @@
+[tool.poetry]
+name = "periflow-client"
+version = "0.1.0"
+description = "PeriFlow is a reliable, speedy, and efficient service for training and serving your own Generative AI models on any data of your choice."
+authors = ["PeriFlow teams <eng@friendli.ai>"]
+packages = [{include = "periflow"}]
+
+[tool.poetry.scripts]
+pf = "periflow.cli:app"
+
+[build-system]
+requires = ["poetry-core>=1.6.1"]
+build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "primary"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+filelock = "3.12.2"
+requests = "2.31.0"
+websockets = "10.1"
+PyYaml = "6.0.1"
+typer = "0.9.0"
+rich = "12.2.0"
+jsonschema = "4.17.3"
+boto3 = "1.22.8"
+botocore = "1.25.8"
+tqdm = "4.64.0"
+azure-mgmt-storage = "20.1.0"
+azure-storage-blob = "12.12.0"
+packaging = "23.1"
+pathspec = "0.9.0"
+boto3-stubs = "1.26.90"
+mypy-boto3-s3 = "1.26.163"
+ruamel-yaml = "0.17.32"
+pydantic = {extras = ["email"], version = "2.0.2"}
+aiohttp = {extras = ["speedups"], version = "3.8.4"}
+transformers = { version = "^4.31.0", optional = true }
+h5py = { version = "3.9.0", optional = true }
+einops = { version = "0.6.1", optional = true }
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+typer = "0.9.0"
+pytest = "7.4.0"
+coverage = "7.2.7"
+pytest-asyncio = "0.15.1"
+pytest-cov = "4.1.0"
+requests-mock = "1.11.0"
+black = "23.3.0"
+isort = "5.12.0"
+mypy = "1.4.1"
+pydocstyle = "6.3.0"
+pylint = "2.17.4"
+toml = "0.10.2"
+types-pyyaml = "6.0.12.10"
+types-jsonschema = "4.17.0.8"
+types-python-dateutil = "2.8.19.13"
+types-requests = "2.31.0.1"
+types-toml = "0.10.8.6"
+types-tqdm = "4.65.0.1"
+
+[tool.poetry.group.docs]
+optional = true
+
+[tool.poetry.group.docs.dependencies]
+typer = "0.9.0"
+docstring-parser = "0.15"
+
+[tool.poetry.extras]
+mllib = ["transformers", "h5py"]
+
+[tool.isort]
+profile = "black"
+known_local_folder = ["tests"]
+append_only = true
+add_imports = ["from __future__ import annotations"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.pydocstyle]
+convention = "google"
+inherit = false
+ignore-decorators = "overload"
+
+[tool.pytest.ini_options]
+python_files = "test_*.py"
+addopts = "-rf --cov=periflow --cov-report=html --cov-report=xml --cov-config=.coveragerc --junit-xml=test-result.xml"
+
+[tool.license]
+header = "Copyright (c) 2022-present, FriendliAI Inc. All rights reserved."
+space = 1
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "@overload"]
+skip_covered = true
+sort = "Cover"
+
+[tool.pylint."messages control"]
+disable = [
+    "invalid-name",
+    "missing-class-docstring",
+    "too-few-public-methods",
+    "W0511",
+    "E0213",
+    "missing-function-docstring",
+    "no-self-argument",
+    "deprecated-method",
+    "unsubscriptable-object",
+    "consider-using-set-comprehension",
+    "redefined-outer-name"
+]
+
+[tool.pylint.TYPECHECK]
+generated-members = [
+    "numpy.*" ,
+    "torch.*"
+]
+
+[tool.pylint.check]
+ignored-classes = "Depends"
+
+[tool.pylint.design]
+max-args = 7
+max-parents = 15
+
+[tool.pylint.similarities]
+min-similarity-lines = 4
+ignore-signatures = "yes"
+ignore-comments = "yes"
+ignore-docstrings = "yes"
+ignore-imports = "yes"

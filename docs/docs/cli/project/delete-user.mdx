@@ -1,0 +1,27 @@
+# pf project delete-user
+
+## Usage
+
+```bash
+pf project delete-user [OPTIONS] USERNAME
+```
+
+## Summary
+
+Delete user from the project.
+
+:::info
+Only organization **Owner** or project **Admin** can evict members from the project.
+:::
+
+## Arguments
+
+| Argument | Type | Summary | Default | Required | 
+|----------|------|---------|---------|----------|
+| **`username`** | TEXT | Username to delete from the current working project | - | ✅ |
+
+## Options
+
+| Option | Type | Summary | Default | Required |
+|--------|------|---------|---------|----------|
+| `--force`, `-f` | BOOLEAN | Forcefully delete without confirmation prompt | False | ❌ |
