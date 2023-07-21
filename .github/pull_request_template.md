@@ -16,12 +16,12 @@ Enumerate any new dependencies necessary for implementing these changes.
 
 ## Type of Change
 
-Please indicate the appropriate type of change:
+Specify the appropriate type of change and remove irrelevant options.
 
-- [ ] Bug fix (non-breaking change that resolves an issue)
-- [ ] New feature (non-breaking change that introduces additional functionality)
-- [ ] Breaking change (fix or feature that may disrupt existing functionality)
-- [ ] Documentation update (changes requiring updates to the project's documentation)
+- Bug fix
+- New feature
+- Breaking change
+- Documentation update
 
 ## Testing Procedure
 
