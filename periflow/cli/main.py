@@ -27,7 +27,7 @@ from periflow.utils.validate import validate_cli_version
 from periflow.utils.version import get_installed_version
 
 app = typer.Typer(
-    help="Welcome to PeriFlow 🤗",
+    help="Supercharge Generative AI Serving 🚀",
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,

@@ -1,9 +1,17 @@
 [tool.poetry]
 name = "periflow-client"
 version = "0.1.0"
-description = "PeriFlow is a reliable, speedy, and efficient service for training and serving your own Generative AI models on any data of your choice."
+description = "Client of PeriFlow, the fastest generative AI serving available."
+license = "Apache-2.0"
 authors = ["PeriFlow teams <eng@friendli.ai>"]
-packages = [{include = "periflow"}]
+packages = [
+    { include = "periflow" },
+]
+readme = "README.md"
+homepage = "https://docs.periflow.ai/"
+repository = "https://github.com/friendliai/periflow-client"
+documentation = "https://docs.periflow.ai/"
+keywords = ["generative-ai", "serving", "llm"]
 
 [tool.poetry.scripts]
 pf = "periflow.cli:app"
