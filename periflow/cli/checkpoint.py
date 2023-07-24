@@ -281,6 +281,7 @@ def create(
     head_size: 128
     rotary_dim: 128
     num_heads: 32
+    num_kv_heads: 32
     num_layers: 32
     ff_intermediate_size: 11008
     max_length: 2048
@@ -510,6 +511,7 @@ def upload(
     head_size: 128
     rotary_dim: 128
     num_heads: 32
+    num_kv_heads: 32
     num_layers: 32
     ff_intermediate_size: 11008
     max_length: 2048

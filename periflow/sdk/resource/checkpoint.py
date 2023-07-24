@@ -175,6 +175,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             head_size: 128
             rotary_dim: 128
             num_heads: 32
+            num_kv_heads: 32
             num_layers: 32
             ff_intermediate_size: 11008
             max_length: 2048
@@ -513,6 +514,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             head_size: 128
             rotary_dim: 128
             num_heads: 32
+            num_kv_heads: 32
             num_layers: 32
             ff_intermediate_size: 11008
             max_length: 2048

@@ -108,6 +108,7 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
             "head_size": self.decoder_head_size,
             "rotary_dim": self.rotary_dim,
             "num_heads": self.decoder_num_attention_heads,
+            "num_kv_heads": self.decoder_num_kv_attention_heads,
             "num_layers": self.decoder_layer_num,
             "ff_intermediate_size": config.intermediate_size,
             "max_length": config.max_position_embeddings,
