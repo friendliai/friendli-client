@@ -15,7 +15,13 @@ import yaml
 from dateutil.parser import parse
 
 from periflow.client.user import UserGroupProjectClient
-from periflow.enums import CloudType, DeploymentSecurityLevel, DeploymentType, GpuType
+from periflow.enums import (
+    CloudType,
+    DeploymentSecurityLevel,
+    DeploymentType,
+    GpuType,
+    VMType,
+)
 from periflow.errors import (
     AuthenticationError,
     EntityTooLargeError,
@@ -58,6 +64,8 @@ deployment_panel = PanelFormatter(
         "endpoint",
         "config.cloud",
         "config.region",
+        "config.orca_config.max_batch_size",
+        "config.orca_config.max_token_count",
     ],
     headers=[
         "ID",
@@ -79,6 +87,8 @@ deployment_panel = PanelFormatter(
         "Endpoint",
         "Cloud",
         "Region",
+        "Max batch size",
+        "Max token count",
     ],
     extra_fields=["error"],
     extra_headers=["error"],
@@ -90,7 +100,6 @@ deployment_table = TableFormatter(
     fields=[
         "deployment_id",
         "config.name",
-        "description",
         "status",
         "ready_replicas",
         "vms",
@@ -103,7 +112,6 @@ deployment_table = TableFormatter(
     headers=[
         "ID",
         "Name",
-        "Description",
         "Status",
         "#Ready",
         "VM Type",
@@ -123,7 +131,6 @@ deployment_org_table = TableFormatter(
     fields=[
         "deployment_id",
         "config.name",
-        "description",
         "status",
         "ready_replicas",
         "vms",
@@ -138,7 +145,6 @@ deployment_org_table = TableFormatter(
     headers=[
         "ID",
         "Name",
-        "Description",
         "Status",
         "#Ready",
         "VM Type",
@@ -413,6 +419,9 @@ def create(
     deployment_name: str = typer.Option(
         ..., "--name", "-n", help="The name of deployment. "
     ),
+    vm_type: VMType = typer.Option(
+        ..., "--vm-type", "-v", help="The VM type for the deployment."
+    ),
     gpu_type: GpuType = typer.Option(
         ..., "--gpu-type", "-g", help="The GPU type for the deployment."
     ),
@@ -475,7 +484,7 @@ def create(
     :::
 
     :::tip
-    Use `pf vm list -s deployment` to find available cloud, region, and gpu-type.
+    Use `pf vm list` to find available vm-type, cloud, region, and gpu-type.
     :::
 
     The default request-response configuration, such as stop tokens or bad words, is
@@ -510,9 +519,9 @@ def create(
             checkpoint_id=checkpoint_id,
             name=deployment_name,
             deployment_type=deployment_type,
-            gpu_type=gpu_type,
             cloud=cloud,
             region=region,
+            vm_type=vm_type,
             config=config,
             description=description,
             default_request_config=default_request_config,

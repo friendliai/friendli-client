@@ -37,7 +37,7 @@ serving_vm_formatter = TableFormatter(
         "Cloud",
         "Region",
         "GPU type",
-        "VM",
+        "VM type",
         "GPU",
         "vCPUs",
         "Memory (GiB)",

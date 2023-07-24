@@ -56,6 +56,17 @@ class GpuType(str, Enum):
     A100_80G = "a100-80g"
 
 
+class VMType(str, Enum):
+    """VM types for deployment."""
+
+    G5_XLARGE = "g5.xlarge"
+    A2_HIGHGPU_1G = "a2-highgpu-1g"
+    A2_ULTRAGPU_1G = "a2-ultragpu-1g"
+    A2_ULTRAGPU_2G = "a2-ultragpu-2g"
+    A2_ULTRAGPU_4G = "a2-ultragpu-4g"
+    A2_ULTRAGPU_8G = "a2-ultragpu-8g"
+
+
 class DeploymentType(str, Enum):
     """Deployment phase types."""
 

@@ -34,6 +34,7 @@ from periflow.enums import (
     DeploymentType,
     GpuType,
     ServiceTier,
+    VMType,
 )
 from periflow.errors import (
     AuthenticationError,
@@ -48,6 +49,7 @@ from periflow.schema.resource.v1.deployment import V1Deployment
 from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
 from periflow.utils.fs import download_file, upload_file
+from periflow.utils.maps import cloud_vm_map, vm_num_gpu_map
 
 
 class Deployment(ResourceAPI[V1Deployment, str]):
@@ -57,9 +59,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
     def create(
         checkpoint_id: UUID,
         name: str,
-        gpu_type: GpuType,
         cloud: CloudType,
         region: str,
+        vm_type: VMType,
         config: Dict[str, Any],
         deployment_type: DeploymentType = DeploymentType.PROD,
         description: Optional[str] = None,
@@ -74,9 +76,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
         Args:
             checkpoint_id (UUID): ID of checkpoint to deploy.
             name (str): The name of deployment.
-            gpu_type (GpuType): Type of GPU.
             cloud (CloudType): Type of cloud provider.
             region (str): Cloud region to create a deployment.
+            vm_type (VMType): Type of VM.
             config (Dict[str, Any]): Deployment configuration.
             deployment_type (DeploymentType, optional): Type of deployment. Defaults to DeploymentType.PROD.
             description (Optional[str], optional): Optional long description for the deployment. Defaults to None.
@@ -179,6 +181,11 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 f"Should be min_replicas('{min_replicas}') <= max_replicas('{max_replicas}')."
             )
 
+        if vm_type not in cloud_vm_map[cloud]:
+            raise InvalidConfigError(
+                f"VM type {vm_type.value} is not supported in cloud {cloud.value}."
+            )
+
         deploy_configurator = OrcaDeploymentConfigurator(config=config)
         deploy_configurator.validate()
 
@@ -227,6 +234,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 file_client.make_misc_file_uploaded(misc_file_id=file_id)
                 config["orca_config"]["default_request_config_id"] = file_id
 
+        num_gpus = vm_num_gpu_map[vm_type]
+        config["orca_config"]["num_devices"] = num_gpus
+
         config["scaler_config"] = {}
         config["scaler_config"]["min_replica_count"] = min_replicas
         config["scaler_config"]["max_replica_count"] = max_replicas
@@ -236,10 +246,10 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             "model_id": str(checkpoint_id),
             "deployment_type": deployment_type.value,
             "name": name,
-            "vm": {"gpu_type": gpu_type.value},
+            "vm": {"name": vm_type.value},
             "cloud": cloud.value,
             "region": region,
-            "total_gpus": 1,
+            "total_gpus": num_gpus,
             "infrequest_perm_check": security_level
             == DeploymentSecurityLevel.PROTECTED,
             "infrequest_log": logging,
