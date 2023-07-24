@@ -17,9 +17,9 @@ Deployment resource API.
 create(
     checkpoint_id: UUID,
     name: str,
-    gpu_type: GpuType,
     cloud: CloudType,
     region: str,
+    vm_type: VMType,
     config: Dict[str, Any],
     deployment_type: DeploymentType = DeploymentType.PROD,
     description: Optional[str] = None,
@@ -39,9 +39,9 @@ Creates a new deployment.
 |------|------|-------------|---------|----------|
 | `checkpoint_id` | `UUID` | ID of checkpoint to deploy. | - | ❌ |
 | `name` | `str` | The name of deployment. | - | ❌ |
-| `gpu_type` | `GpuType` | Type of GPU. | - | ❌ |
 | `cloud` | `CloudType` | Type of cloud provider. | - | ❌ |
 | `region` | `str` | Cloud region to create a deployment. | - | ❌ |
+| `vm_type` | `VMType` | Type of VM. | - | ❌ |
 | `config` | `Dict[str, Any]` | Deployment configuration. | - | ❌ |
 | `deployment_type` | `DeploymentType` | Type of deployment. Defaults to DeploymentType.PROD. | `DeploymentType.PROD` | ✅ |
 | `description` | `Optional[str]` | Optional long description for the deployment. Defaults to None. | `None` | ✅ |

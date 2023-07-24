@@ -501,7 +501,7 @@ def create(
 
     """
     default_request_config = None
-    config: Dict[str, Any]
+    config: Dict[str, Any] = {}
     if config_file:
         try:
             config = yaml.safe_load(config_file)
@@ -512,8 +512,10 @@ def create(
                 f"Error occurred while parsing engine config file... {e}"
             )
     else:
-        config["orca_config"]["max_batch_size"] = DEFAULT_MAX_BATCH_SIZE
-        config["orca_config"]["max_token_count"] = DEFAULT_MAX_TOKEN_COUNT
+        config["orca_config"] = {
+            "max_batch_size": DEFAULT_MAX_BATCH_SIZE,
+            "max_token_count": DEFAULT_MAX_TOKEN_COUNT,
+        }
 
     try:
         deployment = DeploymentAPI.create(
