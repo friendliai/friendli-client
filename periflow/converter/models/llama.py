@@ -71,7 +71,7 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
             self.decoder_hidden_size,
         )
         k_weight = k_weight.reshape(
-            self.decoder_num_attention_heads,
+            self.decoder_num_kv_attention_heads,
             self.decoder_head_size,
             self.decoder_hidden_size,
         )
@@ -82,7 +82,7 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
             self.decoder_hidden_size,
         )
         k_weight = k_weight.reshape(
-            self.decoder_num_attention_heads * self.decoder_head_size,
+            self.decoder_num_kv_attention_heads * self.decoder_head_size,
             self.decoder_hidden_size,
         )
 
@@ -201,7 +201,10 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
     @property
     def decoder_num_kv_attention_heads(self) -> int:
         """The number of key-value attention heads in LLaMA."""
-        return self.decoder_num_attention_heads
+        config = cast(LlamaConfig, self.config)
+        if config.num_key_value_heads is None:
+            return self.decoder_num_attention_heads
+        return config.num_key_value_heads
 
     @property
     def decoder_head_size(self) -> int:
