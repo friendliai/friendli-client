@@ -32,7 +32,6 @@ from periflow.enums import (
     CloudType,
     DeploymentSecurityLevel,
     DeploymentType,
-    GpuType,
     ServiceTier,
     VMType,
 )

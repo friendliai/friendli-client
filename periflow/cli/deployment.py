@@ -15,13 +15,7 @@ import yaml
 from dateutil.parser import parse
 
 from periflow.client.user import UserGroupProjectClient
-from periflow.enums import (
-    CloudType,
-    DeploymentSecurityLevel,
-    DeploymentType,
-    GpuType,
-    VMType,
-)
+from periflow.enums import CloudType, DeploymentSecurityLevel, DeploymentType, VMType
 from periflow.errors import (
     AuthenticationError,
     EntityTooLargeError,
@@ -41,6 +35,9 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
+
+DEFAULT_MAX_BATCH_SIZE = 256
+DEFAULT_MAX_TOKEN_COUNT = 8192
 
 deployment_panel = PanelFormatter(
     name="Deployment Overview",
@@ -422,13 +419,10 @@ def create(
     vm_type: VMType = typer.Option(
         ..., "--vm-type", "-v", help="The VM type for the deployment."
     ),
-    gpu_type: GpuType = typer.Option(
-        ..., "--gpu-type", "-g", help="The GPU type for the deployment."
-    ),
     cloud: CloudType = typer.Option(..., "--cloud", "-c", help="Type of cloud."),
     region: str = typer.Option(..., "--region", "-r", help="Region of cloud."),
-    config_file: typer.FileText = typer.Option(
-        ..., "--config-file", "-f", help="Path to configuration file."
+    config_file: Optional[typer.FileText] = typer.Option(
+        None, "--config-file", "-f", help="Path to configuration file."
     ),
     deployment_type: DeploymentType = typer.Option(
         DeploymentType.PROD, "--type", "-t", help="Type of deployment."
@@ -507,12 +501,19 @@ def create(
 
     """
     default_request_config = None
-    try:
-        config: Dict[str, Any] = yaml.safe_load(config_file)
-        if default_request_config_file is not None:
-            default_request_config = yaml.safe_load(default_request_config_file)
-    except yaml.YAMLError as e:
-        secho_error_and_exit(f"Error occurred while parsing engine config file... {e}")
+    config: Dict[str, Any]
+    if config_file:
+        try:
+            config = yaml.safe_load(config_file)
+            if default_request_config_file is not None:
+                default_request_config = yaml.safe_load(default_request_config_file)
+        except yaml.YAMLError as e:
+            secho_error_and_exit(
+                f"Error occurred while parsing engine config file... {e}"
+            )
+    else:
+        config["orca_config"]["max_batch_size"] = DEFAULT_MAX_BATCH_SIZE
+        config["orca_config"]["max_token_count"] = DEFAULT_MAX_TOKEN_COUNT
 
     try:
         deployment = DeploymentAPI.create(
