@@ -94,6 +94,7 @@ class V1LlamaAttributes(V1CommonAttributes):
     head_size: int
     rotary_dim: int
     num_heads: int
+    num_kv_heads: int
     num_layers: int
     ff_intermediate_size: int
     max_length: int
