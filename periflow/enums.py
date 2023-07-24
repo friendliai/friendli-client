@@ -53,6 +53,7 @@ class GpuType(str, Enum):
 
     A10G = "a10g"
     A100 = "a100"
+    A100_80G = "a100-80g"
 
 
 class DeploymentType(str, Enum):
