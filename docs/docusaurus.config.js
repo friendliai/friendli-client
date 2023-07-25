@@ -41,6 +41,9 @@ const SECTIONS = [
   defineSection('sdk', {
     label: latestVersions['sdk'],
   }),
+  defineSection('tutorials', {
+    label: latestVersions['tutorials'],
+  }),
 ];
 
 /** @type {import('@docusaurus/types').Config} */
@@ -117,9 +120,19 @@ const config = {
             position: 'left',
           },
           {
+            label: 'Tutorials',
+            to: 'tutorials/intro',
+            position: 'left',
+          },
+          {
             href: 'https://github.com/friendliai/periflow-client/',
             label: 'GitHub',
             position: 'right',
+          },
+          {
+            label: 'Quick Start',
+            href: 'https://periflow.ai/quick-start/',
+            position: 'left',
           },
         ],
       },
@@ -137,6 +150,14 @@ const config = {
                 label: 'Python SDK',
                 to: 'sdk/intro',
               },
+              {
+                label: 'Tutorials',
+                to: 'tutorials/intro',
+              },
+              {
+                label: 'Quick Start',
+                href: 'https://periflow.ai/quick-start/'
+              }
             ],
           },
           {
