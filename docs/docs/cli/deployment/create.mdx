@@ -25,7 +25,7 @@ To turn off the deployment autoscaling, set `--min-replicas` and
 :::
 
 :::tip
-Use `pf vm list -s deployment` to find available cloud, region, and gpu-type.
+Use `pf vm list` to find available vm-type, cloud, region, and gpu-type.
 :::
 
 The default request-response configuration, such as stop tokens or bad words, is
@@ -52,10 +52,10 @@ Both `bad_words` and `bad_word_tokens` cannot be set at the same time. Also, bot
 |--------|------|---------|---------|----------|
 | **`--checkpoint-id`**, **`-i`** | UUID | Checkpoint id to deploy. | - | ✅ |
 | **`--name`**, **`-n`** | TEXT | The name of deployment.  | - | ✅ |
-| **`--gpu-type`**, **`-g`** | CHOICE: [a10g, a100] | The GPU type for the deployment. | - | ✅ |
+| **`--vm-type`**, **`-v`** | CHOICE: [g5.xlarge, a2-highgpu-1g, a2-ultragpu-1g, a2-ultragpu-2g, a2-ultragpu-4g, a2-ultragpu-8g] | The VM type for the deployment. | - | ✅ |
 | **`--cloud`**, **`-c`** | CHOICE: [aws, azure, gcp] | Type of cloud. | - | ✅ |
 | **`--region`**, **`-r`** | TEXT | Region of cloud. | - | ✅ |
-| **`--config-file`**, **`-f`** | FILENAME | Path to configuration file. | - | ✅ |
+| `--config-file`, `-f` | FILENAME | Path to configuration file. | None | ❌ |
 | `--type`, `-t` | CHOICE: [dev, prod] | Type of deployment. | DeploymentType.PROD | ❌ |
 | `--description`, `-d` | TEXT | Deployment description. | None | ❌ |
 | `--security-level`, `-sl` | CHOICE: [public, protected] | Security level of deployment endpoints | public | ❌ |

@@ -133,7 +133,7 @@ def test_deployment_client_create_deployment(
         "model_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
         "deployment_type": DeploymentType.DEV,
         "name": "test_deployment",
-        "gpu_type": "t4",
+        "vm_type": "g5.xlarge",
         "cloud": "aws",
         "region": "test_region",
     }
@@ -165,7 +165,7 @@ def test_deployment_client_create_deployment(
         "model_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
         "deployment_type": DeploymentType.DEV,
         "name": "test_deployment",
-        "gpu_type": "t4",
+        "vm_type": "g5.xlarge",
         "cloud": "aws",
         "region": "test_region",
         "num_replicas": 2,

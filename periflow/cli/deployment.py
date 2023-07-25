@@ -15,7 +15,7 @@ import yaml
 from dateutil.parser import parse
 
 from periflow.client.user import UserGroupProjectClient
-from periflow.enums import CloudType, DeploymentSecurityLevel, DeploymentType, GpuType
+from periflow.enums import CloudType, DeploymentSecurityLevel, DeploymentType, VMType
 from periflow.errors import (
     AuthenticationError,
     EntityTooLargeError,
@@ -35,6 +35,9 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
 )
+
+DEFAULT_MAX_BATCH_SIZE = 256
+DEFAULT_MAX_TOKEN_COUNT = 8192
 
 deployment_panel = PanelFormatter(
     name="Deployment Overview",
@@ -58,6 +61,8 @@ deployment_panel = PanelFormatter(
         "endpoint",
         "config.cloud",
         "config.region",
+        "config.orca_config.max_batch_size",
+        "config.orca_config.max_token_count",
     ],
     headers=[
         "ID",
@@ -79,6 +84,8 @@ deployment_panel = PanelFormatter(
         "Endpoint",
         "Cloud",
         "Region",
+        "Max batch size",
+        "Max token count",
     ],
     extra_fields=["error"],
     extra_headers=["error"],
@@ -90,7 +97,6 @@ deployment_table = TableFormatter(
     fields=[
         "deployment_id",
         "config.name",
-        "description",
         "status",
         "ready_replicas",
         "vms",
@@ -103,7 +109,6 @@ deployment_table = TableFormatter(
     headers=[
         "ID",
         "Name",
-        "Description",
         "Status",
         "#Ready",
         "VM Type",
@@ -123,7 +128,6 @@ deployment_org_table = TableFormatter(
     fields=[
         "deployment_id",
         "config.name",
-        "description",
         "status",
         "ready_replicas",
         "vms",
@@ -138,7 +142,6 @@ deployment_org_table = TableFormatter(
     headers=[
         "ID",
         "Name",
-        "Description",
         "Status",
         "#Ready",
         "VM Type",
@@ -413,13 +416,13 @@ def create(
     deployment_name: str = typer.Option(
         ..., "--name", "-n", help="The name of deployment. "
     ),
-    gpu_type: GpuType = typer.Option(
-        ..., "--gpu-type", "-g", help="The GPU type for the deployment."
+    vm_type: VMType = typer.Option(
+        ..., "--vm-type", "-v", help="The VM type for the deployment."
     ),
     cloud: CloudType = typer.Option(..., "--cloud", "-c", help="Type of cloud."),
     region: str = typer.Option(..., "--region", "-r", help="Region of cloud."),
-    config_file: typer.FileText = typer.Option(
-        ..., "--config-file", "-f", help="Path to configuration file."
+    config_file: Optional[typer.FileText] = typer.Option(
+        None, "--config-file", "-f", help="Path to configuration file."
     ),
     deployment_type: DeploymentType = typer.Option(
         DeploymentType.PROD, "--type", "-t", help="Type of deployment."
@@ -475,7 +478,7 @@ def create(
     :::
 
     :::tip
-    Use `pf vm list -s deployment` to find available cloud, region, and gpu-type.
+    Use `pf vm list` to find available vm-type, cloud, region, and gpu-type.
     :::
 
     The default request-response configuration, such as stop tokens or bad words, is
@@ -498,21 +501,30 @@ def create(
 
     """
     default_request_config = None
-    try:
-        config: Dict[str, Any] = yaml.safe_load(config_file)
-        if default_request_config_file is not None:
-            default_request_config = yaml.safe_load(default_request_config_file)
-    except yaml.YAMLError as e:
-        secho_error_and_exit(f"Error occurred while parsing engine config file... {e}")
+    config: Dict[str, Any] = {}
+    if config_file:
+        try:
+            config = yaml.safe_load(config_file)
+            if default_request_config_file is not None:
+                default_request_config = yaml.safe_load(default_request_config_file)
+        except yaml.YAMLError as e:
+            secho_error_and_exit(
+                f"Error occurred while parsing engine config file... {e}"
+            )
+    else:
+        config["orca_config"] = {
+            "max_batch_size": DEFAULT_MAX_BATCH_SIZE,
+            "max_token_count": DEFAULT_MAX_TOKEN_COUNT,
+        }
 
     try:
         deployment = DeploymentAPI.create(
             checkpoint_id=checkpoint_id,
             name=deployment_name,
             deployment_type=deployment_type,
-            gpu_type=gpu_type,
             cloud=cloud,
             region=region,
+            vm_type=vm_type,
             config=config,
             description=description,
             default_request_config=default_request_config,

@@ -25,18 +25,22 @@ quota_app = typer.Typer(
 serving_vm_formatter = TableFormatter(
     name="Serving VM instances",
     fields=[
-        "vm.name",
         "cloud",
-        "gpu_type",
-        "vm.total_gpus",
         "region",
+        "gpu_type",
+        "vm.name",
+        "vm.total_gpus",
+        "vm.vcpu",
+        "memory",
     ],
     headers=[
-        "VM",
         "Cloud",
-        "GPU",
-        "GPU Count",
         "Region",
+        "GPU type",
+        "VM type",
+        "GPU",
+        "vCPUs",
+        "Memory (GiB)",
     ],
 )
 
@@ -54,6 +58,7 @@ def list():
             "region": nodegroup_list_dict["region"],
             "vm": nodegroup["vm"],
             "gpu_type": nodegroup["vm"]["gpu_type"].upper(),
+            "memory": int(nodegroup["vm"]["cpu_memory"]),
         }
         for nodegroup_list_dict in response
         for nodegroup in nodegroup_list_dict["nodegroup_list"]
