@@ -822,8 +822,8 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
         """
         try:
-            import torch  # type: ignore[import] # pylint: disable=import-outside-toplevel
             import accelerate  # type: ignore[import] # pylint: disable=import-outside-toplevel
+            import torch  # type: ignore[import] # pylint: disable=import-outside-toplevel
         except ImportError as exc:
             raise CheckpointConversionError(
                 "To convert the checkpoint, you must install 'torch'."
@@ -907,7 +907,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
                     torch_dtype=torch.float32,
                     cache_dir=cache_dir,
                     trust_remote_code=True,
-                    device_map="cpu"
+                    device_map="cpu",
                 ).state_dict()
             logger.info(
                 "Hugging Face checkpoint(%s) is successfully loaded!",
