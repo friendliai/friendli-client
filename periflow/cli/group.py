@@ -57,24 +57,6 @@ def invite(email: str = typer.Argument(..., help="Invitation recipient email add
     typer.echo("Invitation Successfully Sent!")
 
 
-@app.command("accept-invite")
-def accept_invite(
-    token: str = typer.Option(..., prompt="Enter email token"),
-    key: str = typer.Option(..., prompt="Enter verification key"),
-):
-    """Accept organization invitation.
-
-    When the invitee accepts the invitation, the invitee becomes a **Member** of the invited
-    organization.
-
-    """
-    group_client = GroupClient()
-    group_client.accept_invite(token, key)
-    typer.echo("Verification Success!")
-    typer.echo("Please login again with: ", nl=False)
-    typer.secho("pf login", fg=typer.colors.BLUE)
-
-
 @app.command("set-role")
 def set_role(
     username: str = typer.Argument(..., help="Username to set role"),
