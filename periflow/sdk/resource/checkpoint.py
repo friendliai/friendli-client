@@ -905,6 +905,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
                 torch_dtype=torch.float32,
                 cache_dir=cache_dir,
                 trust_remote_code=True,
+                low_cpu_mem_usage=True,  # For model loading faster and using ~1x model size CPU memory. https://huggingface.co/docs/transformers/main_classes/model#transformers.PreTrainedModel.from_pretrained.example
             ).state_dict()
             logger.info(
                 "Hugging Face checkpoint(%s) is successfully loaded!",
