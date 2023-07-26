@@ -416,11 +416,11 @@ def create(
     deployment_name: str = typer.Option(
         ..., "--name", "-n", help="The name of deployment. "
     ),
+    cloud: CloudType = typer.Option(..., "--cloud", "-c", help="Type of cloud."),
+    region: str = typer.Option(..., "--region", "-r", help="Region of cloud."),
     vm_type: VMType = typer.Option(
         ..., "--vm-type", "-v", help="The VM type for the deployment."
     ),
-    cloud: CloudType = typer.Option(..., "--cloud", "-c", help="Type of cloud."),
-    region: str = typer.Option(..., "--region", "-r", help="Region of cloud."),
     config_file: Optional[typer.FileText] = typer.Option(
         None, "--config-file", "-f", help="Path to configuration file."
     ),
