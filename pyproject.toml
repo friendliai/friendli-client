@@ -81,7 +81,7 @@ typer = "0.9.0"
 docstring-parser = "0.15"
 
 [tool.poetry.extras]
-mllib = ["transformers", "h5py", "accelerate"]
+mllib = ["transformers", "h5py", "accelerate", "einops"]
 
 [tool.isort]
 profile = "black"
