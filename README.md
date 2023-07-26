@@ -79,7 +79,7 @@ pf.init(
 
 # Create a deployment at GCP asia-northest3 region wtih one A100 GPU.
 deployment = pf.deployment.create(
-    checkpoint_id="your_checkpoint_id",
+    checkpoint_id="YOUR_CHECKPOINT_ID",
     name="my-deployment",
     cloud="gcp",
     region="asia-northeast3",
