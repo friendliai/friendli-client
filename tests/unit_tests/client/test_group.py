@@ -82,7 +82,7 @@ def test_group_client_invite_to_group(
 
     # Success
     url_template = deepcopy(group_client.url_template)
-    url_template.attach_pattern("$pf_group_id/invite")
+    url_template.attach_pattern("$pf_group_id/invite/signup")
     requests_mock.post(url_template.render(pf_group_id=group_id), status_code=204)
     group_client.invite_to_group(group_id, "test@test.com")
 
@@ -90,26 +90,6 @@ def test_group_client_invite_to_group(
     requests_mock.post(url_template.render(pf_group_id=group_id), status_code=404)
     with pytest.raises(typer.Exit):
         group_client.invite_to_group(group_id, "test@test.com")
-
-
-@pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_group_client_accept_invite(
-    requests_mock: requests_mock.Mocker, group_client: GroupClient
-):
-    token = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-    key = "123456"
-    # Success
-    requests_mock.post(
-        group_client.url_template.render("invite/confirm"), status_code=204
-    )
-    group_client.accept_invite(token, key)
-
-    # Failed due to HTTP error
-    requests_mock.post(
-        group_client.url_template.render("invite/confirm"), status_code=404
-    )
-    with pytest.raises(typer.Exit):
-        group_client.accept_invite(token, key)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")
