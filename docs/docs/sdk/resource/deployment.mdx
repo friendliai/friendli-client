@@ -84,9 +84,9 @@ config = {
     "max_token_count": 8146,
 }
 deployment = pf.Deployment.create(
-    checkpoint_id=UUID(190c117a-30ef-4c33-aad7-16f21bca0d63),
+    checkpoint_id="YOUR_CHECKPOINT_ID",
     name="my-deployment",
-    cloud=CloudType.GCP,
+    cloud="gcp",
     region="asia-northeast3",
     vm_type="a2-highgpu-1g",
     config=config,

@@ -90,6 +90,6 @@ class OrcaDeploymentConfigurator(DeploymentConfigurator):
                         "max_token_count": {"type": "integer"},
                     },
                 },
-                "required": ["orca_config"],
             },
+            "required": ["orca_config"],
         }
