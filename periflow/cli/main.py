@@ -45,8 +45,8 @@ app.add_typer(key.app, name="key", help="Manage api keys")
 
 user_panel_formatter = PanelFormatter(
     name="My Info",
-    fields=["name", "username", "email"],
-    headers=["Name", "Username", "Email"],
+    fields=["name", "email"],
+    headers=["Name", "Email"],
 )
 
 
@@ -60,13 +60,13 @@ def whoami():
 
 @app.command()
 def login(
-    username: str = typer.Option(..., prompt="Enter Username"),
-    password: str = typer.Option(..., prompt="Enter Password", hide_input=True),
+    email: str = typer.Option(..., prompt="Enter your email"),
+    password: str = typer.Option(..., prompt="Enter your password", hide_input=True),
 ):
     """Sign in."""
     r = requests.post(
         get_training_uri("token/"),
-        data={"username": username, "password": password},
+        data={"username": email, "password": password},
         timeout=DEFAULT_REQ_TIMEOUT,
     )
     resp = r.json()
@@ -172,5 +172,5 @@ def _handle_login_response(r: Response, mfa: bool):
             secho_error_and_exit("Login failed... Invalid MFA Code.")
         else:
             secho_error_and_exit(
-                "Login failed... Please check your username and password."
+                "Login failed... Please check your email and password."
             )

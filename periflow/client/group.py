@@ -56,15 +56,6 @@ class GroupClient(Client):
             },
         )
 
-    def get_users(self, pf_group_id: uuid.UUID, username: str) -> List[Dict[str, Any]]:
-        """Search organization member info by username."""
-        get_response_dict = safe_request(
-            self.list, err_prefix="Failed to get user in organization"
-        )
-        return paginated_get(
-            get_response_dict, path=f"{pf_group_id}/pf_user", search=username
-        )
-
     def list_users(self, pf_group_id: uuid.UUID) -> List[Dict[str, Any]]:
         """List all organization member info."""
         get_response_dict = safe_request(
