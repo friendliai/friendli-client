@@ -9,7 +9,7 @@ from uuid import UUID
 
 import typer
 
-from periflow.cli.group import _get_org_user_id_by_name, get_current_org
+from periflow.cli.group import get_current_org, get_org_user_id_by_email
 from periflow.client.group import GroupProjectClient
 from periflow.client.project import ProjectClient, find_project_id
 from periflow.client.user import UserClient, UserGroupProjectClient
@@ -37,8 +37,8 @@ project_panel_formatter = PanelFormatter(
 )
 member_table_formatter = TableFormatter(
     name="Members",
-    fields=["id", "username", "name", "email", "access_level"],
-    headers=["ID", "Username", "Name", "Email", "Role"],
+    fields=["id", "name", "email", "access_level"],
+    headers=["ID", "Name", "Email", "Role"],
 )
 
 
@@ -180,9 +180,9 @@ def _check_project_and_get_id() -> Tuple[UUID, UUID]:
 
 @app.command("add-user")
 def add_user(
-    username: str = typer.Argument(
+    email: str = typer.Argument(
         ...,
-        help="Username to add to the current working project",
+        help="Email of the user to add to the current working project",
     ),
     role: ProjectRole = typer.Argument(
         ...,
@@ -203,17 +203,19 @@ def add_user(
     user_client = UserClient()
 
     org_id, project_id = _check_project_and_get_id()
-    user_id = _get_org_user_id_by_name(org_id, username)
+    user_id = get_org_user_id_by_email(org_id, email)
 
     user_client.add_to_project(user_id, project_id, role)
-    typer.secho("User is successfully added to project", fg=typer.colors.BLUE)
+    typer.secho(
+        f"User '{email}' is successfully added to project", fg=typer.colors.BLUE
+    )
 
 
 @app.command("delete-user")
 def delete_user(
-    username: str = typer.Argument(
+    email: str = typer.Argument(
         ...,
-        help="Username to delete from the current working project",
+        help="Email of the user to delete from the current working project",
     ),
     force: bool = typer.Option(
         False,
@@ -232,24 +234,26 @@ def delete_user(
     user_client = UserClient()
 
     org_id, project_id = _check_project_and_get_id()
-    user_id = _get_org_user_id_by_name(org_id, username)
+    user_id = get_org_user_id_by_email(org_id, email)
 
     if not force:
         do_delete = typer.confirm(
-            f"Are you sure to remove user({username}) from the project?"
+            f"Are you sure to remove user '{email}' from the project?"
         )
         if not do_delete:
             raise typer.Abort()
 
     user_client.delete_from_project(user_id, project_id)
-    typer.secho("User is successfully deleted from project", fg=typer.colors.BLUE)
+    typer.secho(
+        f"User '{email}' is successfully deleted from project", fg=typer.colors.BLUE
+    )
 
 
 @app.command("set-role")
 def set_role(
-    username: str = typer.Argument(
+    email: str = typer.Argument(
         ...,
-        help="Username to set project role",
+        help="Email of the user to assign a project role",
     ),
     role: ProjectRole = typer.Argument(
         ...,
@@ -285,11 +289,11 @@ def set_role(
     user_client = UserClient()
 
     org_id, project_id = _check_project_and_get_id()
-    user_id = _get_org_user_id_by_name(org_id, username)
+    user_id = get_org_user_id_by_email(org_id, email)
 
     user_client.set_project_privilege(user_id, project_id, role)
     typer.secho(
-        f"Project role for user ({username}) successfully updated to {role.value}!"
+        f"Project role for user '{email}' successfully updated to {role.value}!"
     )
 
 

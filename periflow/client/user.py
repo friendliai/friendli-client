@@ -42,17 +42,6 @@ class UserSignUpClient(Client):
         """Get an URL path."""
         return Template(get_auth_uri("pf_user/self_signup"))
 
-    def sign_up(self, username: str, name: str, email: str, password: str) -> None:
-        """Sign up."""
-        safe_request(self.bare_post, err_prefix="Failed to signup")(
-            json={
-                "username": username,
-                "name": name,
-                "email": email,
-                "password": password,
-            }
-        )
-
     def verify(self, token: str, key: str) -> None:
         """Verify the email account with the token to sign up."""
         safe_request(self.bare_post, err_prefix="Failed to verify")(

@@ -32,8 +32,8 @@ org_panel_formatter = PanelFormatter(
 )
 member_table_formatter = TableFormatter(
     name="Members",
-    fields=["id", "username", "name", "email", "privilege_level"],
-    headers=["ID", "Username", "Name", "Email", "Role"],
+    fields=["id", "name", "email", "privilege_level"],
+    headers=["ID", "Name", "Email", "Role"],
 )
 
 
@@ -59,7 +59,7 @@ def invite(email: str = typer.Argument(..., help="Invitation recipient email add
 
 @app.command("set-role")
 def set_role(
-    username: str = typer.Argument(..., help="Username to set role"),
+    email: str = typer.Argument(..., help="Email of the user to assign a role"),
     role: GroupRole = typer.Argument(..., help="Organization role"),
 ):
     """Set organization role of the user.
@@ -85,18 +85,18 @@ def set_role(
             "Only the owner of the organization can invite/set-privilege."
         )
 
-    user_id = _get_org_user_id_by_name(org["id"], username)
+    user_id = get_org_user_id_by_email(org["id"], email)
     user_client.set_group_privilege(org["id"], user_id, role)
     typer.echo(
-        f"Organization role for user ({username}) successfully updated to {role.value}!"
+        f"Organization role for user '{email}' successfully updated to {role.value}!"
     )
 
 
 @app.command("delete-user")
 def delete_user(
-    username: str = typer.Argument(
+    email: str = typer.Argument(
         ...,
-        help="Username to delete from the organization",
+        help="Email of the user to delete from the organization",
     ),
     force: bool = typer.Option(
         False,
@@ -121,11 +121,11 @@ def delete_user(
         )
 
     org_id = org["id"]
-    user_id = _get_org_user_id_by_name(org_id, username)
+    user_id = get_org_user_id_by_email(org_id, email)
 
     if not force:
         do_delete = typer.confirm(
-            f"Are you sure to remove user({username}) from the organization?"
+            f"Are you sure to remove user '{email}' from the organization?"
         )
         if not do_delete:
             raise typer.Abort()
@@ -134,13 +134,14 @@ def delete_user(
     typer.secho("User is successfully deleted from organization", fg=typer.colors.BLUE)
 
 
-def _get_org_user_id_by_name(org_id: UUID, username: str) -> UUID:
+def get_org_user_id_by_email(org_id: UUID, email: str) -> UUID:
+    """Get ID of user by the email."""
     group_client = GroupClient()
-    users = group_client.get_users(org_id, username)
+    users = group_client.list_users(org_id)
     for user in users:
-        if user["username"] == username:
+        if user["email"] == email:
             return UUID(user["id"])
-    secho_error_and_exit(f"{username} is not a member of this organization.")
+    secho_error_and_exit(f"User '{email}' is not a member of this organization.")
 
 
 def get_current_org() -> Dict[str, Any]:
