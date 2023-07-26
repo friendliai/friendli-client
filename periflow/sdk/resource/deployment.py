@@ -115,7 +115,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 name="my-deployment",
                 cloud=CloudType.GCP,
                 region="asia-northeast3",
-                gpu_type=GpuType.A100,
+                vm_type="a2-highgpu-1g",
                 config=config,
             )
             ```
