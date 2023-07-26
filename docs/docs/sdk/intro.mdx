@@ -24,9 +24,9 @@ pf.init(
 deployment = pf.Deployment.create(
     checkpoint_id="YOUR_CHECKPOINT_ID",
     name="my-deployment",
-    gpu_type="a100",
     cloud="gcp",
     region="asia-northeast3",
+    vm_type="a2-highgpu-1g",
     ...
 )
 ```

@@ -109,9 +109,7 @@ class ServingAPI(
             self._endpoint = urljoin(
                 get_baseurl(endpoint), os.path.join(deployment_id, self._api_path)
             )
-            self._auth_required = (
-                deployment["type"] == DeploymentSecurityLevel.PROTECTED
-            )
+            self._auth_required = deployment["config"]["infrequest_perm_check"]
         elif endpoint is not None:
             if deployment_security_level is None:
                 raise InvalidConfigError(

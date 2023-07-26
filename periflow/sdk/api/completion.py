@@ -35,7 +35,7 @@ class Completion(
 
     @property
     def _api_path(self) -> str:
-        return "v1/completion"
+        return "v1/completions"
 
     @overload
     def create(

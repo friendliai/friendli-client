@@ -52,9 +52,9 @@ Both `bad_words` and `bad_word_tokens` cannot be set at the same time. Also, bot
 |--------|------|---------|---------|----------|
 | **`--checkpoint-id`**, **`-i`** | UUID | Checkpoint id to deploy. | - | ✅ |
 | **`--name`**, **`-n`** | TEXT | The name of deployment.  | - | ✅ |
-| **`--vm-type`**, **`-v`** | CHOICE: [g5.xlarge, a2-highgpu-1g, a2-ultragpu-1g, a2-ultragpu-2g, a2-ultragpu-4g, a2-ultragpu-8g] | The VM type for the deployment. | - | ✅ |
 | **`--cloud`**, **`-c`** | CHOICE: [aws, azure, gcp] | Type of cloud. | - | ✅ |
 | **`--region`**, **`-r`** | TEXT | Region of cloud. | - | ✅ |
+| **`--vm-type`**, **`-v`** | CHOICE: [g5.xlarge, a2-highgpu-1g, a2-ultragpu-1g, a2-ultragpu-2g, a2-ultragpu-4g, a2-ultragpu-8g] | The VM type for the deployment. | - | ✅ |
 | `--config-file`, `-f` | FILENAME | Path to configuration file. | None | ❌ |
 | `--type`, `-t` | CHOICE: [dev, prod] | Type of deployment. | DeploymentType.PROD | ❌ |
 | `--description`, `-d` | TEXT | Deployment description. | None | ❌ |

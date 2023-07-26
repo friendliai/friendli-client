@@ -81,9 +81,9 @@ pf.init(
 deployment = pf.Deployment.create(
     checkpoint_id="YOUR_CHECKPOINT_ID",
     name="my-deployment",
-    gpu_type="a100",
     cloud="gcp",
     region="asia-northeast3",
+    vm_type="a2-highgpu-1g",
     ...
 )
 ```
@@ -127,9 +127,9 @@ pf project switch my-project
 pf deployment create \
   --checkpoint-id $YOUR_CHECKPOINT_ID \
   --name my-deployment \
-  --gpu-type a100 \
   --cloud gcp \
   --region asia-northeast3 \
+  --vm-type a2-highgpu-1g \
   --config-file config.yaml
 ```
 
@@ -137,7 +137,7 @@ When the deployment is ready, you can send a request with `curl`.
 
 ```sh
 # Send a inference request to the deployment.
-curl -X POST https://gcp-asia-northeast3.periflow.ai/$DEPLOYMENT_ID/v1/completion \
+curl -X POST https://gcp-asia-northeast3.periflow.ai/$DEPLOYMENT_ID/v1/completions \
   -d '{"prompt": "Python is a popular language for", "max_tokens": 100, "top_p": 0.8, "temperature": 0.5, "no_repeat_ngram": 3}'
 ```
 

@@ -113,9 +113,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             deployment = pf.Deployment.create(
                 checkpoint_id=UUID(190c117a-30ef-4c33-aad7-16f21bca0d63),
                 name="my-deployment",
-                gpu_type=GpuType.A100,
                 cloud=CloudType.GCP,
                 region="asia-northeast3",
+                vm_type="a2-highgpu-1g",
                 config=config,
             )
             ```
