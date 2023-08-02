@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from uuid import UUID
 
 import typer
@@ -364,7 +364,13 @@ def create(
 
 @app.command()
 def delete(
-    checkpoint_id: UUID = typer.Argument(..., help="ID of checkpoint to delete."),
+    checkpoint_ids: List[UUID] = typer.Argument(
+        ...,
+        help=(
+            "IDs of checkpoint to delete. "
+            "When multiple IDs are provided, all those checkpoints are deleted."
+        ),
+    ),
     force: bool = typer.Option(
         False,
         "--force",
@@ -383,14 +389,23 @@ def delete(
     :::
 
     """
+    targets_str = ""
+    for checkpoint_id in checkpoint_ids:
+        targets_str += str(checkpoint_id)
+        targets_str += "\n"
+
     if not force:
-        do_delete = typer.confirm("Are you sure to delete checkpoint?")
+        do_delete = typer.confirm(
+            f"Following checkpoints will be deleted:\n\n{targets_str}\n"
+            "Are your sure to delete these?"
+        )
         if not do_delete:
             raise typer.Abort()
 
-    CheckpointAPI.delete(id=checkpoint_id)
+    for checkpoint_id in checkpoint_ids:
+        CheckpointAPI.delete(id=checkpoint_id)
 
-    typer.secho("Checkpoint is deleted successfully!", fg=typer.colors.BLUE)
+    typer.secho("Checkpoints are deleted successfully!", fg=typer.colors.BLUE)
 
 
 @app.command()

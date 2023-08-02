@@ -3,7 +3,7 @@
 ## Usage
 
 ```bash
-pf checkpoint delete [OPTIONS] CHECKPOINT_ID
+pf checkpoint delete [OPTIONS] CHECKPOINT_IDS
 ```
 
 ## Summary
@@ -22,7 +22,7 @@ Checkpoints that are uploaded or generated from training jobs are physically del
 
 | Argument | Type | Summary | Default | Required | 
 |----------|------|---------|---------|----------|
-| **`checkpoint_id`** | UUID | ID of checkpoint to delete. | - | ✅ |
+| **`checkpoint_ids`** | UUID | IDs of checkpoint to delete. When multiple IDs are provided, all those checkpoints are deleted. | - | ✅ |
 
 ## Options
 
