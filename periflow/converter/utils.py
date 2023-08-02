@@ -121,15 +121,22 @@ def save_tokenizer(
     if not os.path.isdir(save_dir):
         raise NotFoundError(f"Directory '{save_dir}' is not found.")
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name_or_path,
-        cache_dir=cache_dir,
-        trust_remote_code=True,
-    )
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name_or_path,
+            cache_dir=cache_dir,
+            trust_remote_code=True,
+        )
+    except OSError as exc:
+        raise TokenizerNotFoundError(str(exc)) from exc
+
     if not tokenizer.is_fast:
-        raise TokenizerNotFoundError
+        raise TokenizerNotFoundError(
+            "This model does not support PeriFlow-compatible tokenizer"
+        )
 
     saved_file_paths = tokenizer.save_pretrained(save_directory=save_dir)
+
     tokenizer_json_path = None
     for path in saved_file_paths:
         if "tokenizer.json" == os.path.basename(path):

@@ -32,6 +32,7 @@ app = typer.Typer(
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
     callback=validate_cli_version,
+    pretty_exceptions_enable=False,
 )
 
 app.add_typer(credential.app, name="credential", help="Manage credentials")
