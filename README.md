@@ -3,7 +3,7 @@ Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 -->
 
 <p align="center">
-  <img src="https://drive.google.com/uc?id=1daafphR0ABKylj_0b1wtZ6n0ZRSVq5-s" width="80%" alt="system">
+  <img src="https://docs.periflow.ai/img/logo.svg" width="80%" alt="system">
 </p>
 
 <h2><p align="center">Supercharge Generative AI Serving 🚀</p></h2>
