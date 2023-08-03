@@ -77,7 +77,7 @@ def validate_cli_version() -> None:
         secho_error_and_exit(
             f"CLI version({installed_version}) is deprecated. "
             f"Please install the latest version({latest_version}) with "
-            f"'pip install {PERIFLOW_PACKAGE_NAME}=={latest_version} -U --no-cache-dir'."
+            f"'pip install {PERIFLOW_PACKAGE_NAME}=={latest_version} -U'."
         )
 
 
