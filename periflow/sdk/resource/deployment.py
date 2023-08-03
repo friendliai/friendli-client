@@ -49,6 +49,7 @@ from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
 from periflow.utils.fs import download_file, upload_file
 from periflow.utils.maps import cloud_vm_map, vm_num_gpu_map
+from periflow.utils.validate import validate_enums
 
 
 class Deployment(ResourceAPI[V1Deployment, str]):
@@ -111,9 +112,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 "max_token_count": 8146,
             }
             deployment = pf.Deployment.create(
-                checkpoint_id=UUID(190c117a-30ef-4c33-aad7-16f21bca0d63),
+                checkpoint_id="YOUR_CHECKPOINT_ID",
                 name="my-deployment",
-                cloud=CloudType.GCP,
+                cloud="gcp",
                 region="asia-northeast3",
                 vm_type="a2-highgpu-1g",
                 config=config,
@@ -154,6 +155,12 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             V1Deployment: The created deployment object.
 
         """
+        # pylint: disable=too-many-statements
+        cloud = validate_enums(cloud, CloudType)
+        vm_type = validate_enums(vm_type, VMType)
+        deployment_type = validate_enums(deployment_type, DeploymentType)
+        security_level = validate_enums(security_level, DeploymentSecurityLevel)
+
         org_id = get_current_group_id()
         if org_id is None:
             raise AuthenticationError(
@@ -254,7 +261,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             "infrequest_log": logging,
             **config,
         }
-        if description:
+        if description is not None:
             request_data["description"] = description
 
         client = DeploymentClient()

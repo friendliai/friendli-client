@@ -40,6 +40,7 @@ from periflow.utils.maps import cred_type_map, cred_type_map_inv
 from periflow.utils.validate import (
     validate_checkpoint_attributes,
     validate_cloud_storage_type,
+    validate_enums,
     validate_storage_region,
 )
 
@@ -93,8 +94,8 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             # Create a checkpoint by linking an existing S3 bucket.
             checkpoint = pf.Checkpoint.create(
                 name="my-checkpoint",
-                credential_id=UUID("8ab9b5cf-8737-4d1b-873a-f4ef36a57cf1"),
-                cloud_stroage=StorageType.S3,
+                credential_id="YOUR_CREDENTIAL_ID",
+                cloud_stroage="s3",
                 region="us-east-1",
                 storage_name="my-bucket",
                 storage_path="path/to/ckpt",
@@ -229,6 +230,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             :::
 
         """
+        cloud_storage = validate_enums(cloud_storage, StorageType)
         validate_cloud_storage_type(cloud_storage)
         validate_storage_region(vendor=cloud_storage, region=region)
 
@@ -358,9 +360,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
                 project_name="my-project",
             )
 
-            checkpoint = pf.Checkpoint.get(
-                id=UUID(190c117a-30ef-4c33-aad7-16f21bca0d63)
-            )
+            checkpoint = pf.Checkpoint.get(id="YOUR_CHECKPOINT_ID")
             ```
 
         """
@@ -391,9 +391,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
                 project_name="my-project",
             )
 
-            checkpoint = pf.Checkpoint.delete(
-                id=UUID(190c117a-30ef-4c33-aad7-16f21bca0d63)
-            )
+            checkpoint = pf.Checkpoint.delete(id="YOUR_CHECKPOINT_ID")
             ```
 
         """
@@ -720,7 +718,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             )
 
             pf.Checkpoint.download(
-                id=UUID(190c117a-30ef-4c33-aad7-16f21bca0d63),
+                id="YOUR_CHECKPOINT_ID",
                 save_dir="local/save/dir",
             )
             ```
@@ -769,7 +767,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             )
 
             pf.Checkpoint.download(
-                id=UUID(190c117a-30ef-4c33-aad7-16f21bca0d63),
+                id="YOUR_CHECKPOINT_ID",
                 save_dir="local/save/dir",
             )
             ```
@@ -841,6 +839,8 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             raise CheckpointConversionError(
                 "To convert the checkpoint, your must install the package with 'pip install periflow-client[mllib]'"
             ) from exc
+
+        data_type = validate_enums(data_type, CheckpointDataType)
 
         try:
             config = transformers.AutoConfig.from_pretrained(

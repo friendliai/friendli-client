@@ -5,7 +5,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from enum import Enum
+from typing import Any, Dict, Optional, Type
 
 import typer
 from pydantic import ValidationError
@@ -63,7 +64,7 @@ def validate_datetime_format(datetime_str: Optional[str]) -> Optional[str]:
 
 def validate_cloud_storage_type(val: StorageType) -> None:
     """Validate the cloud storage type."""
-    if val is StorageType.FAI:
+    if val == StorageType.FAI:
         raise NotSupportedError(
             "Checkpoint creation with FAI storage is not supported now."
         )
@@ -101,3 +102,14 @@ def validate_checkpoint_attributes(attr: Dict[str, Any]) -> None:
         else:
             msg = "\n>>> " + "\n>>> ".join(msgs)
         raise InvalidAttributesError(msg) from exc
+
+
+def validate_enums(val: Any, enum_cls: Type[Enum]) -> Any:
+    """Validate if the value is the proper enum."""
+    try:
+        return enum_cls(val)
+    except ValueError as exc:
+        supported_values = set([e.value for e in enum_cls])
+        raise InvalidConfigError(
+            f"Invalid value. Please provide one of {supported_values}"
+        ) from exc
