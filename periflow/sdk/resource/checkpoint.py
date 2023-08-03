@@ -2,7 +2,7 @@
 
 """PeriFlow Checkpoint SDK."""
 
-# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-locals, redefined-builtin
+# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-statements, too-many-locals, redefined-builtin
 
 from __future__ import annotations
 
