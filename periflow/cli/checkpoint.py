@@ -21,7 +21,6 @@ from periflow.errors import (
     InvalidPathError,
     NotFoundError,
     NotSupportedError,
-    TokenizerNotFoundError,
 )
 from periflow.formatter import (
     JSONFormatter,
@@ -708,7 +707,7 @@ def convert(
             cache_dir=cache_dir,
             dry_run=dry_run,
         )
-    except (NotFoundError, CheckpointConversionError, TokenizerNotFoundError) as exc:
+    except (NotFoundError, CheckpointConversionError) as exc:
         secho_error_and_exit(str(exc))
 
     msg = (

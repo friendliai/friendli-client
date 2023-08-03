@@ -632,4 +632,3 @@ Convert Hugging Face model checkpoint to PeriFlow format.
 |------|-------------|
 | `NotFoundError` | Raised when `model_name_or_path` is not found. Also raised when `tokenizer_output_dir` is not found. |
 | `CheckpointConversionError` | Raised when given model architecture from checkpoint is not supported to convert. |
-| `TokenizerNotFoundError` | Raised when `tokenizer_output_dir` is not `None` and the model does not have the PeriFlow-compatible tokenizer implementation, which is equivalent to Hugging Face 'fast' tokenizer. Refer to [this link](https://huggingface.co/docs/transformers/main_classes/tokenizer#tokenizer) to get more info. |

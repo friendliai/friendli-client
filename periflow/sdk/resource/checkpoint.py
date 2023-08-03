@@ -2,7 +2,7 @@
 
 """PeriFlow Checkpoint SDK."""
 
-# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-locals, redefined-builtin
+# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-statements, too-many-locals, redefined-builtin
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from periflow.errors import (
     NotFoundError,
     NotSupportedCheckpointError,
     PeriFlowInternalError,
+    TokenizerNotFoundError,
 )
 from periflow.logging import logger
 from periflow.schema.resource.v1.checkpoint import V1Checkpoint
@@ -816,7 +817,6 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
         Raises:
             NotFoundError: Raised when `model_name_or_path` is not found. Also raised when `tokenizer_output_dir` is not found.
             CheckpointConversionError: Raised when given model architecture from checkpoint is not supported to convert.
-            TokenizerNotFoundError: Raised when `tokenizer_output_dir` is not `None` and the model does not have the PeriFlow-compatible tokenizer implementation, which is equivalent to Hugging Face 'fast' tokenizer. Refer to [this link](https://huggingface.co/docs/transformers/main_classes/tokenizer#tokenizer) to get more info.
 
         """
         try:
@@ -923,8 +923,11 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
                 yaml.dump(attr, file, sort_keys=False)
 
         if tokenizer_output_dir is not None:
-            save_tokenizer(
-                model_name_or_path=model_name_or_path,
-                cache_dir=cache_dir,
-                save_dir=tokenizer_output_dir,
-            )
+            try:
+                save_tokenizer(
+                    model_name_or_path=model_name_or_path,
+                    cache_dir=cache_dir,
+                    save_dir=tokenizer_output_dir,
+                )
+            except TokenizerNotFoundError as exc:
+                logger.warn(str(exc))

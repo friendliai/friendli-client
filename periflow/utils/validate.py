@@ -70,15 +70,15 @@ def validate_cloud_storage_type(val: StorageType) -> None:
         )
 
 
-def validate_cli_version() -> None:
+def validate_package_version() -> None:
     """Validate the installed CLI version."""
     installed_version = get_installed_version()
     if not is_latest_version(installed_version):
         latest_version = get_latest_version()
         secho_error_and_exit(
-            f"CLI version({installed_version}) is deprecated. "
+            f"Package version({installed_version}) is deprecated. "
             f"Please install the latest version({latest_version}) with "
-            f"'pip install {PERIFLOW_PACKAGE_NAME}=={latest_version} -U --no-cache-dir'."
+            f"'pip install {PERIFLOW_PACKAGE_NAME}=={latest_version} -U'."
         )
 
 
