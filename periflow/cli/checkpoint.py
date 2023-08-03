@@ -368,7 +368,8 @@ def delete(
         ...,
         help=(
             "IDs of checkpoint to delete. "
-            "When multiple IDs are provided, all those checkpoints are deleted."
+            "When multiple IDs are provided in a space-separated string format, all "
+            "corresponding checkpoints will be deleted."
         ),
     ),
     force: bool = typer.Option(
