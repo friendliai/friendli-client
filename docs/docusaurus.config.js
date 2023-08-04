@@ -218,6 +218,23 @@ const config = {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
       },
+      algolia: {
+        // The application ID provided by Algolia
+        appId: '4DXTYAG8IJ',
+  
+        // Public API key: it is safe to commit it
+        apiKey: '50374885b3a1abe590eb3eddcf983db7',
+  
+        indexName: 'periflow',
+  
+        // Optional: see doc section below
+        contextualSearch: true,
+  
+        // Optional: Algolia search parameters
+        searchParameters: {
+          relevancyStrictness: 100
+        },
+      },
     }),
 };
 

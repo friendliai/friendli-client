@@ -90,7 +90,7 @@ def create(name: str = typer.Argument(..., help="Name of project to create")):
     """Create a new project.
 
     :::info
-    Every resource within a project, such as datasets, checkpoints, and jobs,
+    Every resource within a project, such as credentials, checkpoints, and deployments,
     is shared with project members.
     :::
 
@@ -270,10 +270,10 @@ def set_role(
     | Assign project roles | ✓ | ✗ | ✗ | ✗ |
     | Delete project | ✓ | ✗ | ✗ | ✗ |
     | Delete & edit checkpoints | ✓ | ✗ | ✗ | ✗ |
-    | Delete & edit datasets, credentials, jobs | ✓ | ✓ | ✗ | ✗ |
-    | Creaete datasets, credentials | ✓ | ✓ | ✗ | ✗ |
-    | Create checkpoints, deployments, jobs | ✓ | ✓ | ✓ | ✗ |
-    | Read checkpoints, datasets, credentials, deployments, jobs | ✓ | ✓ | ✓ | ✓ |
+    | Delete & edit credentials, deployments | ✓ | ✓ | ✗ | ✗ |
+    | Creaete credentials | ✓ | ✓ | ✗ | ✗ |
+    | Create checkpoints, deployments | ✓ | ✓ | ✓ | ✗ |
+    | Read checkpoints, credentials, deployments | ✓ | ✓ | ✓ | ✓ |
     | Send inference requests to deployments | ✓ | ✓ | ✓ | ✓ |
 
     :::info
