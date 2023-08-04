@@ -286,7 +286,7 @@ class UploadableClient(Client[T], Generic[T]):
         local_paths: List[str],
         storage_paths: List[str],
     ) -> List[Dict[str, Any]]:
-        """Get multipart upload URLs for multiple datasets.
+        """Get multipart upload URLs for multiple file-like objects.
 
         Args:
             obj_id (T): Uploadable object ID
@@ -410,7 +410,7 @@ class UploadableClient(Client[T], Generic[T]):
         """Upload files.
 
         Args:
-            obj_id (T): PeriFlow resource(i.e., dataset, checkpoint) object ID.
+            obj_id (T): PeriFlow resource(i.e., checkpoint) object ID.
             spu_url_dicts (List[Dict[str, str]]): Single-part upload URL info.
             mpu_url_dicts (List[Dict[str, Any]]): Multi-part upload URL info.
             source_path (Path): Path to the local source directory.

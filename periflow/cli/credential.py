@@ -184,7 +184,7 @@ def gcs(
 ):
     r"""Creates a credential for Google Cloud Storage.
 
-    To use checkpoints or datasets in the Google Cloud Storage, you must create a
+    To use checkpoints in the Google Cloud Storage, you must create a
     credential to access the GCS buckets.
 
 

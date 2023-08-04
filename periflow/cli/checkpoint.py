@@ -385,7 +385,7 @@ def delete(
     checkpoint from the PeriFlow system. That is, it does not physically delete the
     checkpoint objects from the source cloud storage (your cloud storage).
 
-    Checkpoints that are uploaded or generated from training jobs are physically deleted.
+    Uploaded checkpoints are physically deleted.
     :::
 
     """
@@ -609,10 +609,9 @@ def restore(
 ):
     """Restores deleted checkpoint (available within 24 hours from the deletion).
 
-    When a checkpoint that is uploaded or generated from the training job is deleted,
-    it is not physically deleted right away. Instead, it is soft-deleted and can be
-    restored within 24 hours after the deletion. After the 24-hour retention period, it
-    is hard-deleted and cannot be restored.
+    When a uploaded checkpoint is deleted, it is not physically deleted right away.
+    Instead, it is soft-deleted and can be restored within 24 hours after the deletion.
+    After the 24-hour retention period, it is hard-deleted and cannot be restored.
 
     :::caution
     When you delete a linked checkpoint, you cannot restore it. Instead, relink the
