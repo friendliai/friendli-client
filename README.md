@@ -63,6 +63,12 @@ Check out [PeriFlow Client Docs](https://docs.periflow.ai/) to learn more.
 pip install periflow-client
 ```
 
+If you have a Hugging Face checkpoint and want to convert it to a PeriFlow-compatible format, you need to install the package with the necessary machine learing library (`mllib`) dependencies. In this case, install the package with the following command:
+
+```sh
+pip install periflow-client[mllib]
+```
+
 ## Examples
 
 This example shows how to create a deployment and send a completion API request to the created deployment with Python SDK.

@@ -10,11 +10,10 @@ pf checkpoint convert [OPTIONS]
 
 Convert huggingface's model checkpoint to PeriFlow format.
 
-::: info
-When a checkpoint has Hugging Face format, it cannot be served right away. Instead,
-it needs to be converted to PeriFlow format for serving. From the orignal checkpoint,
-it is copied and converted to Periflow format checkpoint(*.h5).
-:::
+When a checkpoint is in the Hugging Face format, it cannot be directly served;
+rather, it requires conversion to the PeriFlow format for serving. The conversion
+process involves copying the original checkpoint and transforming it into a
+checkpoint in the PeriFlow format (*.h5).
 
 :::caution
 The `pf checkpoint convert` is available only when the package is installed with
