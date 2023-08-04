@@ -87,6 +87,19 @@ class V1GPTNeoXAttributes(V1CommonAttributes):
     eos_token: int
 
 
+class V1GPTNeoXHFAttributes(V1CommonAttributes):
+    """V1 GPT-NeoX HF attributes schema."""
+
+    model_type: Literal["gpt-neox-hf"]
+    head_size: int
+    rotary_dim: int
+    num_heads: int
+    num_layers: int
+    max_length: int
+    vocab_size: int
+    eos_token: int
+
+
 class V1LlamaAttributes(V1CommonAttributes):
     """V1 LLaMA attributes schema."""
 
@@ -168,6 +181,7 @@ V1CheckpointAttributes = Annotated[
         V1GPTAttributes,
         V1GPTJAttributes,
         V1GPTNeoXAttributes,
+        V1GPTNeoXHFAttributes,
         V1LlamaAttributes,
         V1MPTAttributes,
         V1OPTAttributes,
