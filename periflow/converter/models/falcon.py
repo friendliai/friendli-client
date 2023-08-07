@@ -75,16 +75,18 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
         qkv_weight = get_tensor_from_state_dict(
             state_dict, layer + per_layer_postfixes[0]
         )
-        qkv_weight = qkv_weight.reshape(
-            self.decoder_num_kv_attention_heads,
-            self.decoder_num_attention_heads + 2,
-            self.decoder_head_size,
-            self.decoder_hidden_size,
-        )
 
         num_queries_per_kv = (
             self.decoder_num_attention_heads // self.decoder_num_kv_attention_heads
         )
+
+        qkv_weight = qkv_weight.reshape(
+            self.decoder_num_kv_attention_heads,
+            num_queries_per_kv + 2,
+            self.decoder_head_size,
+            self.decoder_hidden_size,
+        )
+
         q_weight = qkv_weight[:, :num_queries_per_kv].reshape(
             self.decoder_num_kv_attention_heads * num_queries_per_kv,
             self.decoder_head_size,
