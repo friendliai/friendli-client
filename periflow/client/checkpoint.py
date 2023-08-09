@@ -11,7 +11,6 @@ from uuid import UUID
 from requests.models import Response
 
 from periflow.client.base import Client, UploadableClient, safe_request
-from periflow.utils.url import get_mr_uri
 
 
 class CheckpointClient(Client[UUID]):
@@ -20,7 +19,7 @@ class CheckpointClient(Client[UUID]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_mr_uri("models/"))
+        return Template(self.url_provider.get_mr_uri("models/"))
 
     def get_checkpoint(self, checkpoint_id: UUID) -> Dict[str, Any]:
         """Get a checkpoint info."""
@@ -57,7 +56,7 @@ class CheckpointFormClient(UploadableClient[UUID]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_mr_uri("model_forms/"))
+        return Template(self.url_provider.get_mr_uri("model_forms/"))
 
     def update_checkpoint_files(
         self,
