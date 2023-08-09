@@ -11,15 +11,15 @@ import numpy as np
 import torch
 from transformers import LlamaConfig  # type: ignore[import]
 
-from periflow.converter.base import DecoderOnlyConverter
-from periflow.converter.interface import DECODER_PREFIX
-from periflow.converter.utils import (
+from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
+from periflow.logging import logger
+from periflow.modules.converter.base import DecoderOnlyConverter
+from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     convert_to_gpt_j_params,
     get_tensor_from_state_dict,
 )
-from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
-from periflow.logging import logger
 
 
 class LlamaForCausalLMConverter(DecoderOnlyConverter):
@@ -125,7 +125,7 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
     @property
     def decoder_convert_dict(self) -> Dict[str, Any]:
         """The convert_dict for transformer layers in LLaMA."""
-        return {
+        convert_dict = {
             "ln_1/gamma:0": (
                 self.ln_weight_convert,
                 [".input_layernorm.weight"],
@@ -146,19 +146,51 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
                 self.ln_weight_convert,
                 [".post_attention_layernorm.weight"],
             ),
-            "mlp/c_gate/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.gate_proj.weight"],
-            ),
-            "mlp/c_fc/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.up_proj.weight"],
-            ),
-            "mlp/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.down_proj.weight"],
-            ),
         }
+        if not self.smoothquant:
+            convert_dict.update(
+                {
+                    "mlp/c_gate/weight:0": (
+                        self.linear_weight_convert,
+                        [".mlp.gate_proj.weight"],
+                    ),
+                    "mlp/c_fc/weight:0": (
+                        self.linear_weight_convert,
+                        [".mlp.up_proj.weight"],
+                    ),
+                    "mlp/c_proj/weight:0": (
+                        self.linear_weight_convert,
+                        [".mlp.down_proj.weight"],
+                    ),
+                }
+            )
+        return convert_dict
+
+    @property
+    def quantized_convert_dict(self) -> Dict[str, Any]:
+        """The convert_dict for quantized layers in LLaMA."""
+        convert_dict = super().quantized_convert_dict
+        convert_dict.update(
+            {
+                "mlp/c_gate/in_scale:0": (
+                    self.quantized_linear_weight_convert,
+                    [".gate_ff.in_scale"],
+                ),
+                "mlp/c_gate/out_scale:0": (
+                    self.quantized_linear_weight_convert,
+                    [".gate_ff.out_scale"],
+                ),
+                "mlp/c_gate/weight_scale:0": (
+                    self.quantized_linear_weight_convert,
+                    [".gate_ff.weight_scale"],
+                ),
+                "mlp/c_gate/int8_weight:0": (
+                    self.quantized_linear_weight_convert,
+                    [".gate_ff.int8_weight"],
+                ),
+            }
+        )
+        return convert_dict
 
     @property
     def non_transformer_convert_dict(self) -> Dict[str, Any]:

@@ -12,6 +12,7 @@ from typing import List, Optional
 from uuid import UUID
 
 import typer
+import yaml
 
 from periflow.enums import CheckpointCategory, CheckpointDataType, StorageType
 from periflow.errors import (
@@ -672,10 +673,20 @@ def convert(
         "--output-attr-filename",
         help="Name of the checkpoint attribute file.",
     ),
+    smoothquant: bool = typer.Option(
+        False,
+        "--smoothquant",
+        help="Quantize the hf model using smoothquant before conversion",
+    ),
+    smoothquant_config_file: Optional[typer.FileText] = typer.Option(
+        None,
+        "--smoothquant-config-file",
+        help="Path to the smoothquant configuration file.",
+    ),
 ):
     """Convert huggingface's model checkpoint to PeriFlow format.
 
-    When a checkpoint is in the Hugging Face format, it cannot be directly served;
+    When a checkpoint is in the Hugging Face format, it cannot be directly served.
     rather, it requires conversion to the PeriFlow format for serving. The conversion
     process involves copying the original checkpoint and transforming it into a
     checkpoint in the PeriFlow format (*.h5).
@@ -685,18 +696,66 @@ def convert(
     `pip install periflow-client[mllib]`.
     :::
 
+    If you want to use SmoothQuant to quantize the model, arguments `--smoothquant` and
+    `--smoothquant-config-file` should be provided. The SmoothQuant settings are described
+    in a configuration YAML file. and the path of that file is passed to
+    `--smoothquant-config-file`. The following is an example YAML file:
+
+    ```yaml
+    # default smoothquant configuration
+    smoothquant_config:
+        data_path_or_name: lambada
+        data_format: json
+        data_split : train
+        num_samples: 512
+        max_length: 512
+        device: cuda:0
+        seed: 42
+        migration_strength: 0.5
+    ```
+    :::tip
+    If you set `--smoothquant` but not provide `--smoothquant-config-file`,
+    the default configiration is used.
+    :::
+
     """
+    try:
+        from periflow.modules.converter.convert import (  # pylint: disable=import-outside-toplevel
+            convert_checkpoint,
+        )
+    except ModuleNotFoundError as exc:
+        secho_error_and_exit(str(exc))
+
     if not os.path.isdir(output_dir):
         if os.path.exists(output_dir):
             secho_error_and_exit(f"'{output_dir}' exists, but its not a directory.")
         os.mkdir(output_dir)
+
+    smoothquant_config = {}
+    if smoothquant:
+        if smoothquant_config_file:
+            try:
+                smoothquant_config = yaml.safe_load(smoothquant_config_file.read())
+            except yaml.YAMLError as err:
+                secho_error_and_exit(f"Failed to load smoothquant config file... {err}")
+        else:
+            smoothquant_config["smoothquant_config"] = {
+                "data_path_or_name": "lambada",
+                "data_format": "json",
+                "data_split": "train",
+                "num_samples": 512,
+                "max_length": 512,
+                "device": "cuda",
+                "seed": 42,
+                "migration_strength": 0.5,
+            }
 
     model_output_path = os.path.join(output_dir, output_model_file_name)
     tokenizer_output_dir = output_dir
     attr_output_path = os.path.join(output_dir, output_attr_file_name)
 
     try:
-        CheckpointAPI.convert(
+        convert_checkpoint(
             model_name_or_path=model_name_or_path,
             model_output_path=model_output_path,
             data_type=data_type,
@@ -704,8 +763,10 @@ def convert(
             attr_output_path=attr_output_path,
             cache_dir=cache_dir,
             dry_run=dry_run,
+            smoothquant=smoothquant,
+            smoothquant_config=smoothquant_config,
         )
-    except (NotFoundError, CheckpointConversionError) as exc:
+    except (NotFoundError, CheckpointConversionError, InvalidConfigError) as exc:
         secho_error_and_exit(str(exc))
 
     msg = (

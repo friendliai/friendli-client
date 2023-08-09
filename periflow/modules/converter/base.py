@@ -13,18 +13,19 @@ import torch
 from tqdm.auto import tqdm
 from transformers import GenerationConfig, PretrainedConfig  # type: ignore[import]
 
-from periflow.converter.interface import (
-    ConversionInterface,
-    DecoderConversionInterface,
-    EncoderConversionInterface,
-)
-from periflow.converter.utils import (
-    convert_tensor_to_np_array,
-    get_tensor_from_state_dict,
-)
 from periflow.enums import CheckpointDataType
 from periflow.errors import NotSupportedCheckpointError
 from periflow.logging import logger
+from periflow.modules.converter.interface import (
+    ConversionInterface,
+    DecoderConversionInterface,
+    EncoderConversionInterface,
+    QuantConversionInterface,
+)
+from periflow.modules.converter.utils import (
+    convert_tensor_to_np_array,
+    get_tensor_from_state_dict,
+)
 
 SUPPORTED_GELU_FAMILY = [
     "gelu",
@@ -55,13 +56,15 @@ class AbstractConverter(ABC):
         generation_config: Optional[GenerationConfig],
         output_path: str,
         data_type: CheckpointDataType,
+        smoothquant: bool = False,
     ) -> None:
         """Initialize converter."""
         self.config = config
-
         self.generation_config = generation_config
         self.output_path = output_path
         self.data_type = data_type
+
+        self.smoothquant = smoothquant
 
     @property
     @abstractmethod
@@ -73,7 +76,10 @@ class AbstractConverter(ABC):
         """Check if the given model config can be converted to PeriFlow format."""
 
     @abstractmethod
-    def convert(self, state_dict: Dict[str, torch.Tensor]) -> None:
+    def convert(
+        self,
+        state_dict: Dict[str, torch.Tensor],
+    ) -> None:
         """Convert all layers in state_dict to PeriFlow format."""
 
     @abstractmethod
@@ -314,7 +320,10 @@ class AbstractConverter(ABC):
 
 
 class DecoderOnlyConverter(
-    AbstractConverter, ConversionInterface, DecoderConversionInterface
+    AbstractConverter,
+    ConversionInterface,
+    DecoderConversionInterface,
+    QuantConversionInterface,
 ):
     """Converter for Decoder-Only models."""
 
@@ -331,10 +340,17 @@ class DecoderOnlyConverter(
         total_layers = len(self.decoder_convert_dict) * self.decoder_layer_num + len(
             self.non_transformer_convert_dict
         )
+        if self.smoothquant:
+            total_layers += len(self.quantized_convert_dict) * self.decoder_layer_num
+
         with h5py.File(self.output_path, "w") as out_f, tqdm(
             total=total_layers, desc="Converting", unit="tensor"
         ) as pbar:
             self.convert_decoder_layers(state_dict=state_dict, out_f=out_f, pbar=pbar)
+            if self.smoothquant:
+                self.convert_quantized_layers(
+                    state_dict=state_dict, out_f=out_f, pbar=pbar
+                )
             self.convert_non_transformer_layers(
                 state_dict=state_dict, out_f=out_f, pbar=pbar
             )
@@ -345,6 +361,7 @@ class EncoderDecoderConverter(
     ConversionInterface,
     EncoderConversionInterface,
     DecoderConversionInterface,
+    QuantConversionInterface,
 ):
     """Converter for Encoder-Decoder models."""
 
@@ -371,6 +388,10 @@ class EncoderDecoderConverter(
             self.convert_non_transformer_layers(
                 state_dict=state_dict, out_f=out_f, pbar=pbar
             )
+            if self.smoothquant:
+                self.convert_quantized_layers(
+                    state_dict=state_dict, out_f=out_f, pbar=pbar
+                )
 
     def get_decoder_start_token_id(self) -> Optional[int]:
         """Get ID of decoder start token."""

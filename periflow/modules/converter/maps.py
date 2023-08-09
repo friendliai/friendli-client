@@ -21,18 +21,18 @@ from transformers import (  # type: ignore[import]
     T5ForConditionalGeneration,
 )
 
-from periflow.converter.base import AbstractConverter
-from periflow.converter.models.blenderbot import BlenderbotConverter
-from periflow.converter.models.bloom import BloomForCausalLMConverter
-from periflow.converter.models.codegen import CodegenForCausalLMConverter
-from periflow.converter.models.falcon import FalconForCausalLMConverter
-from periflow.converter.models.gpt2 import GPT2LMHeadModelConverter
-from periflow.converter.models.gpt_neox import GPTNeoXForCausalLMConverter
-from periflow.converter.models.gptj import GPTJForCausalLMConverter
-from periflow.converter.models.llama import LlamaForCausalLMConverter
-from periflow.converter.models.mpt import MPTForCausalLMConverter
-from periflow.converter.models.opt import OPTForCausalLMConverter
-from periflow.converter.models.t5 import T5Converter
+from periflow.modules.converter.base import AbstractConverter
+from periflow.modules.converter.models.blenderbot import BlenderbotConverter
+from periflow.modules.converter.models.bloom import BloomForCausalLMConverter
+from periflow.modules.converter.models.codegen import CodegenForCausalLMConverter
+from periflow.modules.converter.models.falcon import FalconForCausalLMConverter
+from periflow.modules.converter.models.gpt2 import GPT2LMHeadModelConverter
+from periflow.modules.converter.models.gpt_neox import GPTNeoXForCausalLMConverter
+from periflow.modules.converter.models.gptj import GPTJForCausalLMConverter
+from periflow.modules.converter.models.llama import LlamaForCausalLMConverter
+from periflow.modules.converter.models.mpt import MPTForCausalLMConverter
+from periflow.modules.converter.models.opt import OPTForCausalLMConverter
+from periflow.modules.converter.models.t5 import T5Converter
 
 model_arch_converter_map: Dict[
     str, Tuple[Union[AutoModelForCausalLM, PreTrainedModel], Type[AbstractConverter]]

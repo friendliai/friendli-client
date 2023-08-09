@@ -101,6 +101,14 @@ class NotSupportedCheckpointError(CheckpointConversionError):
         )
 
 
+class CheckpointQuantizationError(CheckpointConversionError):
+    """Checkpoint quantization failure error."""
+
+    def __init__(self, msg: str) -> None:
+        """Initialize CheckpointQuantizationError."""
+        super().__init__(f"Quantization failed. {msg}")
+
+
 class TokenizerNotFoundError(PeriFlowError):
     """Cannot find PeriFlow-compatible tokenizer info."""
 

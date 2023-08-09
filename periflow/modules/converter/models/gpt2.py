@@ -10,14 +10,14 @@ import numpy as np
 import torch
 from transformers import GPT2Config  # type: ignore[import]
 
-from periflow.converter.base import SUPPORTED_GELU_FAMILY, DecoderOnlyConverter
-from periflow.converter.interface import DECODER_PREFIX
-from periflow.converter.utils import (
+from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
+from periflow.logging import logger
+from periflow.modules.converter.base import SUPPORTED_GELU_FAMILY, DecoderOnlyConverter
+from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
 )
-from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
-from periflow.logging import logger
 
 
 class GPT2LMHeadModelConverter(DecoderOnlyConverter):
@@ -116,7 +116,7 @@ class GPT2LMHeadModelConverter(DecoderOnlyConverter):
     @property
     def decoder_convert_dict(self) -> Dict[str, Any]:
         """The convert_dict for transformer layers in GPT2."""
-        return {
+        convert_dict = {
             "ln_1/gamma:0": (
                 self.ln_weight_convert,
                 [".ln_1.weight"],
@@ -125,17 +125,9 @@ class GPT2LMHeadModelConverter(DecoderOnlyConverter):
                 self.ln_bias_convert,
                 [".ln_1.bias"],
             ),
-            "attn/c_attn/weight:0": (
-                self.linear_weight_convert,
-                [".attn.c_attn.weight"],
-            ),
             "attn/c_attn/bias:0": (
                 self.linear_bias_convert,
                 [".attn.c_attn.bias"],
-            ),
-            "attn/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".attn.c_proj.weight"],
             ),
             "attn/c_proj/bias:0": (
                 self.linear_bias_convert,
@@ -149,23 +141,38 @@ class GPT2LMHeadModelConverter(DecoderOnlyConverter):
                 self.ln_bias_convert,
                 [".ln_2.bias"],
             ),
-            "mlp/c_fc/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.c_fc.weight"],
-            ),
             "mlp/c_fc/bias:0": (
                 self.linear_bias_convert,
                 [".mlp.c_fc.bias"],
-            ),
-            "mlp/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.c_proj.weight"],
             ),
             "mlp/c_proj/bias:0": (
                 self.linear_bias_convert,
                 [".mlp.c_proj.bias"],
             ),
         }
+        if not self.smoothquant:
+            convert_dict.update(
+                {
+                    "attn/c_attn/weight:0": (
+                        self.linear_weight_convert,
+                        [".attn.c_attn.weight"],
+                    ),
+                    "attn/c_proj/weight:0": (
+                        self.linear_weight_convert,
+                        [".attn.c_proj.weight"],
+                    ),
+                    "mlp/c_fc/weight:0": (
+                        self.linear_weight_convert,
+                        [".mlp.c_fc.weight"],
+                    ),
+                    "mlp/c_proj/weight:0": (
+                        self.linear_weight_convert,
+                        [".mlp.c_proj.weight"],
+                    ),
+                }
+            )
+
+        return convert_dict
 
     @property
     def decoder_layer_prefix(self) -> str:

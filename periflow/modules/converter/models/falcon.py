@@ -10,15 +10,15 @@ import numpy as np
 import torch
 from transformers import FalconConfig  # type: ignore[import]
 
-from periflow.converter.base import DecoderOnlyConverter
-from periflow.converter.interface import DECODER_PREFIX
-from periflow.converter.utils import (
+from periflow.errors import NotSupportedCheckpointError
+from periflow.logging import logger
+from periflow.modules.converter.base import DecoderOnlyConverter
+from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     convert_to_gpt_j_params,
     get_tensor_from_state_dict,
 )
-from periflow.errors import NotSupportedCheckpointError
-from periflow.logging import logger
 
 
 class FalconForCausalLMConverter(DecoderOnlyConverter):
@@ -156,24 +156,27 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
     @property
     def decoder_convert_dict(self) -> Dict[str, Any]:
         """The convert_dict for transformer layers in Falcon."""
-        convert_dict = {
-            "attn/c_attn/weight:0": (
-                self.qkv_weight_convert,
-                [".self_attention.query_key_value.weight"],
-            ),
-            "attn/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".self_attention.dense.weight"],
-            ),
-            "mlp/c_fc/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.dense_h_to_4h.weight"],
-            ),
-            "mlp/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.dense_4h_to_h.weight"],
-            ),
-        }
+        if not self.smoothquant:
+            convert_dict = {
+                "attn/c_attn/weight:0": (
+                    self.qkv_weight_convert,
+                    [".self_attention.query_key_value.weight"],
+                ),
+                "attn/c_proj/weight:0": (
+                    self.linear_weight_convert,
+                    [".self_attention.dense.weight"],
+                ),
+                "mlp/c_fc/weight:0": (
+                    self.linear_weight_convert,
+                    [".mlp.dense_h_to_4h.weight"],
+                ),
+                "mlp/c_proj/weight:0": (
+                    self.linear_weight_convert,
+                    [".mlp.dense_4h_to_h.weight"],
+                ),
+            }
+        else:
+            convert_dict = {}
         if cast(FalconConfig, self.config).new_decoder_architecture:
             convert_dict.update(
                 {

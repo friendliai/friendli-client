@@ -8,10 +8,10 @@ from typing import Any, Dict, Union
 
 from transformers import PretrainedConfig  # type: ignore[import]
 
-from periflow.converter.base import DecoderOnlyConverter
-from periflow.converter.interface import DECODER_PREFIX
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
+from periflow.modules.converter.base import DecoderOnlyConverter
+from periflow.modules.converter.interface import DECODER_PREFIX
 
 
 def safe_config_get(config: Union[Dict[str, Any], PretrainedConfig], key: str) -> Any:
@@ -98,32 +98,38 @@ class MPTForCausalLMConverter(DecoderOnlyConverter):
     @property
     def decoder_convert_dict(self) -> Dict[str, Any]:
         """The convert_dict for transformer layers in MPT."""
-        return {
+        convert_dict = {
             "ln_1/gamma:0": (
                 self.ln_weight_convert,
                 [".norm_1.weight"],
-            ),
-            "attn/c_attn/weight:0": (
-                self.qkv_weight_convert,
-                [".attn.Wqkv.weight"],
-            ),
-            "attn/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".attn.out_proj.weight"],
             ),
             "ln_2/gamma:0": (
                 self.ln_weight_convert,
                 [".norm_2.weight"],
             ),
-            "mlp/c_fc/weight:0": (
-                self.linear_weight_convert,
-                [".ffn.up_proj.weight"],
-            ),
-            "mlp/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".ffn.down_proj.weight"],
-            ),
         }
+        if not self.smoothquant:
+            convert_dict.update(
+                {
+                    "attn/c_attn/weight:0": (
+                        self.qkv_weight_convert,
+                        [".attn.Wqkv.weight"],
+                    ),
+                    "attn/c_proj/weight:0": (
+                        self.linear_weight_convert,
+                        [".attn.out_proj.weight"],
+                    ),
+                    "mlp/c_fc/weight:0": (
+                        self.linear_weight_convert,
+                        [".ffn.up_proj.weight"],
+                    ),
+                    "mlp/c_proj/weight:0": (
+                        self.linear_weight_convert,
+                        [".ffn.down_proj.weight"],
+                    ),
+                }
+            )
+        return convert_dict
 
     @property
     def non_transformer_convert_dict(self) -> Dict[str, Any]:

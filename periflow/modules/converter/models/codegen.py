@@ -4,20 +4,20 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, cast
+from typing import Any, Dict, List, cast
 
 import numpy as np
 import torch
 from transformers import CodeGenConfig  # type: ignore[import]
 
-from periflow.converter.base import SUPPORTED_GELU_FAMILY, DecoderOnlyConverter
-from periflow.converter.interface import DECODER_PREFIX
-from periflow.converter.utils import (
+from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
+from periflow.logging import logger
+from periflow.modules.converter.base import SUPPORTED_GELU_FAMILY, DecoderOnlyConverter
+from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
 )
-from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
-from periflow.logging import logger
 
 
 class CodegenForCausalLMConverter(DecoderOnlyConverter):
@@ -54,7 +54,7 @@ class CodegenForCausalLMConverter(DecoderOnlyConverter):
         self,
         state_dict: Dict[str, torch.Tensor],
         layer: str,
-        per_layer_postfixes: str,  # type: ignore[override]
+        per_layer_postfixes: List[str,],  # type: ignore[override]
     ) -> np.ndarray:
         """qkv_weight_convert for CodeGen's attention layer."""
         original_qkv_weight = get_tensor_from_state_dict(
@@ -124,7 +124,7 @@ class CodegenForCausalLMConverter(DecoderOnlyConverter):
     @property
     def decoder_convert_dict(self) -> Dict[str, Any]:
         """The convert_dict for transformer layers in CodeGen."""
-        return {
+        convert_dict = {
             "ln_1/gamma:0": (
                 self.ln_weight_convert,
                 [".ln_1.weight"],
@@ -133,31 +133,39 @@ class CodegenForCausalLMConverter(DecoderOnlyConverter):
                 self.ln_bias_convert,
                 [".ln_1.bias"],
             ),
-            "attn/c_attn/weight:0": (
-                self.qkv_weight_convert,
-                [".attn.qkv_proj.weight"],
-            ),
-            "attn/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".attn.out_proj.weight"],
-            ),
-            "mlp/c_fc/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.fc_in.weight"],
-            ),
             "mlp/c_fc/bias:0": (
                 self.linear_bias_convert,
                 [".mlp.fc_in.bias"],
-            ),
-            "mlp/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.fc_out.weight"],
             ),
             "mlp/c_proj/bias:0": (
                 self.linear_bias_convert,
                 [".mlp.fc_out.bias"],
             ),
         }
+
+        if not self.smoothquant:
+            convert_dict.update(
+                {
+                    "attn/c_attn/weight:0": (
+                        self.qkv_weight_convert,
+                        [".attn.qkv_proj.weight"],
+                    ),
+                    "attn/c_proj/weight:0": (
+                        self.linear_weight_convert,
+                        [".attn.out_proj.weight"],
+                    ),
+                    "mlp/c_fc/weight:0": (
+                        self.linear_weight_convert,
+                        [".mlp.fc_in.weight"],
+                    ),
+                    "mlp/c_proj/weight:0": (
+                        self.linear_weight_convert,
+                        [".mlp.fc_out.weight"],
+                    ),
+                }
+            )
+
+        return convert_dict
 
     @property
     def decoder_layer_prefix(self) -> str:
