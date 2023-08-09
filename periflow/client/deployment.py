@@ -11,7 +11,6 @@ from typing import Any, Callable, Dict, List, Optional
 from requests import Response
 
 from periflow.client.base import Client, ProjectRequestMixin, safe_request
-from periflow.utils.url import get_serving_uri
 
 
 # TODO (ym): Replace this with periflow.utils.request.paginated_get after unifying schema
@@ -44,7 +43,7 @@ class DeploymentClient(Client[str]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_serving_uri("deployment/"))
+        return Template(self.url_provider.get_serving_uri("deployment/"))
 
     def get_deployment(self, deployment_id: str) -> Dict[str, Any]:
         """Get a deployment info."""
@@ -106,7 +105,9 @@ class DeploymentLogClient(Client[str]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_serving_uri("deployment/$deployment_id/log/"))
+        return Template(
+            self.url_provider.get_serving_uri("deployment/$deployment_id/log/")
+        )
 
     def get_deployment_logs(
         self, deployment_id: str, replica_index: int
@@ -127,7 +128,9 @@ class DeploymentMetricsClient(Client):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_serving_uri("deployment/$deployment_id/metrics/"))
+        return Template(
+            self.url_provider.get_serving_uri("deployment/$deployment_id/metrics/")
+        )
 
     def get_metrics(self, deployment_id: str, time_window: int) -> Dict[str, Any]:
         """Get metrics from a deployment."""
@@ -144,7 +147,9 @@ class DeploymentEventClient(Client):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_serving_uri("deployment/$deployment_id/event/"))
+        return Template(
+            self.url_provider.get_serving_uri("deployment/$deployment_id/event/")
+        )
 
     def get_events(self, deployment_id: str) -> List[Dict[str, Any]]:
         """Get deployment events."""
@@ -161,7 +166,11 @@ class DeploymentReqRespClient(Client):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_serving_uri("deployment/$deployment_id/req_resp/download/"))
+        return Template(
+            self.url_provider.get_serving_uri(
+                "deployment/$deployment_id/req_resp/download/"
+            )
+        )
 
     def get_download_urls(
         self, deployment_id: str, start: datetime, end: datetime
@@ -189,7 +198,9 @@ class PFSProjectUsageClient(Client[str], ProjectRequestMixin):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_serving_uri("usage/project/$project_id/duration"))
+        return Template(
+            self.url_provider.get_serving_uri("usage/project/$project_id/duration")
+        )
 
     def get_usage(
         self,
@@ -214,7 +225,7 @@ class PFSVMClient(Client):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_serving_uri("vm/"))
+        return Template(self.url_provider.get_serving_uri("vm/"))
 
     def list_vms(self) -> List[Dict[str, Any]]:
         """List all VM info."""

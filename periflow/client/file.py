@@ -15,7 +15,6 @@ from periflow.client.base import (
     UserRequestMixin,
     safe_request,
 )
-from periflow.utils.url import get_mr_uri
 
 
 class FileClient(Client[UUID]):
@@ -24,7 +23,7 @@ class FileClient(Client[UUID]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_mr_uri("files/"))
+        return Template(self.url_provider.get_mr_uri("files/"))
 
     def get_misc_file_upload_url(self, misc_file_id: UUID) -> str:
         """Get an URL to upload file.
@@ -87,7 +86,9 @@ class GroupProjectFileClient(
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_mr_uri("orgs/$group_id/prjs/$project_id/files/"))
+        return Template(
+            self.url_provider.get_mr_uri("orgs/$group_id/prjs/$project_id/files/")
+        )
 
     def create_misc_file(self, file_info: Dict[str, Any]) -> Dict[str, Any]:
         """Request to create a misc file.

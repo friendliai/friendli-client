@@ -23,7 +23,7 @@ def is_latest_version(ver: str) -> bool:
     version = parse_version(ver)
     latest_version = get_latest_version()
 
-    return version == latest_version
+    return version >= latest_version
 
 
 def get_latest_version() -> _BaseVersion:
