@@ -108,6 +108,13 @@ class CheckpointValidationStatus(str, Enum):
     FAILED = "Failed"  # Validation failed for some reason
 
 
+class CatalogImportMethod(str, Enum):
+    """Catalog import methods"""
+
+    COPY = "copy"
+    REF = "ref"
+
+
 class CatalogStatus(str, Enum):
     """Catalog statuses."""
 

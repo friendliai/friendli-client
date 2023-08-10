@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""PeriFlow ProjectClient Service."""
+"""PeriFlow Project Clients."""
 
 # pylint: disable=too-many-arguments
 

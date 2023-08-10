@@ -11,7 +11,16 @@ import typer
 from requests import HTTPError, Response
 
 from periflow.auth import TokenType, clear_tokens, get_token, update_token
-from periflow.cli import checkpoint, credential, deployment, group, key, project, vm
+from periflow.cli import (
+    catalog,
+    checkpoint,
+    credential,
+    deployment,
+    group,
+    key,
+    project,
+    vm,
+)
 from periflow.client.project import ProjectClient
 from periflow.client.user import UserClient, UserGroupClient, UserMFAClient
 from periflow.context import (
@@ -36,6 +45,7 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
+app.add_typer(catalog.app, name="catalog", help="Manage catalog")
 app.add_typer(credential.app, name="credential", help="Manage credentials")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
 app.add_typer(vm.app, name="vm", help="Manage VMs")

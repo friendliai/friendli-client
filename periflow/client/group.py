@@ -2,7 +2,7 @@
 
 # pylint: disable=too-many-arguments
 
-"""PeriFlow GroupClient Service."""
+"""PeriFlow Group Clients."""
 
 from __future__ import annotations
 
@@ -57,10 +57,10 @@ class GroupClient(Client):
 
     def list_users(self, pf_group_id: uuid.UUID) -> List[Dict[str, Any]]:
         """List all organization member info."""
-        get_response_dict = safe_request(
+        resp_getter = safe_request(
             self.list, err_prefix="Failed to list users in organization"
         )
-        return paginated_get(get_response_dict, path=f"{pf_group_id}/pf_user")
+        return paginated_get(resp_getter, path=f"{pf_group_id}/pf_user")
 
 
 class GroupProjectClient(Client, GroupRequestMixin):
@@ -87,10 +87,8 @@ class GroupProjectClient(Client, GroupRequestMixin):
 
     def list_projects(self) -> List[Dict[str, Any]]:
         """List all projects in the organization."""
-        get_response_dict = safe_request(
-            self.list, err_prefix="Failed to list projects."
-        )
-        return paginated_get(get_response_dict)
+        resp_getter = safe_request(self.list, err_prefix="Failed to list projects.")
+        return paginated_get(resp_getter)
 
 
 class GroupProjectCheckpointClient(
@@ -122,10 +120,8 @@ class GroupProjectCheckpointClient(
         if deleted:
             request_data["status"] = "deleted"
 
-        get_response_dict = safe_request(
-            self.list, err_prefix="Failed to list checkpoints."
-        )
-        return paginated_get(get_response_dict, **request_data, limit=limit)
+        resp_getter = safe_request(self.list, err_prefix="Failed to list checkpoints.")
+        return paginated_get(resp_getter, **request_data, limit=limit)
 
     def create_checkpoint(
         self,
