@@ -404,6 +404,10 @@ def log(
 ):
     """Shows deployments log."""
     logs = DeploymentAPI.get_logs(id=deployment_id, replica_index=replica_index)
+
+    if len(logs) == 0:
+        secho_error_and_exit("Logs are not found yet.")
+
     for line in logs:
         typer.echo(line["data"])
 

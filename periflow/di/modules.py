@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from injector import Binder, Module
 
-from periflow.utils.url import ProductionURLProvider, URLProvider
+from periflow.utils import url
 
 
 class URLModule(Module):
@@ -14,7 +14,7 @@ class URLModule(Module):
 
     def configure(self, binder: Binder) -> None:
         """Configures bindings for clients."""
-        binder.bind(URLProvider, to=ProductionURLProvider)  # type: ignore
+        binder.bind(url.URLProvider, to=url.ProductionURLProvider)  # type: ignore
 
 
 default_modules = [URLModule]
