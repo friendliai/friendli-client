@@ -96,11 +96,11 @@ def auto_token_refresh(
     func: Callable[..., requests.Response]
 ) -> Callable[..., requests.Response]:
     """Decorator for automatic token refresh."""
-    injector = get_injector()
-    url_provider = injector.get(URLProvider)
-
     @functools.wraps(func)
     def inner(*args, **kwargs) -> requests.Response:
+        injector = get_injector()
+        url_provider = injector.get(URLProvider)
+
         resp = func(*args, **kwargs)
         if resp.status_code in (401, 403):
             refresh_token = get_token(TokenType.REFRESH)

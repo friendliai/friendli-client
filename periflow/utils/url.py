@@ -106,13 +106,13 @@ class ProductionURLProvider(URLProvider):
 class StagingURLProvider(URLProvider):
     """Staging service URL provider."""
 
-    training_url = "https://api-staging.periflow.ai/api/"
-    training_ws_url = "wss://api-ws-staging.periflow.ai/ws/"
-    registry_url = "https://pfmodelregistry-staging.periflow.ai/"
-    serving_url = "https://pfs-staging.periflow.ai/"
-    auth_url = "https://pfauth-staging.periflow.ai/"
-    meter_url = "https://pfmeter-staging.periflow.ai/"
-    observatory_url = "https://pfo-staging.periflow.ai/"
+    training_url = "https://api-staging.friendli.ai/api/"
+    training_ws_url = "wss://api-ws-staging.friendli.ai/ws/"
+    registry_url = "https://pfmodelregistry-staging.friendli.ai/"
+    serving_url = "https://pfs-staging.friendli.ai/"
+    auth_url = "https://pfauth-staging.friendli.ai/"
+    meter_url = "https://pfmeter-staging.friendli.ai/"
+    observatory_url = "https://pfo-staging.friendli.ai/"
 
     @classmethod
     def get_auth_uri(cls, path: str) -> str:
@@ -153,13 +153,13 @@ class StagingURLProvider(URLProvider):
 class DevURLProvider(URLProvider):
     """Dev service URL provider."""
 
-    training_url = "https://api-dev.periflow.ai/api/"
-    training_ws_url = "wss://api-ws-dev.periflow.ai/ws/"
-    registry_url = "https://pfmodelregistry-dev.periflow.ai/"
-    serving_url = "https://pfs-dev.periflow.ai/"
-    auth_url = "https://pfauth-dev.periflow.ai/"
-    meter_url = "https://pfmeter-dev.periflow.ai/"
-    observatory_url = "https://pfo-dev.periflow.ai/"
+    training_url = "https://api-dev.friendli.ai/api/"
+    training_ws_url = "wss://api-ws-dev.friendli.ai/ws/"
+    registry_url = "https://pfmodelregistry-dev.friendli.ai/"
+    serving_url = "https://pfs-dev.friendli.ai/"
+    auth_url = "https://pfauth-dev.friendli.ai/"
+    meter_url = "https://pfmeter-dev.friendli.ai/"
+    observatory_url = "https://pfo-dev.friendli.ai/"
 
     @classmethod
     def get_auth_uri(cls, path: str) -> str:
