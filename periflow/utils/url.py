@@ -20,40 +20,48 @@ def get_baseurl(url: str) -> str:
 class URLProvider:
     """Service URL provider."""
 
+    training_url = ""
+    training_ws_url = ""
+    registry_url = ""
+    serving_url = ""
+    auth_url = ""
+    meter_url = ""
+    observatory_url = ""
+
     @classmethod
     def get_auth_uri(cls, path: str) -> str:
         """Get PFA URI."""
-        raise NotImplementedError  # pragma: no cover
+        return urljoin(cls.auth_url, path)
 
     @classmethod
     def get_training_uri(cls, path: str) -> str:
         """Get PFT URI."""
-        raise NotImplementedError  # pragma: no cover
+        return urljoin(cls.training_url, path)
 
     @classmethod
     def get_training_ws_uri(cls, path: str) -> str:
         """Get PFT websocket URI."""
-        raise NotImplementedError  # pragma: no cover
+        return urljoin(cls.training_ws_url, path)
 
     @classmethod
     def get_serving_uri(cls, path: str) -> str:
         """Get PFS URI."""
-        raise NotImplementedError  # pragma: no cover
+        return urljoin(cls.serving_url, path)
 
     @classmethod
     def get_mr_uri(cls, path: str) -> str:
         """Get PFR URI."""
-        raise NotImplementedError  # pragma: no cover
+        return urljoin(cls.registry_url, path)
 
     @classmethod
     def get_meter_uri(cls, path: str) -> str:
         """Get PFM URI."""
-        raise NotImplementedError  # pragma: no cover
+        return urljoin(cls.meter_url, path)
 
     @classmethod
     def get_observatory_uri(cls, path: str) -> str:
         """Get PFO URI."""
-        raise NotImplementedError  # pragma: no cover
+        return urljoin(cls.observatory_url, path)
 
 
 class ProductionURLProvider(URLProvider):
@@ -67,41 +75,6 @@ class ProductionURLProvider(URLProvider):
     meter_url = "https://metering.periflow.ai/"
     observatory_url = "https://observatory.periflow.ai/"
 
-    @classmethod
-    def get_auth_uri(cls, path: str) -> str:
-        """Get PFA URI."""
-        return urljoin(cls.auth_url, path)
-
-    @classmethod
-    def get_training_uri(cls, path: str) -> str:
-        """Get PFT URI."""
-        return urljoin(cls.training_url, path)
-
-    @classmethod
-    def get_training_ws_uri(cls, path: str) -> str:
-        """Get PFT websocket URI."""
-        return urljoin(cls.training_ws_url, path)
-
-    @classmethod
-    def get_serving_uri(cls, path: str) -> str:
-        """Get PFS URI."""
-        return urljoin(cls.serving_url, path)
-
-    @classmethod
-    def get_mr_uri(cls, path: str) -> str:
-        """Get PFR URI."""
-        return urljoin(cls.registry_url, path)
-
-    @classmethod
-    def get_meter_uri(cls, path: str) -> str:
-        """Get PFM URI."""
-        return urljoin(cls.meter_url, path)
-
-    @classmethod
-    def get_observatory_uri(cls, path: str) -> str:
-        """Get PFO URI."""
-        return urljoin(cls.observatory_url, path)
-
 
 class StagingURLProvider(URLProvider):
     """Staging service URL provider."""
@@ -114,41 +87,6 @@ class StagingURLProvider(URLProvider):
     meter_url = "https://pfmeter-staging.friendli.ai/"
     observatory_url = "https://pfo-staging.friendli.ai/"
 
-    @classmethod
-    def get_auth_uri(cls, path: str) -> str:
-        """Get PFA URI."""
-        return urljoin(cls.auth_url, path)
-
-    @classmethod
-    def get_training_uri(cls, path: str) -> str:
-        """Get PFT URI."""
-        return urljoin(cls.training_url, path)
-
-    @classmethod
-    def get_training_ws_uri(cls, path: str) -> str:
-        """Get PFT websocket URI."""
-        return urljoin(cls.training_ws_url, path)
-
-    @classmethod
-    def get_serving_uri(cls, path: str) -> str:
-        """Get PFS URI."""
-        return urljoin(cls.serving_url, path)
-
-    @classmethod
-    def get_mr_uri(cls, path: str) -> str:
-        """Get PFR URI."""
-        return urljoin(cls.registry_url, path)
-
-    @classmethod
-    def get_meter_uri(cls, path: str) -> str:
-        """Get PFM URI."""
-        return urljoin(cls.meter_url, path)
-
-    @classmethod
-    def get_observatory_uri(cls, path: str) -> str:
-        """Get PFO URI."""
-        return urljoin(cls.observatory_url, path)
-
 
 class DevURLProvider(URLProvider):
     """Dev service URL provider."""
@@ -160,38 +98,3 @@ class DevURLProvider(URLProvider):
     auth_url = "https://pfauth-dev.friendli.ai/"
     meter_url = "https://pfmeter-dev.friendli.ai/"
     observatory_url = "https://pfo-dev.friendli.ai/"
-
-    @classmethod
-    def get_auth_uri(cls, path: str) -> str:
-        """Get PFA URI."""
-        return urljoin(cls.auth_url, path)
-
-    @classmethod
-    def get_training_uri(cls, path: str) -> str:
-        """Get PFT URI."""
-        return urljoin(cls.training_url, path)
-
-    @classmethod
-    def get_training_ws_uri(cls, path: str) -> str:
-        """Get PFT websocket URI."""
-        return urljoin(cls.training_ws_url, path)
-
-    @classmethod
-    def get_serving_uri(cls, path: str) -> str:
-        """Get PFS URI."""
-        return urljoin(cls.serving_url, path)
-
-    @classmethod
-    def get_mr_uri(cls, path: str) -> str:
-        """Get PFR URI."""
-        return urljoin(cls.registry_url, path)
-
-    @classmethod
-    def get_meter_uri(cls, path: str) -> str:
-        """Get PFM URI."""
-        return urljoin(cls.meter_url, path)
-
-    @classmethod
-    def get_observatory_uri(cls, path: str) -> str:
-        """Get PFO URI."""
-        return urljoin(cls.observatory_url, path)
