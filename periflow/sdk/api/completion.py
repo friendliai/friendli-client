@@ -131,7 +131,7 @@ class Completion(
             - **bad_word_tokens**: Same as the above `bad_words` field, but receives token sequences instead of text phrases. This is similar to Hugging Face's <a href="https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationConfig.bad_words_ids(List[List[int]]," target="_top">`bad_word_ids`</a> argument.
             - **include_output_logits**: Whether to include the output logits to the generation output.
             - **include_output_logprobs**: Whether to include the output logprobs to the generation output.
-            - **forced_output_tokens**: A token sequence that is enforced as a generation output. This option can be used when evaluating the model for the datasets with multi-choice problems (e.g., [HellaSwag](https://huggingface.co/datasets/hellaswag), [MMLU](https://huggingface.co/datasets/cais/mmlu)). When this option is used with `include_output_logits` or `include_output_logprobs` option, you can easily get the logits or logprobs for the evaluation.
+            - **forced_output_tokens**: A token sequence that is enforced as a generation output. This option can be used when evaluating the model for the datasets with multi-choice problems (e.g., [HellaSwag](https://huggingface.co/datasets/hellaswag), [MMLU](https://huggingface.co/datasets/cais/mmlu)). Use this option with `include_output_logprobs` to get logprobs for the evaluation..
             - **eos_token**: A list of endpoint sentence tokens.
 
             :::note
