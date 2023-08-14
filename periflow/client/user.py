@@ -16,7 +16,6 @@ from periflow.client.base import (
 )
 from periflow.enums import GroupRole, ProjectRole
 from periflow.utils.request import paginated_get
-from periflow.utils.url import get_auth_uri
 
 
 class UserMFAClient(Client):
@@ -25,7 +24,7 @@ class UserMFAClient(Client):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("mfa"))
+        return Template(self.url_provider.get_auth_uri("mfa"))
 
     def initiate_mfa(self, mfa_type: str, mfa_token: str) -> None:
         """Authenticate by MFA token."""
@@ -40,7 +39,7 @@ class UserSignUpClient(Client):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("pf_user/self_signup"))
+        return Template(self.url_provider.get_auth_uri("pf_user/self_signup"))
 
     def verify(self, token: str, key: str) -> None:
         """Verify the email account with the token to sign up."""
@@ -60,7 +59,7 @@ class UserClient(Client, UserRequestMixin):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("pf_user"))
+        return Template(self.url_provider.get_auth_uri("pf_user"))
 
     def change_password(self, old_password: str, new_password: str) -> None:
         """Change password."""
@@ -138,7 +137,7 @@ class UserGroupClient(Client, UserRequestMixin):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("pf_user/$pf_user_id/pf_group"))
+        return Template(self.url_provider.get_auth_uri("pf_user/$pf_user_id/pf_group"))
 
     def get_group_info(self) -> Dict[str, Any]:
         """Get organization info where user belongs to."""
@@ -159,7 +158,9 @@ class UserGroupProjectClient(Client, UserRequestMixin, GroupRequestMixin):
     def url_path(self) -> Template:
         """Get an URL path."""
         return Template(
-            get_auth_uri("pf_user/$pf_user_id/pf_group/$pf_group_id/pf_project")
+            self.url_provider.get_auth_uri(
+                "pf_user/$pf_user_id/pf_group/$pf_group_id/pf_project"
+            )
         )
 
     def list_projects(self) -> List[Dict[str, Any]]:
@@ -181,7 +182,7 @@ class UserAccessKeyClient(Client, UserRequestMixin):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("pf_user"))
+        return Template(self.url_provider.get_auth_uri("pf_user"))
 
     def create_access_key(self, name: str) -> Dict[str, Any]:
         """Create a new access key."""

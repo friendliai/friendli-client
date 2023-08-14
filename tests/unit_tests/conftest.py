@@ -9,13 +9,16 @@ import pytest
 import requests_mock
 
 import periflow
-from periflow.utils.url import get_training_uri
+from periflow.di.injector import get_injector
+from periflow.utils.url import URLProvider
 
 
 @pytest.fixture
 def patch_auto_token_refresh(requests_mock: requests_mock.Mocker):
     periflow.api_key = "fake-api-key"
-    requests_mock.post(get_training_uri("token/refresh"))
+    injector = get_injector()
+    url_provider = injector.get(URLProvider)
+    requests_mock.post(url_provider.get_training_uri("token/refresh"))
 
 
 @pytest.fixture

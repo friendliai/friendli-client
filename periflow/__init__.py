@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import os
 
+from periflow.di.injector import set_default_modules
+from periflow.di.modules import default_modules
 from periflow.schema.api.v1.completion import V1CompletionOptions
 from periflow.sdk.api.completion import Completion
 from periflow.sdk.init import init
@@ -17,6 +19,7 @@ api_key = os.environ.get("PERIFLOW_API_KEY")
 org_id = os.environ.get("PERIFLOW_ORG_ID")
 project_id = os.environ.get("PERIFLOW_PRJ_ID")
 
+set_default_modules(default_modules)
 
 __all__ = [
     "api_key",

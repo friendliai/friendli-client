@@ -21,7 +21,6 @@ from periflow.client.base import (
 )
 from periflow.enums import CheckpointCategory, StorageType
 from periflow.utils.request import paginated_get
-from periflow.utils.url import get_auth_uri, get_mr_uri
 
 
 class GroupClient(Client):
@@ -30,7 +29,7 @@ class GroupClient(Client):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("pf_group"))
+        return Template(self.url_provider.get_auth_uri("pf_group"))
 
     def create_group(self, name: str) -> Dict[str, Any]:
         """Create a new organization."""
@@ -75,7 +74,9 @@ class GroupProjectClient(Client, GroupRequestMixin):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("pf_group/$pf_group_id/pf_project"))
+        return Template(
+            self.url_provider.get_auth_uri("pf_group/$pf_group_id/pf_project")
+        )
 
     def create_project(self, name: str) -> Dict[str, Any]:
         """Create a new project in the organization."""
@@ -107,7 +108,9 @@ class GroupProjectCheckpointClient(
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_mr_uri("orgs/$group_id/prjs/$project_id/models/"))
+        return Template(
+            self.url_provider.get_mr_uri("orgs/$group_id/prjs/$project_id/models/")
+        )
 
     def list_checkpoints(
         self, category: Optional[CheckpointCategory], limit: int, deleted: bool
