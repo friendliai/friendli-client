@@ -11,6 +11,8 @@ from typing import NoReturn, Optional
 
 import typer
 
+from periflow.schema.resource.v1.checkpoint import V1Checkpoint
+
 
 # pylint: disable=line-too-long
 def datetime_to_pretty_str(past: datetime, long_list: bool = False):
@@ -123,3 +125,32 @@ def extract_deployment_id_part(s: str) -> Optional[str]:
     """
     pattern = r"periflow-deployment-\w{8}"
     return _regex_parse(pattern, s)
+
+
+def get_translated_checkpoint_status(ckpt: V1Checkpoint) -> str:
+    """Gets translated checkpoint status from the checkpoint info."""
+    if ckpt.hard_deleted:
+        hard_deleted_at = (
+            datetime.strftime(ckpt.hard_deleted_at, "%Y-%m-%d %H:%M:%S")
+            if ckpt.hard_deleted_at
+            else "N/A"
+        )
+        typer.secho(
+            f"This checkpoint was hard-deleted at {hard_deleted_at}. "
+            "You cannot use this checkpoint.",
+            fg=typer.colors.RED,
+        )
+        return "[bold red]Hard-Deleted"
+    if ckpt.deleted:
+        deleted_at = (
+            datetime.strftime(ckpt.deleted_at, "%Y-%m-%d %H:%M:%S")
+            if ckpt.deleted_at
+            else "N/A"
+        )
+        typer.secho(
+            f"This checkpoint was deleted at {deleted_at}. "
+            "Please restore it if you want use this.",
+            fg=typer.colors.YELLOW,
+        )
+        return "[bold yellow]Soft-Deleted"
+    return "[bold green]Active"

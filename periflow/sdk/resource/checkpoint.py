@@ -13,11 +13,18 @@ from uuid import UUID
 
 import yaml
 
+from periflow.client.catalog import CatalogClient
 from periflow.client.checkpoint import CheckpointClient, CheckpointFormClient
 from periflow.client.credential import CredentialClient
 from periflow.client.group import GroupProjectCheckpointClient
 from periflow.cloud.storage import build_storage_client
-from periflow.enums import CheckpointCategory, CheckpointDataType, CredType, StorageType
+from periflow.enums import (
+    CatalogImportMethod,
+    CheckpointCategory,
+    CheckpointDataType,
+    CredType,
+    StorageType,
+)
 from periflow.errors import (
     CheckpointConversionError,
     InvalidConfigError,
@@ -325,11 +332,14 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             ```python
             checkpoints = pf.Checkpoint.list(
-                category=CheckpointCategory.USER_PROVIDED, deleted=True
+                category="USER", deleted=True
             )
             ```
 
         """
+        if category is not None:
+            category = validate_enums(category, CheckpointCategory)
+
         client = GroupProjectCheckpointClient()
         checkpoints = [
             V1Checkpoint.model_validate(raw_ckpt)
@@ -790,6 +800,31 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
         raw_ckpt = client.restore_checkpoint(id)
         ckpt = V1Checkpoint.model_validate(raw_ckpt)
+        return ckpt
+
+    @staticmethod
+    def import_from_catalog(
+        id: UUID, name: str, method: CatalogImportMethod
+    ) -> V1Checkpoint:
+        """Tries out a public checkpoint in catalog.
+
+        Args:
+            id (UUID): ID of a catalog.
+            name (str): The name of the checkpoint that will be created in the project.
+            method (CatalogImportMethod): Import method.
+
+        Returns:
+            V1Checkpoint: The created checkpoint object by importing the public checkpoint in the catalog.
+
+        """
+        method = validate_enums(method, CatalogImportMethod)
+
+        client = CatalogClient()
+        raw_ckpt = client.try_out(catalog_id=id, name=name, method=method)
+        ckpt = V1Checkpoint.model_validate(raw_ckpt)
+        if ckpt.forms:
+            for file in ckpt.forms[0].files:
+                file.path = strip_storage_path_prefix(file.path)
         return ckpt
 
     @staticmethod

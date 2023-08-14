@@ -76,13 +76,13 @@ class CatalogClient(
         """
         request_data = {
             "name": name,
-            "organization_id": self.group_id,
-            "project_id": self.project_id,
-            "user_id": self.user_id,
+            "organization_id": str(self.group_id),
+            "project_id": str(self.project_id),
+            "user_id": str(self.user_id),
             "import_method": method.value,
         }
         response = safe_request(
             self.post,
             err_prefix="Failed to import public checkpoint from catalog to project",
-        )(pk=catalog_id, path="try_out/", json=request_data)
+        )(path=f"{catalog_id}/try_out/", json=request_data)
         return response.json()

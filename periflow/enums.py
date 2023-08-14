@@ -109,7 +109,7 @@ class CheckpointValidationStatus(str, Enum):
 
 
 class CatalogImportMethod(str, Enum):
-    """Catalog import methods"""
+    """Catalog import methods."""
 
     COPY = "copy"
     REF = "ref"

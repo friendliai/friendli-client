@@ -96,8 +96,6 @@ def auto_token_refresh(
     func: Callable[..., requests.Response]
 ) -> Callable[..., requests.Response]:
     """Decorator for automatic token refresh."""
-    injector = get_injector()
-    url_provider = injector.get(URLProvider)
 
     @functools.wraps(func)
     def inner(*args, **kwargs) -> requests.Response:

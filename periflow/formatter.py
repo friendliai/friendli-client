@@ -45,6 +45,8 @@ def get_value(data: Dict[str, Any], keys: str) -> str:
             value = value.get(key)
     if isinstance(value, Enum):
         value = value.value
+    if isinstance(value, list):
+        value = ", ".join(value)
     if value is None:
         return "-"
     return str(value)

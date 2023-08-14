@@ -1,14 +1,21 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
+# pylint: disable=redefined-builtin
+
 """PeriFlow Catalog CLI."""
 
 from __future__ import annotations
 
 import typer
 
-from periflow.formatter import TableFormatter
+from periflow.formatter import (
+    JSONFormatter,
+    PanelFormatter,
+    TableFormatter,
+    TreeFormatter,
+)
 from periflow.sdk.resource.catalog import Catalog as CatalogAPI
-from periflow.utils.format import datetime_to_pretty_str
+from periflow.utils.format import datetime_to_pretty_str, secho_error_and_exit
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -22,13 +29,38 @@ table_formatter = TableFormatter(
         "id",
         "name",
         "use_count",
+        "created_at",
     ],
     headers=[
         "ID",
         "Name",
         "# Uses",
+        "Created At",
     ],
 )
+panel_formatter = PanelFormatter(
+    name="Overview",
+    fields=[
+        "id",
+        "name",
+        "tags",
+        "summary",
+        "description",
+        "use_count",
+        "created_at",
+    ],
+    headers=[
+        "ID",
+        "Name",
+        "Tags",
+        "Summary",
+        "Description",
+        "# Uses",
+        "Created At",
+    ],
+)
+json_formatter = JSONFormatter(name="Attributes")
+tree_formatter = TreeFormatter(name="Files")
 
 
 @app.command()
@@ -46,7 +78,7 @@ def list(
         help="The number of public checkpoints to display.",
     ),
 ):
-    """List public checkpoints in catalog."""
+    """Lists public checkpoints in catalog."""
     catalogs = CatalogAPI.list(name=name, limit=limit)
     catalog_dicts = []
     for catalog in catalogs:
@@ -55,3 +87,27 @@ def list(
         catalog_dicts.append(catalog_dict)
 
     table_formatter.render(catalog_dicts)
+
+
+@app.command()
+def view(
+    name: str = typer.Argument(),
+):
+    """Displays info of a catalog."""
+    catalogs = CatalogAPI.list(name=name)
+    catalog = None
+    for cat in catalogs:
+        if cat.name == name:
+            catalog = cat
+    if catalog is None:
+        msg = f"Public checkpoint with name '{name}' is not found in the catalog."
+        if len(catalogs) > 0:
+            msg += f" Did you mean '{catalogs[0].name}'?"
+        secho_error_and_exit(msg)
+
+    catalog_dict = catalog.model_dump()
+    catalog_dict["created_at"] = datetime_to_pretty_str(catalog.created_at)
+
+    panel_formatter.render([catalog_dict])
+    json_formatter.render(catalog_dict["attributes"])
+    tree_formatter.render(catalog_dict["files"])

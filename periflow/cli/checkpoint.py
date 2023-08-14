@@ -7,13 +7,19 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+import random
+import string
 from typing import List, Optional
 from uuid import UUID
 
 import typer
 
-from periflow.enums import CheckpointCategory, CheckpointDataType, StorageType
+from periflow.enums import (
+    CatalogImportMethod,
+    CheckpointCategory,
+    CheckpointDataType,
+    StorageType,
+)
 from periflow.errors import (
     CheckpointConversionError,
     InvalidAttributesError,
@@ -28,9 +34,13 @@ from periflow.formatter import (
     TableFormatter,
     TreeFormatter,
 )
-from periflow.schema.resource.v1.checkpoint import V1Checkpoint
+from periflow.sdk.resource.catalog import Catalog as CatalogAPI
 from periflow.sdk.resource.checkpoint import Checkpoint as CheckpointAPI
-from periflow.utils.format import datetime_to_pretty_str, secho_error_and_exit
+from periflow.utils.format import (
+    datetime_to_pretty_str,
+    get_translated_checkpoint_status,
+    secho_error_and_exit,
+)
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -84,35 +94,6 @@ json_formatter = JSONFormatter(name="Attributes")
 tree_formatter = TreeFormatter(name="Files")
 
 
-def get_translated_checkpoint_status(ckpt: V1Checkpoint) -> str:
-    """Gets translated checkpoint status from the checkpoint info."""
-    if ckpt.hard_deleted:
-        hard_deleted_at = (
-            datetime.strftime(ckpt.hard_deleted_at, "%Y-%m-%d %H:%M:%S")
-            if ckpt.hard_deleted_at
-            else "N/A"
-        )
-        typer.secho(
-            f"This checkpoint was hard-deleted at {hard_deleted_at}. "
-            "You cannot use this checkpoint.",
-            fg=typer.colors.RED,
-        )
-        return "[bold red]Hard-Deleted"
-    if ckpt.deleted:
-        deleted_at = (
-            datetime.strftime(ckpt.deleted_at, "%Y-%m-%d %H:%M:%S")
-            if ckpt.deleted_at
-            else "N/A"
-        )
-        typer.secho(
-            f"This checkpoint was deleted at {deleted_at}. "
-            "Please restore it if you want use this.",
-            fg=typer.colors.YELLOW,
-        )
-        return "[bold yellow]Soft-Deleted"
-    return "[bold green]Active"
-
-
 @app.command()
 def list(
     source: Optional[CheckpointCategory] = typer.Option(
@@ -157,7 +138,6 @@ def view(
     ckpt_dict["status"] = status
 
     panel_formatter.render([ckpt_dict])
-
     json_formatter.render(ckpt_dict["attributes"])
     tree_formatter.render(ckpt_dict["forms"][0]["files"])
 
@@ -625,6 +605,63 @@ def restore(
         secho_error_and_exit(str(exc))
 
     typer.secho(f"Checkpoint({checkpoint_id}) is successfully restored.")
+
+
+@app.command("import")
+def import_from_catalog(
+    catalog_name: str = typer.Argument(
+        ...,
+        help="The name of public checkpoint to try out.",
+    ),
+    name: str = typer.Option(
+        None,
+        "--name",
+        "-n",
+        help="The name of the checkpoint that will be created in the project.",
+    ),
+    method: CatalogImportMethod = typer.Option(
+        CatalogImportMethod.COPY.value,
+        "--method",
+        "-m",
+        help=(
+            "The method to import the public checkpoint. When the method is 'copy', "
+            "the file objects will be copied to a separate storage so that the "
+            "checkpoint remains available even if the source public checkpoint is "
+            "removed from the catalog. Conversely, when the 'ref' method is selected, "
+            "the file objects are referenced from the storage of the source public "
+            "checkpoint. In this case, the imported checkpoint becomes unavailable if "
+            "the source in the catalog is deleted."
+        ),
+    ),
+):
+    """Create a checkpoint by importing a public checkpoint in the catalog."""
+    catalogs = CatalogAPI.list(name=catalog_name)
+    catalog = None
+    for cat in catalogs:
+        if cat.name == catalog_name:
+            catalog = cat
+    if catalog is None:
+        msg = (
+            f"Public checkpoint with name '{catalog_name}' is not found in the catalog."
+        )
+        if len(catalogs) > 0:
+            msg += f" Did you mean '{catalogs[0].name}'?"
+        secho_error_and_exit(msg)
+
+    if name is None:
+        hash = "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
+        name = f"{catalog.name}-{hash}"
+
+    ckpt = CheckpointAPI.import_from_catalog(id=catalog.id, name=name, method=method)
+    ckpt_dict = ckpt.model_dump()
+
+    ckpt_dict["created_at"] = datetime_to_pretty_str(ckpt.created_at)
+    status = get_translated_checkpoint_status(ckpt)
+    ckpt_dict["status"] = status
+
+    panel_formatter.render([ckpt_dict])
+    json_formatter.render(ckpt_dict["attributes"])
+    tree_formatter.render(ckpt_dict["forms"][0]["files"])
 
 
 @app.command()
