@@ -160,8 +160,7 @@ def view(
     ckpt_dict = ckpt.model_dump()
 
     ckpt_dict["created_at"] = datetime_to_pretty_str(ckpt.created_at)
-    deleted = get_translated_checkpoint_status(ckpt)
-    ckpt_dict["status"] = deleted
+    ckpt_dict["status"] = get_translated_checkpoint_status(ckpt)
 
     panel_formatter.render([ckpt_dict])
 
