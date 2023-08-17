@@ -272,7 +272,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
         if storage_path is not None:
             storage_name = f"{storage_name}/{storage_path}"
 
-        checkpoint_client = GroupProjectCheckpointClient()
+        group_ckpt_client = GroupProjectCheckpointClient()
         dist_config = {
             "pp_degree": 1,
             "dp_degree": 1,
@@ -280,7 +280,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             "dp_mode": "allreduce",
             "parallelism_order": ["pp", "dp", "mp"],
         }
-        raw_ckpt = checkpoint_client.create_checkpoint(
+        raw_ckpt = group_ckpt_client.create_checkpoint(
             name=name,
             vendor=cloud_storage,
             region=region,
@@ -291,6 +291,10 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             dist_config=dist_config,
             attributes=attr,
         )
+        ckpt = V1Checkpoint.model_validate(raw_ckpt)
+
+        ckpt_client = CheckpointClient()
+        raw_ckpt = ckpt_client.activate_checkpoint(ckpt.id)
         ckpt = V1Checkpoint.model_validate(raw_ckpt)
         if ckpt.forms:
             for file in ckpt.forms[0].files:
@@ -691,18 +695,16 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             client.delete_checkpoint(checkpoint_id=ckpt.id)
             raise exc
 
-        logger.info(
-            "Objects are uploaded and checkpoint(%s) is successfully created!", name
-        )
-
-        # Visualize the uploaded checkpoint info
-        raw_ckpt = client.get_checkpoint(ckpt.id)
+        # Activate the checkpoint.
+        raw_ckpt = client.activate_checkpoint(ckpt.id)
         ckpt = V1Checkpoint.model_validate(raw_ckpt)
-        # Serving model info.
         if ckpt.forms:
             for file in ckpt.forms[0].files:
                 file.path = strip_storage_path_prefix(file.path)
 
+        logger.info(
+            "Objects are uploaded and checkpoint(%s) is successfully created!", name
+        )
         return ckpt
 
     @staticmethod

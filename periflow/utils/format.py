@@ -11,6 +11,7 @@ from typing import NoReturn, Optional
 
 import typer
 
+from periflow.enums import CheckpointStatus
 from periflow.schema.resource.v1.checkpoint import V1Checkpoint
 
 
@@ -148,9 +149,11 @@ def get_translated_checkpoint_status(ckpt: V1Checkpoint) -> str:
             else "N/A"
         )
         typer.secho(
-            f"This checkpoint was deleted at {deleted_at}. "
-            "Please restore it if you want use this.",
+            f"This checkpoint was deleted at {deleted_at}. Please restore it with "
+            f"'pf checkpoint restore {ckpt.id}' if you want use this.",
             fg=typer.colors.YELLOW,
         )
         return "[bold yellow]Soft-Deleted"
-    return "[bold green]Active"
+    if ckpt.status == CheckpointStatus.ACTIVE:
+        return "[bold green]Active"
+    return ckpt.status.value

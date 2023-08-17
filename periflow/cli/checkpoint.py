@@ -134,8 +134,7 @@ def view(
     ckpt_dict = ckpt.model_dump()
 
     ckpt_dict["created_at"] = datetime_to_pretty_str(ckpt.created_at)
-    status = get_translated_checkpoint_status(ckpt)
-    ckpt_dict["status"] = status
+    ckpt_dict["status"] = get_translated_checkpoint_status(ckpt)
 
     panel_formatter.render([ckpt_dict])
     json_formatter.render(ckpt_dict["attributes"])
@@ -334,7 +333,7 @@ def create(
 
     ckpt_dict = ckpt.model_dump()
     ckpt_dict["created_at"] = datetime_to_pretty_str(ckpt.created_at)
-    get_translated_checkpoint_status(ckpt)
+    ckpt_dict["status"] = get_translated_checkpoint_status(ckpt)
 
     panel_formatter.render([ckpt_dict])
     json_formatter.render(ckpt_dict["attributes"])
@@ -578,6 +577,7 @@ def upload(
     ckpt_dict = ckpt.model_dump()
     ckpt_dict["created_at"] = datetime_to_pretty_str(ckpt.created_at)
     ckpt_dict["status"] = get_translated_checkpoint_status(ckpt)
+
     panel_formatter.render([ckpt_dict])
     json_formatter.render(ckpt_dict["attributes"])
     tree_formatter.render(ckpt_dict["forms"][0]["files"])

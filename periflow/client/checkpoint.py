@@ -33,6 +33,13 @@ class CheckpointClient(Client[UUID]):
         )(pk=checkpoint_id)
         return UUID(response.json()["forms"][0]["id"])
 
+    def activate_checkpoint(self, checkpoint_id: UUID) -> Dict[str, Any]:
+        """Make checkpoint status active."""
+        response = safe_request(
+            self.partial_update, err_prefix="Failed to activate checkpoint."
+        )(pk=checkpoint_id, json={"status": "Active"})
+        return response.json()
+
     def delete_checkpoint(self, checkpoint_id: UUID) -> None:
         """Delete a checkpoint."""
         safe_request(self.delete, err_prefix="Failed to delete checkpoint.")(
