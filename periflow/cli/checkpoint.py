@@ -13,7 +13,12 @@ from uuid import UUID
 
 import typer
 
-from periflow.enums import CheckpointCategory, CheckpointDataType, StorageType
+from periflow.enums import (
+    CheckpointCategory,
+    CheckpointDataType,
+    CheckpointStatus,
+    StorageType,
+)
 from periflow.errors import (
     CheckpointConversionError,
     InvalidAttributesError,
@@ -105,12 +110,14 @@ def get_translated_checkpoint_status(ckpt: V1Checkpoint) -> str:
             else "N/A"
         )
         typer.secho(
-            f"This checkpoint was deleted at {deleted_at}. "
-            "Please restore it if you want use this.",
+            f"This checkpoint was deleted at {deleted_at}. Please restore it with "
+            f"'pf checkpoint restore {ckpt.id}' if you want use this.",
             fg=typer.colors.YELLOW,
         )
         return "[bold yellow]Soft-Deleted"
-    return "[bold green]Active"
+    if ckpt.status == CheckpointStatus.ACTIVE:
+        return "[bold green]Active"
+    return ckpt.status.value
 
 
 @app.command()
@@ -153,8 +160,7 @@ def view(
     ckpt_dict = ckpt.model_dump()
 
     ckpt_dict["created_at"] = datetime_to_pretty_str(ckpt.created_at)
-    status = get_translated_checkpoint_status(ckpt)
-    ckpt_dict["status"] = status
+    ckpt_dict["status"] = get_translated_checkpoint_status(ckpt)
 
     panel_formatter.render([ckpt_dict])
 
@@ -354,7 +360,7 @@ def create(
 
     ckpt_dict = ckpt.model_dump()
     ckpt_dict["created_at"] = datetime_to_pretty_str(ckpt.created_at)
-    get_translated_checkpoint_status(ckpt)
+    ckpt_dict["status"] = get_translated_checkpoint_status(ckpt)
 
     panel_formatter.render([ckpt_dict])
     json_formatter.render(ckpt_dict["attributes"])
@@ -598,6 +604,7 @@ def upload(
     ckpt_dict = ckpt.model_dump()
     ckpt_dict["created_at"] = datetime_to_pretty_str(ckpt.created_at)
     ckpt_dict["status"] = get_translated_checkpoint_status(ckpt)
+
     panel_formatter.render([ckpt_dict])
     json_formatter.render(ckpt_dict["attributes"])
     tree_formatter.render(ckpt_dict["forms"][0]["files"])
