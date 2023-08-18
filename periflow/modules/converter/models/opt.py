@@ -10,14 +10,14 @@ import numpy as np
 import torch
 from transformers import OPTConfig  # type: ignore[import]
 
-from periflow.converter.base import DecoderOnlyConverter
-from periflow.converter.interface import DECODER_PREFIX
-from periflow.converter.utils import (
+from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
+from periflow.logging import logger
+from periflow.modules.converter.base import DecoderOnlyConverter
+from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
 )
-from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
-from periflow.logging import logger
 
 
 class OPTForCausalLMConverter(DecoderOnlyConverter):
@@ -260,3 +260,13 @@ class OPTForCausalLMConverter(DecoderOnlyConverter):
     def decoder_head_size(self) -> int:
         """The head size of OPT."""
         return self.decoder_hidden_size // self.decoder_num_attention_heads
+
+    @property
+    def quantized_layer_prefix(self) -> str:
+        """The layer name prefix used before OPT's transformer layer number."""
+        return self.decoder_layer_prefix
+
+    @property
+    def quantized_layer_num(self) -> int:
+        """Return the number of transformer layers in the encoder."""
+        return self.decoder_layer_num

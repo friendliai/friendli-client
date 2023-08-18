@@ -10,15 +10,15 @@ import numpy as np
 import torch
 from transformers import GPTNeoXConfig  # type: ignore[import]
 
-from periflow.converter.base import SUPPORTED_GELU_FAMILY, DecoderOnlyConverter
-from periflow.converter.interface import DECODER_PREFIX
-from periflow.converter.utils import (
+from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
+from periflow.logging import logger
+from periflow.modules.converter.base import SUPPORTED_GELU_FAMILY, DecoderOnlyConverter
+from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     convert_to_gpt_j_params,
     get_tensor_from_state_dict,
 )
-from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
-from periflow.logging import logger
 
 
 class GPTNeoXForCausalLMConverter(DecoderOnlyConverter):
