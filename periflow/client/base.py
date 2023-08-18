@@ -24,7 +24,7 @@ from tqdm import tqdm
 from periflow.auth import auto_token_refresh, get_auth_header
 from periflow.context import get_current_group_id, get_current_project_id
 from periflow.di.injector import get_injector
-from periflow.errors import AuthTokenNotFoundError
+from periflow.errors import APIError, AuthTokenNotFoundError
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.fs import (
     S3_MPU_PART_MAX_SIZE,
@@ -52,8 +52,7 @@ def safe_request(
         try:
             return func(*args, **kwargs)
         except requests.HTTPError as exc:
-            # typer.secho(exc.response.content)
-            secho_error_and_exit(err_prefix + decode_http_err(exc))
+            raise APIError(str(exc)) from exc
 
     return wrapper
 

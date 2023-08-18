@@ -46,7 +46,11 @@ from periflow.errors import (
 from periflow.logging import logger
 from periflow.schema.resource.v1.deployment import V1Deployment
 from periflow.sdk.resource.base import ResourceAPI
-from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
+from periflow.utils.format import (
+    extract_datetime_part,
+    extract_deployment_id_part,
+    secho_error_and_exit,
+)
 from periflow.utils.fs import download_file, upload_file
 from periflow.utils.maps import cloud_vm_map, vm_num_gpu_map
 from periflow.utils.validate import validate_enums

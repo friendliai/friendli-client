@@ -36,6 +36,7 @@ from periflow.errors import (
 from periflow.logging import logger
 from periflow.schema.resource.v1.checkpoint import V1Checkpoint
 from periflow.sdk.resource.base import ResourceAPI
+from periflow.utils.format import secho_error_and_exit
 from periflow.utils.fs import (
     FileSizeType,
     attach_storage_path_prefix,
@@ -79,13 +80,13 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             iteration (Optional[int], optional): The iteration of the checkpoint. Defaults to None.
             attr_file_path (Optional[str], optional): Path to the checkpoint attribute YAML file. Defaults to None.
 
-        Returns:
-            V1Checkpoint: Created checkpoint object.
-
         Raises:
             InvalidConfigError: Raised when checkpoint attribute file located at `attr_file_path` has invalid YAML format. Also raised when the credential with `credential_id` is not for the cloud provider of `cloud_storage`. Also raised when `region` is invalid.
             NotSupportedError: Raised when `cloud_storage` is not supported yet.
             InvalidAttributesError: Raised when the checkpoint attributes described in `attr_file_path` is in the invalid format.
+
+        Returns:
+            V1Checkpoint: Created checkpoint object.
 
         Examples:
             Basic usage:
@@ -430,13 +431,13 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             attr_file_path (Optional[str], optional): Path to the checkpoint attribute YAML file. Defaults to None.
             max_workers (int, optional): The number of concurrency. Defaults to min(32, (os.cpu_count() or 1) + 4).
 
-        Returns:
-            V1Checkpoint: Created checkpoint object.
-
         Raises:
             NotFoundError: Raised when `source_path` does not exist.
             InvalidConfigError: Raised when the attribute file located at `attr_file_path` has invalid YAML format.
             InvalidAttributesError: Raised when the checkpoint attributes described in `attr_file_path` is in the invalid format.
+
+        Returns:
+            V1Checkpoint: Created checkpoint object.
 
         Examples:
             Basic usage:
@@ -748,7 +749,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
         files = form_client.get_checkpoint_download_urls(ckpt_form_id)
 
         for i, file in enumerate(files):
-            logger.info("Downloading files {%d}/{%d}...", i + 1, len(files))
+            logger.info("Downloading files %d/%d...", i + 1, len(files))
             download_file(
                 url=file["download_url"],
                 out=os.path.join(save_dir, strip_storage_path_prefix(file["path"])),

@@ -58,6 +58,7 @@ class CatalogClient(
             **request_data,
             limit=limit,
             sort_by_popularity="descending",
+            statuses="Active",
         )
 
     def try_out(

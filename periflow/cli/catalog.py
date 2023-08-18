@@ -15,6 +15,7 @@ from periflow.formatter import (
     TreeFormatter,
 )
 from periflow.sdk.resource.catalog import Catalog as CatalogAPI
+from periflow.utils.decorator import check_api
 from periflow.utils.format import datetime_to_pretty_str, secho_error_and_exit
 
 app = typer.Typer(
@@ -26,15 +27,15 @@ app = typer.Typer(
 table_formatter = TableFormatter(
     name="Catalog",
     fields=[
-        "id",
         "name",
         "use_count",
+        "tags",
         "created_at",
     ],
     headers=[
-        "ID",
         "Name",
         "# Uses",
+        "Tags",
         "Created At",
     ],
 )
@@ -64,6 +65,7 @@ tree_formatter = TreeFormatter(name="Files")
 
 
 @app.command()
+@check_api
 def list(
     name: str = typer.Option(
         None,
@@ -80,6 +82,7 @@ def list(
 ):
     """Lists public checkpoints in catalog."""
     catalogs = CatalogAPI.list(name=name, limit=limit)
+
     catalog_dicts = []
     for catalog in catalogs:
         catalog_dict = catalog.model_dump()
@@ -90,11 +93,13 @@ def list(
 
 
 @app.command()
+@check_api
 def view(
     name: str = typer.Argument(),
 ):
     """Displays info of a catalog."""
     catalogs = CatalogAPI.list(name=name)
+
     catalog = None
     for cat in catalogs:
         if cat.name == name:

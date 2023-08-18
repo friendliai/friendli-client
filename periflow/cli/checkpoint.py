@@ -36,6 +36,7 @@ from periflow.formatter import (
 )
 from periflow.sdk.resource.catalog import Catalog as CatalogAPI
 from periflow.sdk.resource.checkpoint import Checkpoint as CheckpointAPI
+from periflow.utils.decorator import check_api
 from periflow.utils.format import (
     datetime_to_pretty_str,
     get_translated_checkpoint_status,
@@ -95,6 +96,7 @@ tree_formatter = TreeFormatter(name="Files")
 
 
 @app.command()
+@check_api
 def list(
     source: Optional[CheckpointCategory] = typer.Option(
         None,
@@ -124,6 +126,7 @@ def list(
 
 
 @app.command()
+@check_api
 def view(
     checkpoint_id: UUID = typer.Argument(
         ..., help="ID of checkpoint to inspect in detail."
@@ -142,6 +145,7 @@ def view(
 
 
 @app.command()
+@check_api
 def create(
     name: str = typer.Option(
         ..., "--name", "-n", help="Name of your checkpoint to create."
@@ -341,6 +345,7 @@ def create(
 
 
 @app.command()
+@check_api
 def delete(
     checkpoint_ids: List[UUID] = typer.Argument(
         ...,
@@ -388,6 +393,7 @@ def delete(
 
 
 @app.command()
+@check_api
 def download(
     checkpoint_id: UUID = typer.Argument(..., help="ID of checkpoint to download."),
     save_directory: Optional[str] = typer.Option(
@@ -411,6 +417,7 @@ def download(
 
 
 @app.command()
+@check_api
 def upload(
     name: str = typer.Option(
         ..., "--name", "-n", help="Name of the checkpoint to upload"
@@ -584,6 +591,7 @@ def upload(
 
 
 @app.command()
+@check_api
 def restore(
     checkpoint_id: UUID = typer.Argument(..., help="ID of checkpoint to restore.")
 ):
@@ -608,6 +616,7 @@ def restore(
 
 
 @app.command("import")
+@check_api
 def import_from_catalog(
     catalog_name: str = typer.Argument(
         ...,

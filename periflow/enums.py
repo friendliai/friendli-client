@@ -169,3 +169,10 @@ class CheckpointDataType(str, Enum):
     BF16 = "bf16"
     FP16 = "fp16"
     FP32 = "fp32"
+
+
+class FileSizeType(str, Enum):
+    """File size type."""
+
+    LARGE = "LARGE"
+    SMALL = "SMALL"
