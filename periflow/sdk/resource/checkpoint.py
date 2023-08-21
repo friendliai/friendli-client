@@ -36,7 +36,6 @@ from periflow.errors import (
 from periflow.logging import logger
 from periflow.schema.resource.v1.checkpoint import V1Checkpoint
 from periflow.sdk.resource.base import ResourceAPI
-from periflow.utils.format import secho_error_and_exit
 from periflow.utils.fs import (
     FileSizeType,
     attach_storage_path_prefix,

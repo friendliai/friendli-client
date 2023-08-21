@@ -34,7 +34,7 @@ from periflow.utils.fs import (
     upload_file,
     upload_part,
 )
-from periflow.utils.request import DEFAULT_REQ_TIMEOUT, decode_http_err
+from periflow.utils.request import DEFAULT_REQ_TIMEOUT
 from periflow.utils.url import URLProvider
 
 T = TypeVar("T", bound=Union[int, str, uuid.UUID])
