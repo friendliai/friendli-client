@@ -1,0 +1,31 @@
+---
+sidebar_position: 2
+---
+
+# How to Run Periflow Container?
+
+
+## Introduction
+
+Periflow Container enables you to effortlessly deploy your own AI model checkpoint on your local machine.
+This tutorial will guide you through the process of running Periflow Container.
+
+
+## Prerequisites
+
+Before you begin, make sure you have to signup to Periflow Cloud.
+In the next step, you will need to pull the Docker container image.
+You can find instructions on how to do this in the guide on the Periflow Cloud webpage.
+
+:::info
+### Converting Hugging Face Checkpoint (Optional)
+
+If you have a Hugging Face checkpoint and want to convert it to a PeriFlow-compatible format, you need to install the package with the following command:
+
+```sh
+pip install periflow-client[mllib]
+```
+
+If you don't need to convert the checkpoint, you don't need to install `periflow-client`.
+
+:::
