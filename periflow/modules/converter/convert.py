@@ -47,7 +47,7 @@ def get_model_generation_config(
             model_name_or_path, cache_dir=cache_dir, trust_remote_code=True
         )
     except (OSError, TypeError) as exc:
-        raise NotFoundError(str(exc)) from exc
+        generation_config = None
 
     return generation_config
 
