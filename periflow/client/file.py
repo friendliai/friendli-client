@@ -13,7 +13,6 @@ from periflow.client.base import (
     GroupRequestMixin,
     ProjectRequestMixin,
     UserRequestMixin,
-    safe_request,
 )
 
 
@@ -35,10 +34,8 @@ class FileClient(Client[UUID]):
             str: An uploadable URL.
 
         """
-        response = safe_request(self.post, err_prefix="Failed to get file upload URL.")(
-            path=f"{misc_file_id}/upload/"
-        )
-        return response.json()["upload_url"]
+        data = self.post(path=f"{misc_file_id}/upload/")
+        return data
 
     def get_misc_file_download_url(self, misc_file_id: UUID) -> str:
         """Get an URL to download file.
@@ -50,10 +47,8 @@ class FileClient(Client[UUID]):
             Dict[str, Any]: A downloadable URL.
 
         """
-        response = safe_request(
-            self.post, err_prefix="Failed to get file download URL."
-        )(path=f"{misc_file_id}/download/")
-        return response.json()["download_url"]
+        data = self.post(path=f"{misc_file_id}/download/")
+        return data["download_url"]
 
     def make_misc_file_uploaded(self, misc_file_id: UUID) -> Dict[str, Any]:
         """Request to mark the file as uploaded.
@@ -65,10 +60,8 @@ class FileClient(Client[UUID]):
             Dict[str, Any]: The updated file info.
 
         """
-        response = safe_request(
-            self.partial_update, err_prefix="Failed to patch the file status."
-        )(pk=misc_file_id, path="uploaded/")
-        return response.json()
+        data = self.partial_update(pk=misc_file_id, path="uploaded/")
+        return data
 
 
 class GroupProjectFileClient(
@@ -104,7 +97,5 @@ class GroupProjectFileClient(
             "user_id": str(self.user_id),
             **file_info,
         }
-        response = safe_request(self.post, err_prefix="Failed to create file.")(
-            json=request_data
-        )
-        return response.json()
+        data = self.post(json=request_data)
+        return data

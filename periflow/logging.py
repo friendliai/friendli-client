@@ -8,7 +8,7 @@ import logging
 import os
 
 _formatter = logging.Formatter(
-    fmt="%(asctime)s.%(msecs)05d: %(name)s %(levelname)s %(pathname)s:%(lineno)d %(message)s",
+    fmt="%(asctime)s.%(msecs)05d: %(name)s %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 

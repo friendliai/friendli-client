@@ -142,6 +142,14 @@ class SessionClosedError(PeriFlowError):
         )
 
 
+class MaxRetriesExceededError(PeriFlowError):
+    """Max retries exceeded."""
+
+    def __init__(self, exc: Optional[Exception] = None) -> None:
+        """Initialize MaxRetriesExceededError."""
+        super().__init__(f"Max retries limit exceeded due to an error: {str(exc)}")
+
+
 class NotSupportedError(PeriFlowError):
     """Feature is not supported."""
 

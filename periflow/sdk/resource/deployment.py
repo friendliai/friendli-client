@@ -47,8 +47,9 @@ from periflow.logging import logger
 from periflow.schema.resource.v1.deployment import V1Deployment
 from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
-from periflow.utils.fs import download_file, upload_file
+from periflow.utils.fs import upload_file
 from periflow.utils.maps import cloud_vm_map, vm_num_gpu_map
+from periflow.utils.transfer import DownloadManager
 from periflow.utils.validate import validate_enums
 
 
@@ -354,11 +355,18 @@ class Deployment(ResourceAPI[V1Deployment, str]):
         client.stop_deployment(id)
 
     @staticmethod
-    def get_metrics(id: str, time_window: int = 60) -> Dict[str, Any]:
+    def get_metrics(
+        id: str,
+        since: datetime,
+        until: datetime,
+        time_window: int = 60,
+    ) -> Dict[str, Any]:
         """Gets metrics of a deployment.
 
         Args:
             id (str): ID of deployment to get metrics.
+            since (datetime): Start time of metrics to fetch.
+            until (datetime): End time of metrics to fetch.
             time_window (int, optional): Time window of results in seconds. Defaults to 60.
 
         Returns:
@@ -366,7 +374,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
         """
         metrics_client = DeploymentMetricsClient(deployment_id=id)
-        return metrics_client.get_metrics(deployment_id=id, time_window=time_window)
+        return metrics_client.get_metrics(
+            start=since, end=until, time_window=time_window
+        )
 
     @staticmethod
     def get_usage(since: datetime, until: datetime) -> Dict[str, Any]:
@@ -396,7 +406,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
         """
         client = DeploymentLogClient(deployment_id=id)
-        return client.get_deployment_logs(deployment_id=id, replica_index=replica_index)
+        return client.get_deployment_logs(replica_index=replica_index)
 
     @staticmethod
     def adjust_replica_config(id: str, min_replicas: int, max_replicas: int) -> None:
@@ -434,7 +444,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
         """
         client = DeploymentEventClient(deployment_id=id)
-        return client.get_events(deployment_id=id)
+        return client.get_events()
 
     @staticmethod
     def download_req_resp_logs(
@@ -467,18 +477,17 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             )
 
         client = DeploymentReqRespClient(deployment_id=id)
-        download_infos = client.get_download_urls(
-            deployment_id=id, start=since, end=until
-        )
+        download_infos = client.get_download_urls(start=since, end=until)
         if len(download_infos) == 0:
             raise NotFoundError(f"No log exists for the deployment '{id}'.")
 
+        download_manager = DownloadManager()
         for i, download_info in enumerate(download_infos):
-            logger.info("Downloading files %d/%d...", i + 1, len(download_infos))
             full_storage_path = download_info["path"]
             deployment_id_part = extract_deployment_id_part(full_storage_path)
             timestamp_part = extract_datetime_part(full_storage_path)
             filename = f"{deployment_id_part}_{timestamp_part}.log"
-            download_file(
+            logger.info("Downloading files %d/%d...", i + 1, len(download_infos))
+            download_manager.download_file(
                 url=download_info["url"], out=os.path.join(save_dir, filename)
             )

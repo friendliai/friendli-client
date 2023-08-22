@@ -158,19 +158,6 @@ deployment_org_table = TableFormatter(
     substitute_exact_match_only=False,
 )
 
-deployment_metrics_table = TableFormatter(
-    name="Deployment Metrics",
-    fields=[
-        "id",
-        "latency",
-        "throughput",
-        "time_window",
-    ],
-    headers=["ID", "Latency(ms)", "Throughput(req/s)", "Time Window(sec)"],
-    extra_fields=["error"],
-    extra_headers=["error"],
-)
-
 deployment_usage_table = TableFormatter(
     name="Deployment Usage",
     fields=[
@@ -329,23 +316,52 @@ def metrics(
     deployment_id: str = typer.Argument(
         ..., help="ID of deployment to inspect in detail."
     ),
-    time_window: int = typer.Option(
-        60, "--time-window", "-t", help="Time window of metrics in seconds."
+    since: str = typer.Option(
+        ...,
+        "--since",
+        help=(
+            "Start time of metrics to fetch. The format should be {YYYY}-{MM}-{DD}T{HH}. "
+            "The UTC timezone will be used by default."
+        ),
+    ),
+    until: str = typer.Option(
+        ...,
+        "--until",
+        help=(
+            "End time of metrics to fetch. The format should be {YYYY}-{MM}-{DD}T{HH}. "
+            "The UTC timezone will be used by default."
+        ),
+    ),
+    window: int = typer.Option(
+        60, "--window", "-w", help="Time window of metrics in seconds."
     ),
 ):
     """Show metrics of a deployment."""
-    metrics = DeploymentAPI.get_metrics(id=deployment_id, time_window=time_window)
-    metrics["id"] = metrics["deployment_id"]
-    if metrics["latency"]:
-        # ns => ms
-        metrics["latency"] = (
-            f"{metrics['latency'] / 1000000:.3f}" if "latency" in metrics else None
+    try:
+        start = datetime.strptime(since, "%Y-%m-%dT%H").astimezone(tz=timezone.utc)
+        end = datetime.strptime(until, "%Y-%m-%dT%H").astimezone(tz=timezone.utc)
+    except ValueError:
+        secho_error_and_exit(
+            "Invalid datetime format. The format should be {YYYY}-{MM}-{DD}T{HH} "
+            "(e.g., 1999-01-01T01)."
         )
-    if metrics["throughput"]:
-        metrics["throughput"] = (
-            f"{metrics['throughput']:.3f}" if "throughput" in metrics else None
+
+    metrics = DeploymentAPI.get_metrics(
+        id=deployment_id, since=start, until=end, time_window=window
+    )
+    for metric in metrics:
+        metric_key = metric["metric"]
+        metric_data = metric["points"]
+
+        deployment_metrics_table = TableFormatter(
+            name=metric_key,
+            fields=[
+                "value",
+                "timestamp",
+            ],
+            headers=["Value", "Timestamp"],
         )
-    deployment_metrics_table.render([metrics])
+        deployment_metrics_table.render(metric_data)
 
 
 @app.command()

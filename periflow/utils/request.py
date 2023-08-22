@@ -4,14 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional
-
 from requests.exceptions import HTTPError
-from requests.models import Response
 
 from periflow.utils.url import discuss_url
 
-DEFAULT_PAGINATION_SIZE = 50
 DEFAULT_REQ_TIMEOUT = 30
 
 
@@ -41,26 +37,3 @@ def decode_http_err(exc: HTTPError) -> str:
         error_str = exc.response.content.decode()
 
     return error_str
-
-
-def paginated_get(
-    response_getter: Callable[..., Response],
-    path: Optional[str] = None,
-    limit: int = 20,
-    **params,
-) -> List[Dict[str, Any]]:
-    """List objects with pagination."""
-    page_size = min(DEFAULT_PAGINATION_SIZE, limit)
-    params = {"limit": page_size, **params}
-    response_dict = response_getter(path=path, params={**params}).json()
-    items = response_dict["results"]
-    next_cursor = response_dict["next_cursor"]
-
-    while next_cursor is not None and len(items) < limit:
-        response_dict = response_getter(
-            path=path, params={**params, "cursor": next_cursor}
-        ).json()
-        items.extend(response_dict["results"])
-        next_cursor = response_dict["next_cursor"]
-
-    return items

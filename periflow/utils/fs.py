@@ -7,17 +7,14 @@ from __future__ import annotations
 import os
 import re
 import zipfile
-from concurrent.futures import FIRST_EXCEPTION, ThreadPoolExecutor, wait
 from contextlib import contextmanager
 from datetime import datetime
-from enum import Enum
 from functools import wraps
 from io import BufferedReader
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
 
 import pathspec  # type: ignore
-import requests
 import typer
 from dateutil.tz import tzlocal
 from requests import Request, Session
@@ -25,12 +22,14 @@ from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
 from periflow.utils.format import secho_error_and_exit
-from periflow.utils.request import DEFAULT_REQ_TIMEOUT
+from periflow.enums import FileSizeType
 
-# The actual hard limit of a part size is 5 GiB, and we use 200 MiB part size.
-# See https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html.
-S3_MPU_PART_MAX_SIZE = 200 * 1024 * 1024  # 200 MiB
-S3_UPLOAD_SIZE_LIMIT = 5 * 1024 * 1024 * 1024  # 5 GiB
+KiB = 1024
+MiB = KiB * KiB
+GiB = MiB * KiB
+S3_MULTIPART_THRESHOLD = 8 * MiB
+S3_PART_MAX_SIZE = 8 * MiB  # 8 MiB
+S3_UPLOAD_SIZE_LIMIT = 5 * GiB  # 5 GiB
 
 periflow_directory = Path.home() / ".periflow"
 
@@ -108,105 +107,6 @@ def get_file_info(storage_path: str, source_path: Path) -> Dict[str, Any]:
         ).isoformat(),
         "size": os.stat(loacl_path).st_size,
     }
-
-
-def get_content_size(url: str) -> int:
-    """Get download content size."""
-    response = requests.get(url, stream=True, timeout=DEFAULT_REQ_TIMEOUT)
-    if response.status_code != 200:
-        secho_error_and_exit("Failed to download (invalid url)")
-    return int(response.headers["Content-Length"])
-
-
-def download_range(url: str, start: int, end: int, output: str, ctx: tqdm) -> None:
-    """Download a specific part of a file from the URL."""
-    headers = {"Range": f"bytes={start}-{end}"}
-    response = requests.get(
-        url, headers=headers, stream=True, timeout=DEFAULT_REQ_TIMEOUT
-    )
-
-    with open(output, "wb") as f:
-        wrapped_object = CallbackIOWrapper(ctx.update, f, "write")
-        for part in response.iter_content(1024):
-            wrapped_object.write(part)
-
-
-def download_file_simple(url: str, out: str, content_length: int) -> None:
-    """Download a file without parallelism."""
-    response = requests.get(url, stream=True, timeout=DEFAULT_REQ_TIMEOUT)
-    with tqdm.wrapattr(
-        open(out, "wb"), "write", miniters=1, total=content_length
-    ) as fout:
-        for chunk in response.iter_content(chunk_size=4096):
-            fout.write(chunk)
-
-
-def download_file_parallel(
-    url: str, out: str, content_length: int, chunk_size: int = 1024 * 1024 * 4
-) -> None:
-    """Download a file in parallel."""
-    chunks = range(0, content_length, chunk_size)
-
-    temp_out_prefix = os.path.join(os.path.dirname(out), f".{os.path.basename(out)}")
-
-    try:
-        with tqdm(
-            total=content_length, unit="B", unit_scale=True, unit_divisor=1024
-        ) as t:
-            with ThreadPoolExecutor() as executor:
-                futs = [
-                    executor.submit(
-                        download_range,
-                        url,
-                        start,
-                        start + chunk_size - 1,
-                        f"{temp_out_prefix}.part{i}",
-                        t,
-                    )
-                    for i, start in enumerate(chunks)
-                ]
-                wait(futs, return_when=FIRST_EXCEPTION)
-
-        # Merge partitioned files
-        with open(out, "wb") as f:
-            for i in range(len(chunks)):
-                chunk_path = f"{temp_out_prefix}.part{i}"
-                with open(chunk_path, "rb") as chunk_f:
-                    f.write(chunk_f.read())
-
-                os.remove(chunk_path)
-    finally:
-        # Clean up zombie temporary partitioned files
-        for i in range(len(chunks)):
-            chunk_path = f"{temp_out_prefix}.part{i}"
-            if os.path.isfile(chunk_path):
-                os.remove(chunk_path)
-
-
-def download_file(url: str, out: str) -> None:
-    """Download a file from the URL."""
-    file_size = get_content_size(url)
-
-    # Create directory if not exists
-    dirpath = os.path.dirname(out)
-    try:
-        os.makedirs(dirpath, exist_ok=True)
-    except OSError as exc:
-        secho_error_and_exit(
-            f"Cannot create directory({dirpath}) to download file: {exc!r}"
-        )
-
-    if file_size >= 16 * 1024 * 1024:
-        download_file_parallel(url, out, file_size)
-    else:
-        download_file_simple(url, out, file_size)
-
-
-class FileSizeType(Enum):
-    """File size type."""
-
-    LARGE = "LARGE"
-    SMALL = "SMALL"
 
 
 def _filter_large_files(paths: List[str]) -> List[str]:
@@ -384,9 +284,9 @@ def upload_part(
     with open(file_path, "rb") as f:
         fileno = f.fileno()
         total_file_size = os.fstat(fileno).st_size
-        cursor = chunk_index * S3_MPU_PART_MAX_SIZE
+        cursor = chunk_index * S3_PART_MAX_SIZE
         f.seek(cursor)
-        chunk_size = min(S3_MPU_PART_MAX_SIZE, total_file_size - cursor)
+        chunk_size = min(S3_PART_MAX_SIZE, total_file_size - cursor)
         wrapped_object = CustomCallbackIOWrapper(ctx.update, f, "read", chunk_size)
         with Session() as s:
             req = Request("PUT", upload_url, data=wrapped_object)
@@ -397,7 +297,7 @@ def upload_part(
 
         if is_last_part:
             assert not f.read(
-                S3_MPU_PART_MAX_SIZE
+                S3_PART_MAX_SIZE
             ), "Some parts of your data is not uploaded. Please try again."
 
     etag = response.headers["ETag"]

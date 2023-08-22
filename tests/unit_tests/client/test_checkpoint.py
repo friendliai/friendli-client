@@ -16,7 +16,8 @@ import requests_mock
 import typer
 
 from periflow.client.checkpoint import CheckpointClient, CheckpointFormClient
-from periflow.utils.fs import S3_MPU_PART_MAX_SIZE, S3_UPLOAD_SIZE_LIMIT
+from periflow.errors import APIError
+from periflow.utils.fs import S3_PART_MAX_SIZE, S3_UPLOAD_SIZE_LIMIT
 
 
 @pytest.fixture
@@ -239,7 +240,7 @@ def test_checkpoint_client_start_multipart_upload(
                 "upload_url": f"https://s3.download.amazone.com/{paths[0]}-part{part_num}",
                 "part_number": part_num,
             }
-            for part_num in range(math.ceil(file_size / S3_MPU_PART_MAX_SIZE))
+            for part_num in range(math.ceil(file_size / S3_PART_MAX_SIZE))
         ],
     }
 
@@ -341,8 +342,8 @@ def test_actual_s3_upload(
     requests_mock.put(f"https://s3.amazon.com/{small_file_2_name}")
     # Mock S3 multipart upload with presigned URLs.
     # HACK: 1 is added because the actual file read by ``CustomCallbackIOWrapper`` does not occur since the request is mocked.
-    large_file_1_total_parts = math.ceil(large_file_1_size / S3_MPU_PART_MAX_SIZE) + 1
-    large_file_2_total_parts = math.ceil(large_file_2_size / S3_MPU_PART_MAX_SIZE) + 1
+    large_file_1_total_parts = math.ceil(large_file_1_size / S3_PART_MAX_SIZE) + 1
+    large_file_2_total_parts = math.ceil(large_file_2_size / S3_PART_MAX_SIZE) + 1
     for part_num in range(large_file_1_total_parts):
         requests_mock.put(
             f"https://s3.amazon.com/{large_file_1_name}/part{part_num}",

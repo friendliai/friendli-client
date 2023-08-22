@@ -9,13 +9,13 @@ from enum import Enum
 from typing import Any, Callable, Dict, Optional, Union
 
 import requests
+from requests import HTTPError, JSONDecodeError
 
 import periflow
 from periflow.di.injector import get_injector
-from periflow.errors import AuthTokenNotFoundError
-from periflow.utils.format import secho_error_and_exit
+from periflow.errors import APIError, AuthTokenNotFoundError
 from periflow.utils.fs import get_periflow_directory
-from periflow.utils.request import DEFAULT_REQ_TIMEOUT
+from periflow.utils.request import DEFAULT_REQ_TIMEOUT, decode_http_err
 from periflow.utils.url import URLProvider
 
 access_token_path = get_periflow_directory() / "access_token"
@@ -94,7 +94,7 @@ def clear_tokens() -> None:
 # pylint: disable=too-many-nested-blocks
 def auto_token_refresh(
     func: Callable[..., requests.Response]
-) -> Callable[..., requests.Response]:
+) -> Callable[..., Dict[str, Any]]:
     """Decorator for automatic token refresh."""
 
     @functools.wraps(func)
@@ -140,7 +140,13 @@ def auto_token_refresh(
                     "Failed to refresh access token... Please login again"
                 )
         else:
-            resp.raise_for_status()
-        return resp
+            try:
+                resp.raise_for_status()
+            except HTTPError as exc:
+                raise APIError(decode_http_err(exc)) from exc
+        try:
+            return resp.json()
+        except JSONDecodeError:
+            return {}
 
     return inner

@@ -20,14 +20,16 @@ from urllib.parse import urljoin, urlparse
 import requests
 from requests.models import Response
 from tqdm import tqdm
+from urllib3.exceptions import ReadTimeoutError
 
 from periflow.auth import auto_token_refresh, get_auth_header
 from periflow.context import get_current_group_id, get_current_project_id
 from periflow.di.injector import get_injector
-from periflow.errors import AuthTokenNotFoundError
+from periflow.errors import MaxRetriesExceededError
+from periflow.logging import logger
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.fs import (
-    S3_MPU_PART_MAX_SIZE,
+    S3_PART_MAX_SIZE,
     get_file_size,
     get_total_file_size,
     storage_path_to_local_path,
@@ -39,23 +41,14 @@ from periflow.utils.url import URLProvider
 
 T = TypeVar("T", bound=Union[int, str, uuid.UUID])
 
-
-def safe_request(
-    func: Callable[..., Response], *, err_prefix: str = ""
-) -> Callable[..., Response]:
-    """Wrapper function to send requests with an error checking."""
-    if err_prefix:
-        err_prefix = err_prefix.rstrip() + "\n"
-
-    @wraps(func)
-    def wrapper(*args, **kwargs) -> Response:  # type: ignore
-        try:
-            return func(*args, **kwargs)
-        except requests.HTTPError as exc:
-            # typer.secho(exc.response.content)
-            secho_error_and_exit(err_prefix + decode_http_err(exc))
-
-    return wrapper
+RETRYABLE_REQUEST_ERRORS = (
+    ConnectionError,
+    requests.exceptions.ReadTimeout,
+    requests.exceptions.ConnectionError,
+    ReadTimeoutError,
+)
+API_REQUEST_MAX_RETRIES = 3
+DEFAULT_PAGINATION_SIZE = 20
 
 
 @dataclass
@@ -112,7 +105,54 @@ class URLTemplate:
         return URLTemplate(pattern=Template(self.pattern.template))
 
 
-class Client(ABC, Generic[T]):
+class RequestInterface:
+    """Request API mixin."""
+
+    def safe_request(self, func: Callable[..., Response]) -> Callable[..., Response]:
+        """Wrapper function to send requests with the retry and error handling."""
+
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> Response:  # type: ignore
+            final_exc = None
+            for i in range(API_REQUEST_MAX_RETRIES):
+                try:
+                    return func(*args, **kwargs)
+                except RETRYABLE_REQUEST_ERRORS:
+                    logger.info(
+                        ("Retry the failed request (attempt %s / %s)."),
+                        i + 1,
+                        API_REQUEST_MAX_RETRIES,
+                    )
+            if final_exc is not None:
+                raise MaxRetriesExceededError(final_exc)
+
+        return wrapper
+
+    def paginated_get(
+        self,
+        callback: Callable[..., Response],
+        path: Optional[str] = None,
+        limit: int = DEFAULT_PAGINATION_SIZE,
+        params: Optional[dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """List objects with pagination."""
+        page_size = min(DEFAULT_PAGINATION_SIZE, limit)
+        params = {"limit": page_size, **params}
+        response_dict = callback(path=path, params=params).json()
+        items = response_dict["results"]
+        next_cursor = response_dict["next_cursor"]
+
+        while next_cursor is not None and len(items) < limit:
+            response_dict = callback(
+                path=path, params={**params, "cursor": next_cursor}
+            ).json()
+            items.extend(response_dict["results"])
+            next_cursor = response_dict["next_cursor"]
+
+        return items
+
+
+class Client(ABC, Generic[T], RequestInterface):
     """Base interface of client to PeriFlow system."""
 
     def __init__(self, **kwargs):
@@ -130,105 +170,130 @@ class Client(ABC, Generic[T]):
     @property
     def default_request_options(self) -> Dict[str, Any]:
         """Common request options."""
-        try:
-            return {
-                "headers": get_auth_header(),
-                "timeout": DEFAULT_REQ_TIMEOUT,
-            }
-        except AuthTokenNotFoundError as exc:
-            secho_error_and_exit(str(exc))
+        return {
+            "headers": get_auth_header(),
+            "timeout": DEFAULT_REQ_TIMEOUT,
+        }
 
-    @auto_token_refresh
-    def list(self, path: Optional[str] = None, **kwargs) -> Response:
+    def list(
+        self,
+        path: Optional[str] = None,
+        *,
+        pagination: bool = True,
+        limit: int = DEFAULT_PAGINATION_SIZE,
+        **kwargs,
+    ) -> List[Dict[str, Any]]:
         """Send a request to list objects."""
-        return requests.get(
-            self.url_template.render(path=path, **self.url_kwargs),
-            **self.default_request_options,
-            **kwargs,
-        )
+        if pagination:
+            page_size = min(DEFAULT_PAGINATION_SIZE, limit)
+            params = kwargs.pop("params", {})
+            params = {"limit": page_size, **params}
+            data = self._list(path=path, params=params, **kwargs)
+            items = data["results"]
+            next_cursor = data["next_cursor"]
+
+            while next_cursor is not None and len(items) < limit:
+                data = self._list(
+                    path=path,
+                    params={**params, "cursor": next_cursor},
+                    **kwargs,
+                )
+                items.extend(data["results"])
+                next_cursor = data["next_cursor"]
+
+            return items
+        else:
+            return self._list(path=path, **kwargs)
 
     @auto_token_refresh
     def retrieve(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to retrieve a specific object."""
-        return requests.get(
+        resp = self.safe_request(requests.get)(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
+        return resp
 
     @auto_token_refresh
     def post(self, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to post an object."""
-        return requests.post(
+        resp = self.safe_request(requests.post)(
             self.url_template.render(path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
+        return resp
 
     @auto_token_refresh
     def partial_update(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to partially update a specific object."""
-        return requests.patch(
+        resp = self.safe_request(requests.patch)(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
+        return resp
 
     @auto_token_refresh
     def delete(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to delete a specific obejct."""
-        return requests.delete(
+        resp = self.safe_request(requests.delete)(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
+        return resp
 
     @auto_token_refresh
     def update(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to update a specific object."""
-        return requests.put(
+        resp = self.safe_request(requests.put)(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
+        return resp
 
     def bare_post(self, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request without automatic auth."""
-        r = requests.post(
+        resp = self.safe_request(requests.post)(
             self.url_template.render(path=path, **self.url_kwargs),
             timeout=DEFAULT_REQ_TIMEOUT,
             **kwargs,
         )
-        r.raise_for_status()
-        return r
+        resp.raise_for_status()
+        return resp
+
+    @auto_token_refresh
+    def _list(self, path: Optional[str] = None, **kwargs) -> Response:
+        """Send a request to list objects."""
+        resp = self.safe_request(requests.get)(
+            self.url_template.render(path=path, **self.url_kwargs),
+            **self.default_request_options,
+            **kwargs,
+        )
+        return resp
 
 
-class UserRequestMixin:
+class UserRequestMixin(RequestInterface):
     """Mixin class of user-level requests."""
 
     user_id: uuid.UUID
 
     @auto_token_refresh
-    def _userinfo(self) -> Response:
+    def get_current_user_info(self) -> Response:
         injector = get_injector()
         url_provider = injector.get(URLProvider)
-        try:
-            return requests.get(
-                url_provider.get_auth_uri("oauth2/userinfo"),
-                headers=get_auth_header(),
-                timeout=DEFAULT_REQ_TIMEOUT,
-            )
-        except AuthTokenNotFoundError as exc:
-            secho_error_and_exit(str(exc))
-
-    def get_current_userinfo(self) -> Dict[str, Any]:
-        """Get the currently logged-in user info."""
-        response = safe_request(self._userinfo, err_prefix="Failed to get userinfo.")()
-        return response.json()
+        return self.safe_request(requests.get)(
+            url_provider.get_auth_uri("oauth2/userinfo"),
+            headers=get_auth_header(),
+            timeout=DEFAULT_REQ_TIMEOUT,
+        )
 
     def get_current_user_id(self) -> uuid.UUID:
         """Get the currently logged-in user ID."""
-        userinfo = self.get_current_userinfo()
+        userinfo = self.get_current_user_info()
         return uuid.UUID(userinfo["sub"].split("|")[1])
 
     def initialize_user(self):
@@ -280,7 +345,7 @@ class UploadableClient(Client[T], Generic[T]):
             List[Dict[str, Any]]: A response body that has presigned URL info to upload files.
 
         """
-        response = safe_request(self.post, err_prefix="Failed to get presigned URLs.")(
+        response = self.safe_request(self.post)(
             path=f"{obj_id}/upload/", json={"paths": storage_paths}
         )
         return response.json()
@@ -305,11 +370,8 @@ class UploadableClient(Client[T], Generic[T]):
         """
         start_mpu_resps = []
         for local_path, storage_path in zip(local_paths, storage_paths):
-            num_parts = math.ceil(get_file_size(local_path) / S3_MPU_PART_MAX_SIZE)
-            response = safe_request(
-                self.post,
-                err_prefix="Failed to get presigned URLs for multipart upload.",
-            )(
+            num_parts = math.ceil(get_file_size(local_path) / S3_PART_MAX_SIZE)
+            response = self.safe_request(self.post)(
                 path=f"{obj_id}/start_mpu/",
                 json={
                     "path": storage_path,
@@ -331,9 +393,7 @@ class UploadableClient(Client[T], Generic[T]):
             parts (List[Dict[str, Any]]): A list of upload part info
 
         """
-        safe_request(
-            self.post, err_prefix=f"Failed to complete multipart upload for {path}"
-        )(
+        self.safe_request(self.post)(
             path=f"{obj_id}/complete_mpu/",
             json={
                 "path": path,
@@ -352,9 +412,7 @@ class UploadableClient(Client[T], Generic[T]):
             parts (List[Dict[str, Any]]): A list of upload part info
 
         """
-        safe_request(
-            self.post, err_prefix=f"Failed to abort multipart upload for {path}"
-        )(
+        self.safe_request(self.post)(
             path=f"{obj_id}/abort_mpu/",
             json={
                 "path": path,

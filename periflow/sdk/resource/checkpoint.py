@@ -13,9 +13,12 @@ from uuid import UUID
 
 import yaml
 
-from periflow.client.checkpoint import CheckpointClient, CheckpointFormClient
+from periflow.client.checkpoint import (
+    CheckpointClient,
+    CheckpointFormClient,
+    GroupProjectCheckpointClient,
+)
 from periflow.client.credential import CredentialClient
-from periflow.client.group import GroupProjectCheckpointClient
 from periflow.cloud.storage import build_storage_client
 from periflow.enums import CheckpointCategory, CheckpointDataType, CredType, StorageType
 from periflow.errors import (
@@ -32,12 +35,12 @@ from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.fs import (
     FileSizeType,
     attach_storage_path_prefix,
-    download_file,
     expand_paths,
     get_file_info,
     strip_storage_path_prefix,
 )
 from periflow.utils.maps import cred_type_map, cred_type_map_inv
+from periflow.utils.transfer import DownloadManager
 from periflow.utils.validate import (
     validate_checkpoint_attributes,
     validate_cloud_storage_type,
@@ -737,9 +740,10 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
         ckpt_form_id = client.get_first_checkpoint_form(id)
         files = form_client.get_checkpoint_download_urls(ckpt_form_id)
 
+        download_manager = DownloadManager()
         for i, file in enumerate(files):
-            logger.info("Downloading files {%d}/{%d}...", i + 1, len(files))
-            download_file(
+            logger.info("Downloading files %d/%d...", i + 1, len(files))
+            download_manager.download_file(
                 url=file["download_url"],
                 out=os.path.join(save_dir, strip_storage_path_prefix(file["path"])),
             )
