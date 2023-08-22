@@ -1,15 +1,15 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Test ProjectClient Service"""
+"""Test Project Client."""
 
 from __future__ import annotations
 
 import pytest
 import requests_mock
-import typer
 
 from periflow.client.project import ProjectCredentialClient
 from periflow.enums import CredType
+from periflow.errors import APIError
 
 
 @pytest.fixture
@@ -42,5 +42,5 @@ def test_project_credential_client_service(
         ),
         status_code=400,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         project_credential_client.list_credentials(CredType.S3)

@@ -24,6 +24,7 @@ from periflow.errors import (
 )
 from periflow.formatter import PanelFormatter, TableFormatter
 from periflow.sdk.resource.deployment import Deployment as DeploymentAPI
+from periflow.utils.decorator import check_api
 from periflow.utils.format import (
     datetime_to_pretty_str,
     datetime_to_simple_string,
@@ -234,6 +235,7 @@ def get_deployment_id_from_namespace(namespace: str):
 
 
 @app.command()
+@check_api
 def list(
     include_terminated: bool = typer.Option(
         False,
@@ -283,6 +285,7 @@ def list(
 
 
 @app.command()
+@check_api
 def stop(deployment_id: str = typer.Argument(..., help="ID of deployment to stop")):
     """Stops a running deployment."""
     DeploymentAPI.stop(id=deployment_id)
@@ -293,6 +296,7 @@ def stop(deployment_id: str = typer.Argument(..., help="ID of deployment to stop
 
 
 @app.command()
+@check_api
 def view(
     deployment_id: str = typer.Argument(..., help="deployment id to inspect detail.")
 ):
@@ -312,6 +316,7 @@ def view(
 
 
 @app.command()
+@check_api
 def metrics(
     deployment_id: str = typer.Argument(
         ..., help="ID of deployment to inspect in detail."
@@ -365,6 +370,7 @@ def metrics(
 
 
 @app.command()
+@check_api
 def usage(
     year: int = typer.Argument(...),
     month: int = typer.Argument(...),
@@ -412,6 +418,7 @@ def usage(
 
 
 @app.command()
+@check_api
 def log(
     deployment_id: str = typer.Argument(..., help="ID of deployment to get log."),
     replica_index: int = typer.Argument(
@@ -429,6 +436,7 @@ def log(
 
 
 @app.command()
+@check_api
 def create(
     checkpoint_id: UUID = typer.Option(
         ..., "--checkpoint-id", "-i", help="Checkpoint id to deploy."
@@ -570,6 +578,7 @@ def create(
 
 
 @app.command()
+@check_api
 def update(
     deployment_id: str = typer.Argument(..., help="ID of deployment to update."),
     min_replicas: int = typer.Option(
@@ -598,6 +607,7 @@ def update(
 
 
 @app.command()
+@check_api
 def event(
     deployment_id: str = typer.Argument(..., help="ID of deployment to get events."),
 ):
@@ -610,6 +620,7 @@ def event(
 
 
 @app.command()
+@check_api
 def req_resp(
     deployment_id: str = typer.Argument(
         ..., help="ID of deployment to download request-response logs."

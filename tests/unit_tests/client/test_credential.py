@@ -1,7 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Test CredentialClient Service"""
-
+"""Test Credential Client."""
 
 from __future__ import annotations
 
@@ -10,10 +9,10 @@ from uuid import uuid4
 
 import pytest
 import requests_mock
-import typer
 
 from periflow.client.credential import CredentialClient, CredentialTypeClient
 from periflow.enums import CredType
+from periflow.errors import APIError
 
 
 @pytest.fixture
@@ -47,7 +46,7 @@ def test_credential_client_get_credential(
 
     # Failed due to HTTP error
     requests_mock.get(url_template.render(credential_id=cred_id), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         credential_client.get_credential(cred_id)
 
 
@@ -75,7 +74,7 @@ def test_credential_client_update_credential(
 
     # Failed due to HTTP error
     requests_mock.patch(url_template.render(credential_id=cred_id), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         credential_client.update_credential(
             cred_id, name="my-az-blob-secret", type_version="1", value={"k": "v"}
         )
@@ -95,7 +94,7 @@ def test_credential_client_delete_credential(
 
     # Failed due to HTTP error
     requests_mock.delete(url_template.render(credential_id=cred_id), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         credential_client.delete_credential(cred_id)
 
 
@@ -220,5 +219,5 @@ def test_credential_type_client_get_schema_by_type(
 
     # Failed due to HTTP error
     requests_mock.get(credential_type_client.url_template.render(), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         credential_type_client.get_schema_by_type(CredType.S3)

@@ -21,8 +21,8 @@ from requests import Request, Session
 from tqdm import tqdm
 from tqdm.utils import CallbackIOWrapper
 
-from periflow.utils.format import secho_error_and_exit
 from periflow.enums import FileSizeType
+from periflow.utils.format import secho_error_and_exit
 
 KiB = 1024
 MiB = KiB * KiB
@@ -155,6 +155,7 @@ def expand_paths(path: Path, size_type: FileSizeType) -> List[str]:
 
     Returns:
         List[str]: A list of file paths from the source path
+
     """
     if path.is_file():
         paths = [str(path)]
@@ -207,6 +208,7 @@ def get_file_size(file_path: str, prefix: Optional[str] = None) -> int:
 
     Returns:
         int: The size of a file.
+
     """
     if prefix is not None:
         file_path = os.path.join(prefix, file_path)
@@ -271,15 +273,16 @@ def upload_part(
     """Upload a specific part of the multipart upload payload.
 
     Args:
-        file_path (str): Path to file to upload
-        chunk_index (int): Chunk index to upload
-        part_number (int): Part number of the multipart upload
-        upload_url (str): A presigned URL for the multipart upload
-        ctx (tqdm): tqdm context to update the progress
+        file_path (str): Path to file to upload.
+        chunk_index (int): Chunk index to upload.
+        part_number (int): Part number of the multipart upload.
+        upload_url (str): A presigned URL for the multipart upload.
+        ctx (tqdm): tqdm context to update the progress.
         is_last_part (bool): Whether this part is the last part of the payload.
 
     Returns:
-        Dict[str, Any]: _description_
+        Dict[str, Any]: Uploaded part info.
+
     """
     with open(file_path, "rb") as f:
         fileno = f.fileno()
@@ -312,10 +315,11 @@ def strip_storage_path_prefix(path: str) -> str:
 
     Args:
         path (str): Actual checkpoint storage path. The path may starts with the prefix
-                    that contain the iteration number and distributed training configuration
+            that contain the iteration number and distributed training configuration.
 
     Returns:
-        str: Path without the prefix
+        str: Path without the prefix.
+
     """
     return re.sub(
         pattern=r"iter_\d{7}/mp\d{3}-\d{3}pp\d{3}-\d{3}/",
@@ -335,12 +339,12 @@ def attach_storage_path_prefix(
     """Attach a filename prefix to mark up iteration and dist info.
 
     Args:
-        path (str): The relative path to file
-        iteration (int): Checkpoint iteration number
-        mp_rank (int): Model parallelism(a.k.a. tensor parallelism) rank
-        mp_degree (int): Model parallelism(a.k.a. tensor parallelism) degree
-        pp_rank (int): Pipelined model parallelism rank
-        pp_degree (int): Pipelined model parallelism degree
+        path (str): The relative path to file.
+        iteration (int): Checkpoint iteration number.
+        mp_rank (int): Model parallelism(a.k.a. tensor parallelism) rank.
+        mp_degree (int): Model parallelism(a.k.a. tensor parallelism) degree.
+        pp_rank (int): Pipelined model parallelism rank.
+        pp_degree (int): Pipelined model parallelism degree.
 
     Returns:
         str: Storage path with the prefix

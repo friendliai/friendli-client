@@ -13,6 +13,7 @@ from uuid import UUID
 
 import yaml
 
+from periflow.client.catalog import CatalogClient
 from periflow.client.checkpoint import (
     CheckpointClient,
     CheckpointFormClient,
@@ -20,7 +21,13 @@ from periflow.client.checkpoint import (
 )
 from periflow.client.credential import CredentialClient
 from periflow.cloud.storage import build_storage_client
-from periflow.enums import CheckpointCategory, CheckpointDataType, CredType, StorageType
+from periflow.enums import (
+    CatalogImportMethod,
+    CheckpointCategory,
+    CheckpointDataType,
+    CredType,
+    StorageType,
+)
 from periflow.errors import (
     CheckpointConversionError,
     InvalidConfigError,
@@ -75,13 +82,13 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             iteration (Optional[int], optional): The iteration of the checkpoint. Defaults to None.
             attr_file_path (Optional[str], optional): Path to the checkpoint attribute YAML file. Defaults to None.
 
-        Returns:
-            V1Checkpoint: Created checkpoint object.
-
         Raises:
             InvalidConfigError: Raised when checkpoint attribute file located at `attr_file_path` has invalid YAML format. Also raised when the credential with `credential_id` is not for the cloud provider of `cloud_storage`. Also raised when `region` is invalid.
             NotSupportedError: Raised when `cloud_storage` is not supported yet.
             InvalidAttributesError: Raised when the checkpoint attributes described in `attr_file_path` is in the invalid format.
+
+        Returns:
+            V1Checkpoint: Created checkpoint object.
 
         Examples:
             Basic usage:
@@ -332,11 +339,14 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             ```python
             checkpoints = pf.Checkpoint.list(
-                category=CheckpointCategory.USER_PROVIDED, deleted=True
+                category="USER", deleted=True
             )
             ```
 
         """
+        if category is not None:
+            category = validate_enums(category, CheckpointCategory)
+
         client = GroupProjectCheckpointClient()
         checkpoints = [
             V1Checkpoint.model_validate(raw_ckpt)
@@ -423,13 +433,13 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             attr_file_path (Optional[str], optional): Path to the checkpoint attribute YAML file. Defaults to None.
             max_workers (int, optional): The number of concurrency. Defaults to min(32, (os.cpu_count() or 1) + 4).
 
-        Returns:
-            V1Checkpoint: Created checkpoint object.
-
         Raises:
             NotFoundError: Raised when `source_path` does not exist.
             InvalidConfigError: Raised when the attribute file located at `attr_file_path` has invalid YAML format.
             InvalidAttributesError: Raised when the checkpoint attributes described in `attr_file_path` is in the invalid format.
+
+        Returns:
+            V1Checkpoint: Created checkpoint object.
 
         Examples:
             Basic usage:
@@ -796,6 +806,31 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
         raw_ckpt = client.restore_checkpoint(id)
         ckpt = V1Checkpoint.model_validate(raw_ckpt)
+        return ckpt
+
+    @staticmethod
+    def import_from_catalog(
+        id: UUID, name: str, method: CatalogImportMethod
+    ) -> V1Checkpoint:
+        """Tries out a public checkpoint in catalog.
+
+        Args:
+            id (UUID): ID of a catalog.
+            name (str): The name of the checkpoint that will be created in the project.
+            method (CatalogImportMethod): Import method.
+
+        Returns:
+            V1Checkpoint: The created checkpoint object by importing the public checkpoint in the catalog.
+
+        """
+        method = validate_enums(method, CatalogImportMethod)
+
+        client = CatalogClient()
+        raw_ckpt = client.try_out(catalog_id=id, name=name, method=method)
+        ckpt = V1Checkpoint.model_validate(raw_ckpt)
+        if ckpt.forms:
+            for file in ckpt.forms[0].files:
+                file.path = strip_storage_path_prefix(file.path)
         return ckpt
 
     @staticmethod

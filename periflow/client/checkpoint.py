@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""PeriFlow CheckpointClient Service."""
+"""PeriFlow Checkpoint Clients."""
 
 from __future__ import annotations
 

@@ -9,6 +9,7 @@ import typer
 from periflow.client.deployment import PFSVMClient
 from periflow.enums import GpuType
 from periflow.formatter import TableFormatter
+from periflow.utils.decorator import check_api
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -47,6 +48,7 @@ serving_vm_formatter = TableFormatter(
 
 # pylint: disable=redefined-builtin
 @app.command()
+@check_api
 def list():
     """List up available VMs."""
     pfs_vm_client = PFSVMClient()

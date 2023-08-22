@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Test GroupClient Service"""
+"""Test Group Client."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ from typing import Any, Dict
 
 import pytest
 import requests_mock
-import typer
 
 from periflow.client.group import GroupClient, GroupProjectCheckpointClient
 from periflow.enums import CheckpointCategory, StorageType
+from periflow.errors import APIError
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def test_group_client_create_group(
 
     # Failed due to HTTP error
     requests_mock.post(group_client.url_template.render(), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         group_client.create_group("name")
 
 
@@ -70,7 +70,7 @@ def test_group_client_get_group(
 
     # Failed due to HTTP error
     requests_mock.get(group_client.url_template.render(group_id), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         group_client.get_group(group_id)
 
 
@@ -88,7 +88,7 @@ def test_group_client_invite_to_group(
 
     # Failed due to HTTP error
     requests_mock.post(url_template.render(pf_group_id=group_id), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         group_client.invite_to_group(group_id, "test@test.com")
 
 
@@ -172,7 +172,7 @@ def test_group_checkpoint_list_checkpoints(
 
     # Failed due to HTTP error
     requests_mock.get(url, status_code=400)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         group_project_checkpoint_client.list_checkpoints(
             CheckpointCategory.USER_PROVIDED, 10, deleted=False
         )
@@ -260,7 +260,7 @@ def test_group_checkpoint_create_checkpoints(
 
     # Failed due to HTTP error
     requests_mock.post(url, status_code=400)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         group_project_checkpoint_client.create_checkpoint(
             name="my-ckpt",
             vendor=StorageType.S3,

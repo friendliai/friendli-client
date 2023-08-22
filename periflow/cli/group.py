@@ -14,6 +14,7 @@ from periflow.client.user import UserClient, UserGroupClient
 from periflow.context import get_current_group_id
 from periflow.enums import GroupRole
 from periflow.formatter import PanelFormatter, TableFormatter
+from periflow.utils.decorator import check_api
 from periflow.utils.format import secho_error_and_exit
 
 app = typer.Typer(
@@ -38,6 +39,7 @@ member_table_formatter = TableFormatter(
 
 
 @app.command()
+@check_api
 def invite(email: str = typer.Argument(..., help="Invitation recipient email address")):
     """Invite a new member to the organization.
 
@@ -58,6 +60,7 @@ def invite(email: str = typer.Argument(..., help="Invitation recipient email add
 
 
 @app.command("set-role")
+@check_api
 def set_role(
     email: str = typer.Argument(..., help="Email of the user to assign a role"),
     role: GroupRole = typer.Argument(..., help="Organization role"),
@@ -93,6 +96,7 @@ def set_role(
 
 
 @app.command("delete-user")
+@check_api
 def delete_user(
     email: str = typer.Argument(
         ...,
@@ -161,6 +165,7 @@ def get_current_org() -> Dict[str, Any]:
 
 
 @app.command()
+@check_api
 def members():
     """List up members in the current working organization."""
     group_client = GroupClient()

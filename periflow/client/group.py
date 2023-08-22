@@ -2,7 +2,7 @@
 
 # pylint: disable=too-many-arguments
 
-"""PeriFlow GroupClient Service."""
+"""PeriFlow Group Clients."""
 
 from __future__ import annotations
 

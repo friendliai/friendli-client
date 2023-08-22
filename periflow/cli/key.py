@@ -9,6 +9,7 @@ from dateutil.parser import parse
 
 from periflow.client.user import UserAccessKeyClient
 from periflow.formatter import PanelFormatter, TableFormatter
+from periflow.utils.decorator import check_api
 from periflow.utils.format import datetime_to_simple_string
 
 app = typer.Typer(
@@ -50,6 +51,7 @@ access_key_panel = PanelFormatter(
 
 # pylint: disable=redefined-builtin
 @app.command()
+@check_api
 def list():
     """List all API keys."""
     client = UserAccessKeyClient()
@@ -63,6 +65,7 @@ def list():
 
 
 @app.command()
+@check_api
 def create(name: str = typer.Option(..., "--name", "-n", help="Name of api key.")):
     """Create a new API key."""
     client = UserAccessKeyClient()
@@ -86,6 +89,7 @@ def create(name: str = typer.Option(..., "--name", "-n", help="Name of api key."
 
 
 @app.command()
+@check_api
 def delete(access_key_id: str = typer.Argument(..., help="ID of key to delete")):
     """Delete API key."""
     client = UserAccessKeyClient()
