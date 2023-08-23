@@ -2,6 +2,9 @@
 sidebar_position: 2
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # How to Run Periflow Container?
 
 
@@ -15,7 +18,7 @@ This tutorial will guide you through the process of running Periflow Container.
 
 Before you begin, make sure you have to signup to Periflow Cloud.
 In the next step, you will need to pull the Docker container image.
-You can find instructions on how to do this in the guide on the Periflow Cloud webpage.
+You can find instructions on how to do this in the guide on the [Periflow Cloud webpage](PERIFLOW CLOUD WEBPAGE URL).
 
 :::info
 ### Converting Hugging Face Checkpoint (Optional)
@@ -26,6 +29,206 @@ If you have a Hugging Face checkpoint and want to convert it to a PeriFlow-compa
 pip install periflow-client[mllib]
 ```
 
-If you don't need to convert the checkpoint, you don't need to install `periflow-client`.
-
 :::
+
+
+## Step 1. Converting Hugging Face Checkpoint (Optional)
+
+If you want to serve your AI model with PeriFlow, you'll need to convert it to the PeriFlow-compatible format.
+Here's how you can easily convert a Hugging Face model checkpoint to the PeriFlow format:
+
+1. Open a terminal shell (if not already open).
+2. Use the following command to convert the Hugging Face model checkpoint to the PeriFlow-compatible format. Replace `$MODEL_NAME_OR_PATH`, `$OUTPUT_DIR`, and `$DATA_TYPE` with the actual values you want.
+
+```sh
+pf checkpoint convert \
+    --model-name-or-path $MODEL_NAME_OR_PATH \
+    --output-dir $OUTPUT_DIR \
+    --data-type $DATA_TYPE
+```
+
+:::info
+You have two options for `$MODEL_NAME_OR_PATH`:
+
+- Enter the local checkpoint path.
+- Use the Hugging Face model name (e.g., `gpt2`, `EleutherAI/gpt-j-6b`).
+
+For the `$DATA_TYPE` parameter, you can choose from three options:
+
+- `fp16`: 16-bit floating-point format.
+- `fp32`: 32-bit floating-point format.
+- `bf16`: bfloat16 format.
+:::
+
+3. After executing the above command, the following files will be created at $OUTPUT_DIR:
+    - `model.h5`: The converted model checkpoint file with HDF5 format.
+    - `tokenizer.json`: Tokenizer file used for tokenizing/detokenizing the model inputs/ouputs.
+    - `attr.yaml`: The checkpoint attributes file containing the model configurations and generation configurations.
+
+:::caution
+PeriFlow CLI will try to configure `tokenizer.json` and `attr.yaml` automatically, but the automatic configuration might fail in the following cases:
+
+- If the model does support the [**Fast tokenizer**](https://huggingface.co/learn/nlp-course/chapter6/3), which is compatible with PeriFlow, `tokenizer.json` will not be created.
+- If the model config or generation config published to Hugging Face does not contain the required information, the value will be left blank (marked with "FILL ME") in `attr.yaml`.
+- If there is a conflict between the model config and the generation config published to the Hugging Face, the value will be left blank (marked with "FILL ME") in `attr.yaml`.
+:::
+
+After completing this step, your Hugging Face model checkpoint will be converted to the PeriFlow-compatible format, and you'll be able to use it with PeriFlow seamlessly.
+
+
+## Step 2. Run PeriFlow Container with Checkpoint
+
+If the PeriFlow-compatible checkpoint is ready, here's the instructions to run your model with PeriFlow Container.
+PeriFlow Container supports the following model types:
+
+- GPT
+- Llama (inlcuding Llama 2)
+- MPT
+- Falcon
+- BLOOM
+- GPT-J
+- GPT-NeoX
+- OPT
+- T5 (including T5 v1.1)
+- BlenderBot
+
+
+The following instructions assumed that `checkpoint.h5` file (and `tokenizer.json`) is in $LOCAL_CKPT_PATH.
+
+
+### Run PeriFlow Container
+```sh
+docker run --gpus=$NUMBER_OF_GPUS -v $LOCAL_CKPT_PATH:/model \
+ --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+"/root/launcher [OPTIONS]"
+
+ --model-type gpt -d $NUMBER_OF_GPUS \
+ --ckpt-path /model/*.h5 --dtype $DATA_TYPE \
+ --vocab-size $VOCAB_SIZE --eos-token $EOS_TOKEN \
+ --max-length $MAX_LENGTH --web-server-port $WEB_PORT ARGS \
+"
+```
+
+### Options
+#### General Options
+| Options | Type | Summary | Default | Required |
+|---------|------|---------|---------|----------|
+| `--version` | - | Print PeriFlow Container version. | - | ❌ |
+| `--help` | - | Print PeriFlow Container help message. | - | ❌ |
+
+#### Launch Options
+| Options | Type | Summary | Default | Required |
+|---------|------|---------|---------|----------|
+| `--web-server-port` | INT | Web server port. | - | ✅ |
+| `--metrics-port` | INT | Prometheus metrics export port. | 8281 | ❌ |
+| `--tokenizer-file-path` | TEXT | Absolute path of tokenizer file. | - | ❌ |
+| `--bad-stop-file-path` | TEXT | Json file path that contains stop/bad words/tokens. | - | ❌ |
+| `--num-request-threads` | INT | Thread pool size for handling HTTP requests. | 4 | ❌ |
+| `--timeout-microseconds` | INT | Servier-side timeout for client requests, in microseconds. | 0 (no timeout) | ❌ |
+| `--ignore-nan-error` | - | Ignore Nan error. | - | ❌ |
+| `--num-devices, -d` | INT | Number of devices to use in tensor parallelism degree. This value should not be larger than the number of available GPUs. | 1 | ❌ |
+| `--max-token-count` | INT | Max number of tokens that can be processed at once. | 8192 | ❌ |
+| `--max-batch-size` | INT | Max number of items that can be processed at once. | 256 | ❌ |
+| `--dtype` | CHOICE: [bf16, fp16, fp32] | Checkpoint data type. Choose one of {fp16|bf16|fp32} | fp16 | ❌ |
+| `--ckpt-path` | TEST | Absolute path of model checkpoint. If not specified, use uninitialized (garbage) values for model parameters. | - | ❌ |
+
+
+#### Model Options
+
+##### Decoder Only Model Options
+The following tables are the options for decoder only models: GPT, Llama, MPT, Falcon, BLOOM, GPT-J, GPT-NeoX, OPT
+
+| Options | Type | Summary | Default | Required |
+|---------|------|---------|---------|----------|
+| `--num-layers` | INT | Number of layers. | - | ✅ ALL |
+| `--num-heads` | INT | Number of attention heads. | - | ✅ ALL |
+| `--num-kv-heads` | INT | Number of kv heads. If this value is different from `num-heads`, it implies grouped query attention. | `num-heads` | ❌ ALL |
+| `--head-size` | INT | Attention head size | - | ✅ ALL |
+| `--rotary-dim` | INT | Rotary position embedding dim size. Only for models with RoPE. | - | ✅ Llama, Falcon, GPT-J, GPT-NeoX <br />  ❌ GPT, MPT, BLOOM, OPT |
+| `--hidden-size` | INT | Hidden size of model. | `num-heads * head-size` | ❌ ALL |
+| `--ff-intermediate-size` | INT | Feed forward intermediate size. Only for Llama model. | `hidden-size * 4` | ❌ ALL |
+| `--max-length` | INT | Max length, including both prompt tokens and generated tokens. | - | ✅ ALL |
+| `--vocab-size` | INT | Vocabulary size. | - | ✅ ALL |
+| `--eos-token` | TEXT | Comma separated list of eos tokens. | - | ✅ ALL |
+| `--clip-qkv` | FLOAT | Clipping value for attention qkv. Only for MPT models. | 0.f | ❌ ALL |
+| `--clip-qkv` | FLOAT | Clipping value for attention qkv. Only for MPT models. | 0.f | ❌ ALL |
+| `--scale-attn-by-inverse-layer-idx` | - | Whether to additionally scale attention weights by `1 / layer_idx + 1`. If not given, do not scale. | - | ❌ ALL |
+| `--layer-norm-eps` | FLOAT | 'epsilon' value of (rms) layer norm. | 1e-5 | ❌ ALL |
+
+
+##### Encoder Decoder Model Options
+The following tables are the options for encoder decoder models: T5, BlenderBot
+
+| Options | Type | Summary | Default | Required |
+|---------|------|---------|---------|----------|
+| `--num-encoder-layers` | INT | Number of encoder layers. | - | ✅ ALL |
+| `--num-decoder-layers` | INT | Number of decoder layers. | - | ✅ ALL |
+| `--num-heads` | INT | Number of attention heads. | - | ✅ ALL |
+| `--head-size` | INT | Attention head size | - | ✅ ALL |
+| `--hidden-size` | INT | Hidden size of model. | `num-heads * head-size` | ❌ ALL |
+| `--ff-intermediate-size` | INT | Feed forward intermediate size. | `hidden-size * 4` | ✅ ALL |
+| `--max-input-length` | INT | Max input token length. | - | ✅ ALL |
+| `--max-output-length` | INT | Max output token length. | - | ✅ ALL |
+| `--num-pos-emb-buckets` | INT | Number of position embedding buckets. Only for models with T5-style relative pos embedding. | - | ✅ T5 <br /> ❌ BlenderBot |
+| `--max-pos-distance` | INT | Max position distance. Only for models with T5-style relative pos embedding. | - | ✅ T5 <br /> ❌ BlenderBot |
+| `--vocab-size` | INT | Vocabulary size. | - | ✅ ALL |
+| `--eos-token` | TEXT | Comma separated list of eos tokens. | - | ✅ ALL |
+| `--decoder-start-token` | INT | Decoder start token. | - | ✅ ALL |
+| `--layer-norm-eps` | FLOAT | 'epsilon' value of (rms) layer norm. | 1e-5 | ❌ ALL |
+
+
+### Example
+The following examples show how to launch Periflow Container for each model type.
+
+
+- GPT
+- Llama (inlcuding Llama 2)
+- MPT
+- Falcon
+- BLOOM
+- GPT-J
+- GPT-NeoX
+- OPT
+- T5 (including T5 v1.1)
+- BlenderBot
+
+
+dtype:fp16
+eos_token:50256
+head_size:64
+num_heads:25
+max_length:1024
+model_type:gpt
+num_layers:48
+vocab_size:50257
+
+
+<Tabs>
+<TabItem value="Apple" label="GPT">
+
+This is an example how to launch [GPT2-XL model](https://huggingface.co/gpt2-xl) with fp16.
+```sh
+docker run --gpus=$NUMBER_OF_GPUS -v $LOCAL_CKPT_PATH:/model \
+ --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+"/root/launcher \
+  --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \ 
+  --ignore-nan-error --dtype fp16 \
+  \
+"
+
+ --model-type gpt -d $NUMBER_OF_GPUS \
+ --ckpt-path /model/*.h5 --dtype $DATA_TYPE \
+ --vocab-size $VOCAB_SIZE --eos-token $EOS_TOKEN \
+ --max-length $MAX_LENGTH --web-server-port $WEB_PORT ARGS \
+"
+
+```
+
+</TabItem>
+<TabItem value="Orange">This is an orange 🍊</TabItem>
+<TabItem value="Banana">This is a banana 🍌</TabItem>
+</Tabs>
+
+
+
+## Step 3. Inference with Running PeriFlow Container
