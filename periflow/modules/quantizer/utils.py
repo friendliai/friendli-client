@@ -78,6 +78,7 @@ def collect_max_stats(
     inputs: Iterator[torch.Tensor],
     target_classes: Tuple[Type[torch.nn.Module], ...],
     max_batch_size: int = 1,
+    tqdm_desc: str = "Collecting stats for Smoothing Model",
 ) -> Tuple[Dict[ModuleName, torch.Tensor], Dict[ModuleName, torch.Tensor]]:
     """Collects the maximum values of input and output activations of a specific model.
 
@@ -112,7 +113,7 @@ def collect_max_stats(
     try:
         for inputs in tqdm(  # type: ignore[assignment]
             batched(inputs, max_batch_size),
-            desc="Collecting stats for SmoothQuant",
+            desc=tqdm_desc,
         ):
             input = torch.concat(list(inputs))
             model(input.to(device))
@@ -133,9 +134,6 @@ def get_smoothquant_calibration_dataset(
             dataset = load_dataset(data_path, split="validation")
     except ValueError as err:
         raise CheckpointQuantizationError(f"load_dataset failed. {str(err)}")
-    logger.info(
-        f"Smoothquant Calibration dataset({data_path}, data_split={data_split}) is successfully loaded!",
-    )
     samples = [data["text"] for data in islice(dataset.shuffle(seed), num_samples)]
     return samples
 

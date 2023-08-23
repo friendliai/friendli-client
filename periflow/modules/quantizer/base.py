@@ -312,15 +312,31 @@ class SmoothQuantQuantizer(AbstractQuantizer):
         )
         model.to(dtype=get_torch_data_type(data_type), device=self.config["device"])
         model.eval()
-        max_input_stats, max_output_stats = collect_max_stats(
+        max_input_stats, _ = collect_max_stats(
             model,
             encoded_samples,
             cast(SmoothQuantHook, self.hook).get_linear_layer_types(),
         )
+        
         self.smooth_inplace(
             model,
             max_input_stats,
             migration_strength=self.config["migration_strength"],
+        )
+        encoded_samples = (
+            tokenizer(
+                x,
+                return_tensors="pt",
+                max_length=self.config["max_length"],
+                truncation=True,
+            ).input_ids
+            for x in samples
+        )
+        max_input_stats, max_output_stats = collect_max_stats(
+            model,
+            encoded_samples,
+            cast(SmoothQuantHook, self.hook).get_linear_layer_types(),
+            tqdm_desc="Collecting max stats for quantization..."
         )
         quant_results = self._quantize(model, max_input_stats, max_output_stats)
 
