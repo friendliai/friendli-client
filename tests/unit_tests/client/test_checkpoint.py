@@ -194,7 +194,7 @@ def test_checkpoint_client_upload(
 
     requests_mock.post(url, json=resp_body)
     assert (
-        checkpoint_form_client.get_spu_urls(
+        checkpoint_form_client.get_upload_urls(
             obj_id=ckpt_form_id,
             storage_paths=paths,
         )
@@ -202,7 +202,7 @@ def test_checkpoint_client_upload(
     )
     requests_mock.post(url, status_code=404)
     with pytest.raises(APIError):
-        checkpoint_form_client.get_spu_urls(
+        checkpoint_form_client.get_upload_urls(
             obj_id=ckpt_form_id,
             storage_paths=paths,
         )
@@ -237,14 +237,14 @@ def test_checkpoint_client_start_multipart_upload(
             f.write(b"\0")
 
         requests_mock.post(url, json=resp_body)
-        assert checkpoint_form_client.get_mpu_urls(
+        assert checkpoint_form_client.get_multipart_upload_urls(
             obj_id=ckpt_form_id,
             local_paths=[os.path.join(dir, path) for path in paths],
             storage_paths=paths,
         ) == [resp_body]
         requests_mock.post(url, status_code=404)
         with pytest.raises(APIError):
-            checkpoint_form_client.get_mpu_urls(
+            checkpoint_form_client.get_multipart_upload_urls(
                 obj_id=ckpt_form_id,
                 local_paths=[os.path.join(dir, path) for path in paths],
                 storage_paths=paths,
@@ -273,13 +273,13 @@ def test_checkpoint_client_complete_multipart_upload(
     ]
 
     requests_mock.post(url, status_code=204)
-    checkpoint_form_client.complete_mpu(
+    checkpoint_form_client.complete_multipart_upload(
         obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
     )
 
     requests_mock.post(url, status_code=404)
     with pytest.raises(APIError):
-        checkpoint_form_client.complete_mpu(
+        checkpoint_form_client.complete_multipart_upload(
             obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
         )
 
@@ -296,13 +296,13 @@ def test_checkpoint_client_abort_multipart_upload(
     fake_upload_id = "fakeuploadid"
 
     requests_mock.post(url, status_code=204)
-    checkpoint_form_client.abort_mpu(
+    checkpoint_form_client.abort_multipart_upload(
         obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id
     )
 
     requests_mock.post(url, status_code=404)
     with pytest.raises(APIError):
-        checkpoint_form_client.abort_mpu(
+        checkpoint_form_client.abort_multipart_upload(
             obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id
         )
 

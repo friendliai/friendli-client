@@ -124,6 +124,14 @@ class RequestTimeoutError(PeriFlowError):
         super().__init__(f"Request timeout: {detail}")
 
 
+class TransferError(PeriFlowError):
+    """Object transfer failed."""
+
+    def __init__(self, detail: Optional[str] = None) -> None:
+        """Initialize TransferError."""
+        super().__init__(f"Transfer failed: {detail}")
+
+
 class APIError(PeriFlowError):
     """PeriFlow API error."""
 

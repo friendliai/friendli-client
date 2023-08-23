@@ -35,7 +35,7 @@ class FileClient(Client[UUID]):
 
         """
         data = self.post(path=f"{misc_file_id}/upload/")
-        return data
+        return data["upload_url"]
 
     def get_misc_file_download_url(self, misc_file_id: UUID) -> str:
         """Get an URL to download file.

@@ -5,8 +5,10 @@
 # pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-locals, redefined-builtin
 
 from __future__ import annotations
+import json
 
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
@@ -14,7 +16,6 @@ from uuid import UUID
 
 import yaml
 from dateutil.tz import tzlocal
-from tqdm import tqdm
 
 from periflow.client.deployment import (
     DeploymentClient,
@@ -45,11 +46,11 @@ from periflow.errors import (
 )
 from periflow.logging import logger
 from periflow.schema.resource.v1.deployment import V1Deployment
+from periflow.schema.resource.v1.transfer import UploadTask
 from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
-from periflow.utils.fs import upload_file
 from periflow.utils.maps import cloud_vm_map, vm_num_gpu_map
-from periflow.utils.transfer import DownloadManager
+from periflow.utils.transfer import DownloadManager, UploadManager
 from periflow.utils.validate import validate_enums
 
 
@@ -204,10 +205,10 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             group_file_client = GroupProjectFileClient()
 
             with TemporaryDirectory() as dir:
-                drc_file_name = "drc.yaml"
+                drc_file_name = "drc.json"
                 drc_file_path = os.path.join(dir, drc_file_name)
                 with open(drc_file_path, "w", encoding="utf-8") as file:
-                    yaml.dump(default_request_config, file)
+                    json.dump(default_request_config, file)
 
                 file_size = os.stat(drc_file_path).st_size
                 if file_size > 10737418240:  # 10GiB
@@ -226,18 +227,11 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 file_id = group_file_client.create_misc_file(file_info=file_info)["id"]
 
                 upload_url = file_client.get_misc_file_upload_url(misc_file_id=file_id)
-                with tqdm(
-                    total=file_size,
-                    unit="B",
-                    unit_scale=True,
-                    unit_divisor=1024,
-                    desc="Uploading default request config",
-                ) as t:
-                    upload_file(
-                        file_path=drc_file_path,
-                        url=upload_url,
-                        ctx=t,
-                    )
+                upload_task = UploadTask(path=drc_file_path, upload_url=upload_url)
+
+                executor = ThreadPoolExecutor()
+                upload_manager = UploadManager(executor=executor)
+                upload_manager.upload_file(upload_task=upload_task)
                 file_client.make_misc_file_uploaded(misc_file_id=file_id)
                 config["orca_config"]["default_request_config_id"] = file_id
 

@@ -9,27 +9,13 @@ import re
 import zipfile
 from contextlib import contextmanager
 from datetime import datetime
-from functools import wraps
 from io import BufferedReader
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List
 
 import pathspec  # type: ignore
 import typer
 from dateutil.tz import tzlocal
-from requests import Request, Session
-from tqdm import tqdm
-from tqdm.utils import CallbackIOWrapper
-
-from periflow.enums import FileSizeType
-from periflow.utils.format import secho_error_and_exit
-
-KiB = 1024
-MiB = KiB * KiB
-GiB = MiB * KiB
-S3_MULTIPART_THRESHOLD = 8 * MiB
-S3_PART_MAX_SIZE = 8 * MiB  # 8 MiB
-S3_UPLOAD_SIZE_LIMIT = 5 * GiB  # 5 GiB
 
 periflow_directory = Path.home() / ".periflow"
 
@@ -109,205 +95,17 @@ def get_file_info(storage_path: str, source_path: Path) -> Dict[str, Any]:
     }
 
 
-def _filter_large_files(paths: List[str]) -> List[str]:
-    return [path for path in paths if get_file_size(path) >= S3_UPLOAD_SIZE_LIMIT]
-
-
-def _filter_small_files(paths: List[str]) -> List[str]:
-    res = []
-    for path in paths:
-        size = get_file_size(path)
-        if size == 0:
-            # NOTE: S3 does not support file uploading for 0B size files.
-            typer.secho(
-                f"Skip uploading file ({path}) with size 0B.", fg=typer.colors.RED
-            )
-            continue
-        if size < S3_UPLOAD_SIZE_LIMIT:
-            res.append(path)
-    return res
-
-
-def filter_files_by_size(paths: List[str], size_type: FileSizeType) -> List[str]:
-    """Filter files by size.
-
-    Args:
-        paths (List[str]): List of paths.
-        size_type (FileSizeType): File size type to filter.
-
-    Returns:
-        List[str]: Filtered file paths.
-
-    """
-    handler_map = {
-        FileSizeType.LARGE: _filter_large_files,
-        FileSizeType.SMALL: _filter_small_files,
-    }
-    return handler_map[size_type](paths)
-
-
-def expand_paths(path: Path, size_type: FileSizeType) -> List[str]:
-    """Expand all file paths from the source path.
-
-    Args:
-        path (Path): The source path to expand files
-        size_type (FileSizeType): The file size type to filter
-
-    Returns:
-        List[str]: A list of file paths from the source path
-
-    """
-    if path.is_file():
-        paths = [str(path)]
-        paths = filter_files_by_size(paths, size_type)
-    else:
-        paths = [str(p) for p in path.rglob("*")]
-        paths = filter_files_by_size(paths, size_type)
-
-    # Filter files only
-    paths = [path for path in paths if os.path.isfile(path)]
-
-    return paths
-
-
-def upload_file(file_path: str, url: str, ctx: tqdm) -> None:
-    """Upload a file to the URL."""
-    try:
-        with open(file_path, "rb") as f:
-            fileno = f.fileno()
-            total_file_size = os.fstat(fileno).st_size
-            if total_file_size == 0:
-                typer.secho(
-                    f"The file with 0B size ({file_path}) is skipped.",
-                    fg=typer.colors.RED,
-                )
-                return
-
-            wrapped_object = CallbackIOWrapper(ctx.update, f, "read")
-            with Session() as s:
-                req = Request("PUT", url, data=wrapped_object)
-                prep = req.prepare()
-                prep.headers["Content-Length"] = str(
-                    total_file_size
-                )  # necessary to use ``CallbackIOWrapper``
-                response = s.send(prep)
-            if response.status_code != 200:
-                secho_error_and_exit(
-                    f"Failed to upload file ({file_path}): {response.content!r}"
-                )
-    except FileNotFoundError:
-        secho_error_and_exit(f"{file_path} is not found.")
-
-
-def get_file_size(file_path: str, prefix: Optional[str] = None) -> int:
+def get_file_size(file_path: str) -> int:
     """Calculate a file size in bytes.
 
     Args:
         file_path (str): Path to the target file.
-        prefix (Optional[str], optional): Attach the prefix to the path.
 
     Returns:
         int: The size of a file.
 
     """
-    if prefix is not None:
-        file_path = os.path.join(prefix, file_path)
-
     return os.stat(file_path).st_size
-
-
-def get_total_file_size(file_paths: List[str], prefix: Optional[str] = None) -> int:
-    """Get total file size in the paths."""
-    return sum(get_file_size(file_path, prefix) for file_path in file_paths)
-
-
-class CustomCallbackIOWrapper(CallbackIOWrapper):
-    """Cutom callback IO wrapper."""
-
-    def __init__(self, callback, stream, method="read", chunk_size=None) -> None:
-        """Initialize custom callback IO wrapper."""
-        # Wrap a file-like object's `read` or `write` to report data length to the `callback`.
-        super().__init__(callback, stream, method)
-        self._chunk_size = chunk_size
-        self._cursor = 0
-
-        func = getattr(stream, method)
-        if method == "write":
-
-            @wraps(func)
-            def write(data, *args, **kwargs):
-                res = func(data, *args, **kwargs)
-                callback(len(data))
-                return res
-
-            self.wrapper_setattr("write", write)
-        elif method == "read":
-
-            @wraps(func)
-            def read(*args, **kwargs):
-                assert chunk_size is not None
-                if self._cursor >= chunk_size:
-                    self._cursor = 0
-                    return None
-
-                data = func(*args, **kwargs)
-                data_size = len(data)  # default to 8 KiB
-                callback(data_size)
-                self._cursor += data_size
-                return data
-
-            self.wrapper_setattr("read", read)
-        else:
-            raise KeyError("Can only wrap read/write methods")
-
-
-# pylint: disable=too-many-locals
-def upload_part(
-    file_path: str,
-    chunk_index: int,
-    part_number: int,
-    upload_url: str,
-    ctx: tqdm,
-    is_last_part: bool,
-) -> Dict[str, Any]:
-    """Upload a specific part of the multipart upload payload.
-
-    Args:
-        file_path (str): Path to file to upload.
-        chunk_index (int): Chunk index to upload.
-        part_number (int): Part number of the multipart upload.
-        upload_url (str): A presigned URL for the multipart upload.
-        ctx (tqdm): tqdm context to update the progress.
-        is_last_part (bool): Whether this part is the last part of the payload.
-
-    Returns:
-        Dict[str, Any]: Uploaded part info.
-
-    """
-    with open(file_path, "rb") as f:
-        fileno = f.fileno()
-        total_file_size = os.fstat(fileno).st_size
-        cursor = chunk_index * S3_PART_MAX_SIZE
-        f.seek(cursor)
-        chunk_size = min(S3_PART_MAX_SIZE, total_file_size - cursor)
-        wrapped_object = CustomCallbackIOWrapper(ctx.update, f, "read", chunk_size)
-        with Session() as s:
-            req = Request("PUT", upload_url, data=wrapped_object)
-            prep = req.prepare()
-            prep.headers["Content-Length"] = str(chunk_size)
-            response = s.send(prep)
-        response.raise_for_status()
-
-        if is_last_part:
-            assert not f.read(
-                S3_PART_MAX_SIZE
-            ), "Some parts of your data is not uploaded. Please try again."
-
-    etag = response.headers["ETag"]
-    return {
-        "etag": etag,
-        "part_number": part_number,
-    }
 
 
 def strip_storage_path_prefix(path: str) -> str:
