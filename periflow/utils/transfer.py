@@ -141,7 +141,11 @@ class DownloadManager:
                         logger.warn(
                             "Keyboard interrupted. Wait a few seconds for the shutdown."
                         )
-                        executor.shutdown(wait=False, cancel_futures=True)
+                        try:
+                            executor.shutdown(wait=False, cancel_futures=True)
+                        except TypeError:
+                            # py38 does not support cancel_futures option.
+                            executor.shutdown(wait=False)
                         raise exc
 
             # Merge partitioned files
@@ -324,42 +328,45 @@ class UploadManager:
             unit_scale=True,
             unit_divisor=KiB,
         ) as pbar:
-            with self._executor as executor:
-                futs = {
-                    executor.submit(
-                        self._upload_part,
-                        file_path=local_path,
-                        file_size=file_size,
-                        chunk_index=idx,
-                        part_number=url_info.part_number,
-                        upload_url=str(url_info.upload_url),
-                        ctx=pbar,
-                        is_last_part=(idx == total_num_parts - 1),
+            futs = {
+                self._executor.submit(
+                    self._upload_part,
+                    file_path=local_path,
+                    file_size=file_size,
+                    chunk_index=idx,
+                    part_number=url_info.part_number,
+                    upload_url=str(url_info.upload_url),
+                    ctx=pbar,
+                    is_last_part=(idx == total_num_parts - 1),
+                )
+                for idx, url_info in enumerate(upload_task.upload_urls)
+            }
+            not_done = futs
+            try:
+                while not_done:
+                    done, not_done = wait(
+                        not_done, timeout=1, return_when=FIRST_EXCEPTION
                     )
-                    for idx, url_info in enumerate(upload_task.upload_urls)
-                }
-                not_done = futs
+                    for fut in done:
+                        part_etag = fut.result()
+                        uploaded_part_etags.append(part_etag.model_dump())
+                complete_callback(
+                    upload_task.path, upload_task.upload_id, uploaded_part_etags
+                )
+            except KeyboardInterrupt:
+                logger.warn(
+                    "Keyboard interrupted. Wait a few seconds for the shutdown."
+                )
                 try:
-                    while not_done:
-                        done, not_done = wait(
-                            not_done, timeout=1, return_when=FIRST_EXCEPTION
-                        )
-                        for fut in done:
-                            part_etag = fut.result()
-                            uploaded_part_etags.append(part_etag.model_dump())
-                    complete_callback(
-                        upload_task.path, upload_task.upload_id, uploaded_part_etags
-                    )
-                except KeyboardInterrupt:
-                    logger.warn(
-                        "Keyboard interrupted. Wait a few seconds for the shutdown."
-                    )
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    abort_callback(upload_task.path, upload_task.upload_id)
-                    raise
-                except Exception as exc:
-                    abort_callback(upload_task.path, upload_task.upload_id)
-                    raise TransferError(str(exc)) from exc
+                    self._executor.shutdown(wait=False, cancel_futures=True)
+                except TypeError:
+                    # py38 does not support cancel_futures option.
+                    self._executor.shutdown(wait=False)
+                abort_callback(upload_task.path, upload_task.upload_id)
+                raise
+            except Exception as exc:
+                abort_callback(upload_task.path, upload_task.upload_id)
+                raise TransferError(str(exc)) from exc
 
     def _upload_part(
         self,

@@ -233,9 +233,12 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
                 executor = ThreadPoolExecutor()
                 upload_manager = UploadManager(executor=executor)
-                upload_manager.upload_file(upload_task=upload_task)
-                file_client.make_misc_file_uploaded(misc_file_id=file_id)
-                config["orca_config"]["default_request_config_id"] = file_id
+                try:
+                    upload_manager.upload_file(upload_task=upload_task)
+                    file_client.make_misc_file_uploaded(misc_file_id=file_id)
+                    config["orca_config"]["default_request_config_id"] = file_id
+                finally:
+                    executor.shutdown(wait=True)
 
         num_gpus = vm_num_gpu_map[vm_type]
         config["orca_config"]["num_devices"] = num_gpus

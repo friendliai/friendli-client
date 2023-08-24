@@ -720,6 +720,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             if ckpt.status != CheckpointStatus.ACTIVE:
                 logger.warn("File upload was unsuccessful. Please retry.")
                 client.delete_checkpoint(ckpt.id)
+            executor.shutdown(wait=True)
 
         logger.info(
             "Objects are uploaded and checkpoint(%s) is successfully created!", name
