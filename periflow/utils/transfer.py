@@ -7,11 +7,13 @@
 
 from __future__ import annotations
 
+import heapq
 import os
 import socket
 from concurrent.futures import FIRST_EXCEPTION, Executor, ThreadPoolExecutor, wait
 from functools import wraps
 from pathlib import Path
+from threading import Lock
 from typing import Any, Callable, Dict, List, Optional
 
 import requests
@@ -56,16 +58,19 @@ class DownloadManager:
 
     def __init__(
         self,
+        write_queue: DeferQueue,
         io_chunk_size: int = IO_CHUNK_SIZE,
         multipart_threshold: int = S3_MULTIPART_THRESHOLD,
         max_part_size: int = S3_MAX_PART_SIZE,
         max_retries: int = MAX_RETRIES,
     ) -> None:
         """Initializes DownloadManager."""
+        self._write_queue = write_queue
         self._io_chunk_size = io_chunk_size
         self._multipart_threshold = multipart_threshold
         self._max_part_size = max_part_size
         self._max_retries = max_retries
+        self._io_lock = Lock()
 
     def download_file(self, url: str, out: str) -> None:
         """Download a file from the URL."""
@@ -105,63 +110,43 @@ class DownloadManager:
         """Downloads a file in parallel."""
         chunks = range(0, content_length, self._max_part_size)
 
-        temp_out_prefix = os.path.join(
-            os.path.dirname(out), f".{os.path.basename(out)}"
-        )
-
-        try:
-            with tqdm(
-                desc=os.path.basename(out),
-                total=content_length,
-                unit="B",
-                unit_scale=True,
-                unit_divisor=KiB,
-            ) as pbar:
-                with ThreadPoolExecutor() as executor:
-                    futs = {
-                        executor.submit(
-                            self._download_range,
-                            url,
-                            start,
-                            start + self._max_part_size - 1,
-                            f"{temp_out_prefix}.part{i}",
-                            pbar,
+        with tqdm(
+            desc=os.path.basename(out),
+            total=content_length,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=KiB,
+        ) as pbar:
+            with ThreadPoolExecutor() as executor:
+                futs = {
+                    executor.submit(
+                        self._download_range,
+                        url,
+                        start,
+                        start + self._max_part_size - 1,
+                        out,
+                        pbar,
+                    )
+                    for i, start in enumerate(chunks)
+                }
+                not_done = futs
+                try:
+                    while not_done:
+                        done, not_done = wait(
+                            not_done, timeout=1, return_when=FIRST_EXCEPTION
                         )
-                        for i, start in enumerate(chunks)
-                    }
-                    not_done = futs
-                    try:
-                        while not_done:
-                            done, not_done = wait(
-                                not_done, timeout=1, return_when=FIRST_EXCEPTION
-                            )
-                            for fut in done:
-                                fut.result()
-                    except KeyboardInterrupt as exc:
-                        logger.warn(
-                            "Keyboard interrupted. Wait a few seconds for the shutdown."
-                        )
-                        # py38 does not support cancel_futures option.
-                        # Add cancel_futures=True after deprecation.
-                        for fut in not_done:
-                            fut.cancel()
-                        executor.shutdown(wait=False)
-                        raise exc
-
-            # Merge partitioned files
-            with open(out, "wb") as f:
-                for i in range(len(chunks)):
-                    chunk_path = f"{temp_out_prefix}.part{i}"
-                    with open(chunk_path, "rb") as chunk_f:
-                        f.write(chunk_f.read())
-
-                    os.remove(chunk_path)
-        finally:
-            # Clean up zombie temporary partitioned files
-            for i in range(len(chunks)):
-                chunk_path = f"{temp_out_prefix}.part{i}"
-                if os.path.isfile(chunk_path):
-                    os.remove(chunk_path)
+                        for fut in done:
+                            fut.result()
+                except KeyboardInterrupt as exc:
+                    logger.warn(
+                        "Keyboard interrupted. Wait a few seconds for the shutdown."
+                    )
+                    # py38 does not support cancel_futures option.
+                    # Add cancel_futures=True after deprecation.
+                    for fut in not_done:
+                        fut.cancel()
+                    executor.shutdown(wait=False)
+                    raise exc
 
     def _download_range(
         self, url: str, start: int, end: int, output: str, ctx: tqdm
@@ -191,34 +176,41 @@ class DownloadManager:
         if final_exc is not None:
             raise MaxRetriesExceededError(final_exc)
 
-        with open(output, "wb") as f:
-            wrapped_object = CallbackIOWrapper(ctx.update, f, "write")
-            downloaded_iter = response.iter_content(IO_CHUNK_SIZE)
-            while True:
-                final_exc = None
-                for i in range(self._max_retries):
-                    try:
-                        part = next(downloaded_iter)
-                        final_exc = None
-                        break
-                    except StopIteration:
-                        return
-                    except S3_RETRYABLE_DOWNLOAD_ERRORS as exc:
-                        logger.debug(
-                            (
-                                "Connection error while downloading. "
-                                "Retry downloading the part (attempt %s / %s)."
-                            ),
-                            i + 1,
-                            self._max_retries,
+        downloaded_iter = response.iter_content(IO_CHUNK_SIZE)
+        inner_offset = 0
+        while True:
+            final_exc = None
+            for i in range(self._max_retries):
+                try:
+                    part = next(downloaded_iter)
+                    ctx.update(len(part))
+                    with self._io_lock:
+                        writes = self._write_queue.request_writes(
+                            offset=start + inner_offset, data=part
                         )
-                        final_exc = exc
-                        continue
+                        for write in writes:
+                            with open(output, "ab") as f:
+                                f.write(write)
 
-                if final_exc is not None:
-                    raise MaxRetriesExceededError(final_exc)
+                    inner_offset += len(part)
+                    final_exc = None
+                    break
+                except StopIteration:
+                    return
+                except S3_RETRYABLE_DOWNLOAD_ERRORS as exc:
+                    logger.debug(
+                        (
+                            "Connection error while downloading. "
+                            "Retry downloading the part (attempt %s / %s)."
+                        ),
+                        i + 1,
+                        self._max_retries,
+                    )
+                    final_exc = exc
+                    continue
 
-                wrapped_object.write(part)
+            if final_exc is not None:
+                raise MaxRetriesExceededError(final_exc)
 
     def _get_content_size(self, url: str) -> int:
         """Get download content size."""
@@ -439,3 +431,46 @@ class CustomCallbackIOWrapper(CallbackIOWrapper):
             self.wrapper_setattr("read", read)
         else:
             raise KeyError("Can only wrap read/write methods")
+
+
+# We modifed the original implementation of DeferQueue at boto/s3transfer.
+# See https://github.com/boto/s3transfer.
+class DeferQueue:
+    """IO queue that defers the file writes until they are queued sequentially."""
+
+    def __init__(self):
+        """Initializes DeferQueue."""
+        self._writes = []
+        self._pending_offsets = set()
+        self._next_offset = 0
+
+    def request_writes(self, offset: int, data: Any) -> List[Any]:
+        """Requests any available writes given new incoming data.
+
+        You call this method by providing new data along with the offset associated with
+        the data. If that new data unlocks any contiguous writes that can now be
+        submitted, this method will return all applicable writes.
+
+        This is done with 1 method call so you don't have to make two method calls
+        (put(), get()) which acquires a lock each method call.
+
+        """
+        if offset < self._next_offset:
+            # This is a request for a write that we've already seen. This can happen in
+            # the event of a retry.
+            return []
+        if offset in self._pending_offsets:
+            # We've already queued this offset so this request is a duplicate. In this
+            # case we should ignore this request and prefer what's already queued.
+            return []
+
+        heapq.heappush(self._writes, (offset, data))
+        self._pending_offsets.add(offset)
+
+        writes = []
+        while self._writes and self._writes[0][0] == self._next_offset:
+            commit_offset, commit_data = heapq.heappop(self._writes)
+            writes.append(commit_data)
+            self._pending_offsets.remove(commit_offset)
+            self._next_offset += len(commit_data)
+        return writes

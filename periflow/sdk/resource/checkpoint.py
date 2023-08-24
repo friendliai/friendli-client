@@ -49,7 +49,7 @@ from periflow.utils.fs import (
     strip_storage_path_prefix,
 )
 from periflow.utils.maps import cred_type_map, cred_type_map_inv
-from periflow.utils.transfer import DownloadManager, UploadManager
+from periflow.utils.transfer import DeferQueue, DownloadManager, UploadManager
 from periflow.utils.validate import (
     validate_checkpoint_attributes,
     validate_cloud_storage_type,
@@ -772,7 +772,8 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
         ckpt_form_id = client.get_first_checkpoint_form(id)
         files = form_client.get_checkpoint_download_urls(ckpt_form_id)
 
-        download_manager = DownloadManager()
+        write_queue = DeferQueue()
+        download_manager = DownloadManager(write_queue=write_queue)
         for i, file in enumerate(files):
             logger.info("Downloading files %d/%d...", i + 1, len(files))
             download_manager.download_file(
