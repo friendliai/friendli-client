@@ -39,8 +39,8 @@ KiB = 1024
 MiB = KiB * KiB
 GiB = MiB * KiB
 IO_CHUNK_SIZE = 256 * KiB
-S3_MULTIPART_THRESHOLD = 64 * MiB
-S3_MAX_PART_SIZE = 64 * MiB
+S3_MULTIPART_THRESHOLD = 16 * MiB
+S3_MAX_PART_SIZE = 16 * MiB
 S3_RETRYABLE_DOWNLOAD_ERRORS = (
     socket.timeout,
     ConnectionError,
@@ -141,14 +141,10 @@ class DownloadManager:
                         logger.warn(
                             "Keyboard interrupted. Wait a few seconds for the shutdown."
                         )
-                        try:
-                            executor.shutdown(
-                                wait=False,
-                                cancel_futures=True,  # pylint: disable=unexpected-keyword-arg
-                            )
-                        except TypeError:
-                            # py38 does not support cancel_futures option.
-                            executor.shutdown(wait=False)
+                        # TODO: py38 does not support cancel_futures option. Add cancel_futures=True after deprecation.
+                        for fut in not_done:
+                            fut.cancel()
+                        executor.shutdown(wait=False)
                         raise exc
 
             # Merge partitioned files
@@ -360,14 +356,10 @@ class UploadManager:
                 logger.warn(
                     "Keyboard interrupted. Wait a few seconds for the shutdown."
                 )
-                try:
-                    self._executor.shutdown(
-                        wait=False,
-                        cancel_futures=True,  # pylint: disable=unexpected-keyword-arg
-                    )
-                except TypeError:
-                    # py38 does not support cancel_futures option.
-                    self._executor.shutdown(wait=False)
+                # TODO: py38 does not support cancel_futures option. Add cancel_futures=True after deprecation.
+                for fut in not_done:
+                    fut.cancel()
+                self._executor.shutdown(wait=False)
                 abort_callback(upload_task.path, upload_task.upload_id)
                 raise
             except Exception as exc:
