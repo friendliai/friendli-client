@@ -141,7 +141,8 @@ class DownloadManager:
                         logger.warn(
                             "Keyboard interrupted. Wait a few seconds for the shutdown."
                         )
-                        # TODO: py38 does not support cancel_futures option. Add cancel_futures=True after deprecation.
+                        # py38 does not support cancel_futures option.
+                        # Add cancel_futures=True after deprecation.
                         for fut in not_done:
                             fut.cancel()
                         executor.shutdown(wait=False)
@@ -356,7 +357,8 @@ class UploadManager:
                 logger.warn(
                     "Keyboard interrupted. Wait a few seconds for the shutdown."
                 )
-                # TODO: py38 does not support cancel_futures option. Add cancel_futures=True after deprecation.
+                # py38 does not support cancel_futures option.
+                # Add cancel_futures=True after deprecation.
                 for fut in not_done:
                     fut.cancel()
                 self._executor.shutdown(wait=False)
