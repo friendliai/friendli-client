@@ -638,11 +638,13 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
         try:
             logger.info("Start uploading objects to create a checkpoint(%s)...", name)
-            upload_target_local_paths = upload_manager.list_upload_objects(src_path)
-            multipart_upload_target_local_paths = upload_manager.list_multipart_upload_objects(src_path)
+            upload_local_src_paths = upload_manager.list_upload_objects(src_path)
+            multipart_upload_local_src_paths = (
+                upload_manager.list_multipart_upload_objects(src_path)
+            )
 
             src_path = src_path if expand else src_path.parent
-            spu_storage_paths = [
+            upload_storage_dst_paths = [
                 attach_storage_path_prefix(
                     path=str(Path(p).relative_to(src_path)),
                     iteration=iteration or 0,
@@ -651,9 +653,9 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
                     pp_rank=0,
                     pp_degree=1,
                 )
-                for p in upload_target_local_paths
+                for p in upload_local_src_paths
             ]
-            mpu_storage_paths = [
+            multipart_upload_storage_dst_paths = [
                 attach_storage_path_prefix(
                     path=str(Path(p).relative_to(src_path)),
                     iteration=iteration or 0,
@@ -662,16 +664,16 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
                     pp_rank=0,
                     pp_degree=1,
                 )
-                for p in multipart_upload_target_local_paths
+                for p in multipart_upload_local_src_paths
             ]
             upload_tasks = (
                 [
                     UploadTask.model_validate(raw_url_info)
                     for raw_url_info in form_client.get_upload_urls(
-                        obj_id=ckpt_form_id, storage_paths=spu_storage_paths
+                        obj_id=ckpt_form_id, storage_paths=upload_storage_dst_paths
                     )
                 ]
-                if len(spu_storage_paths) > 0
+                if len(upload_storage_dst_paths) > 0
                 else []
             )
             multipart_upload_tasks = (
@@ -679,25 +681,27 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
                     MultipartUploadTask.model_validate(raw_url_info)
                     for raw_url_info in form_client.get_multipart_upload_urls(
                         obj_id=ckpt_form_id,
-                        local_paths=multipart_upload_target_local_paths,
-                        storage_paths=mpu_storage_paths,
+                        local_paths=multipart_upload_local_src_paths,
+                        storage_paths=multipart_upload_storage_dst_paths,
                     )
                 ]
-                if len(mpu_storage_paths) > 0
+                if len(multipart_upload_storage_dst_paths) > 0
                 else []
             )
 
-            for task in upload_tasks:
-                upload_manager.upload_file(upload_task=task, source_path=src_path)
-            for task in multipart_upload_tasks:
+            for upload_task in upload_tasks:
+                upload_manager.upload_file(
+                    upload_task=upload_task, source_path=src_path
+                )
+            for multipart_upload_task in multipart_upload_tasks:
                 upload_manager.multipart_upload_file(
-                    upload_task=task,
+                    upload_task=multipart_upload_task,
                     source_path=src_path,
                     complete_callback=functools.partial(
-                        form_client.complete_multipart_upload, obj_id=ckpt_form_id
+                        form_client.complete_multipart_upload, ckpt_form_id
                     ),
                     abort_callback=functools.partial(
-                        form_client.abort_multipart_upload, obj_id=ckpt_form_id
+                        form_client.abort_multipart_upload, ckpt_form_id
                     ),
                 )
 

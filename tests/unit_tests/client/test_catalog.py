@@ -56,7 +56,7 @@ def catalog_resp_body(catalog_id: UUID) -> dict[str, Any]:
     )
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 @pytest.mark.usefixtures("user_project_group_context")
 def test_get_catalog(
     requests_mock: requests_mock.Mocker,
@@ -82,7 +82,7 @@ def test_get_catalog(
         catalog_client.get_catalog(catalog_id=catalog_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 @pytest.mark.usefixtures("user_project_group_context")
 def test_list_catalog(
     requests_mock: requests_mock.Mocker,
@@ -111,7 +111,7 @@ def test_list_catalog(
         catalog_client.list_catalogs(name=None, limit=10)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 @pytest.mark.usefixtures("user_project_group_context")
 def test_try_out_catalog(
     requests_mock: requests_mock.Mocker,

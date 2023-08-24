@@ -1,5 +1,7 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
+# pylint: disable=too-many-arguments
+
 """PeriFlow Checkpoint Clients."""
 
 from __future__ import annotations

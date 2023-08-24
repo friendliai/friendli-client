@@ -5,8 +5,8 @@
 # pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-locals, redefined-builtin
 
 from __future__ import annotations
-import json
 
+import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -14,8 +14,8 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-import yaml
 from dateutil.tz import tzlocal
+from pydantic import AnyHttpUrl
 
 from periflow.client.deployment import (
     DeploymentClient,
@@ -227,7 +227,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 file_id = group_file_client.create_misc_file(file_info=file_info)["id"]
 
                 upload_url = file_client.get_misc_file_upload_url(misc_file_id=file_id)
-                upload_task = UploadTask(path=drc_file_path, upload_url=upload_url)
+                upload_task = UploadTask(
+                    path=drc_file_path, upload_url=AnyHttpUrl(upload_url)
+                )
 
                 executor = ThreadPoolExecutor()
                 upload_manager = UploadManager(executor=executor)
@@ -354,7 +356,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
         since: datetime,
         until: datetime,
         time_window: int = 60,
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """Gets metrics of a deployment.
 
         Args:
@@ -364,7 +366,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             time_window (int, optional): Time window of results in seconds. Defaults to 60.
 
         Returns:
-            Dict[str, Any]: Retrieved metrics data.
+            List[Dict[str, Any]]: Retrieved metrics data.
 
         """
         metrics_client = DeploymentMetricsClient(deployment_id=id)
@@ -373,7 +375,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
         )
 
     @staticmethod
-    def get_usage(since: datetime, until: datetime) -> Dict[str, Any]:
+    def get_project_deployment_durations(
+        since: datetime, until: datetime
+    ) -> Dict[str, Any]:
         """Gets usage info of a deployment.
 
         Args:
@@ -381,11 +385,11 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             until (datetime): End datetime of the deployment usages to fetch.
 
         Returns:
-            Dict[str, Any]: Retrieved deployment usage info.
+            List[Dict[str, Any]]: Retrieved deployment usage info.
 
         """
         client = PFSProjectUsageClient()
-        return client.get_usage(since, until)
+        return client.get_project_deployment_durations(since, until)
 
     @staticmethod
     def get_logs(id: str, replica_index: int = 0) -> List[Dict[str, Any]]:

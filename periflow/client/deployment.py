@@ -105,7 +105,7 @@ class DeploymentMetricsClient(Client):
 
     def get_metrics(
         self, start: datetime, end: datetime, time_window: int
-    ) -> Dict[str, Any]:
+    ) -> List[Dict[str, Any]]:
         """Get metrics from a deployment."""
         data = self.list(
             pagination=False,
@@ -177,12 +177,12 @@ class PFSProjectUsageClient(Client[str], ProjectRequestMixin):
             self.url_provider.get_serving_uri("usage/project/$project_id/duration")
         )
 
-    def get_usage(
+    def get_project_deployment_durations(
         self,
         start_date: datetime,
         end_date: datetime,
     ) -> Dict[str, Any]:
-        """Get deployment usage info."""
+        """Get total deployment uptime info in the project."""
         params = {
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),

@@ -1,5 +1,10 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
+"""Object Transfer Utils."""
+
+# pylint: disable=too-many-locals, too-many-arguments
+
+
 from __future__ import annotations
 
 import os
@@ -7,7 +12,7 @@ import socket
 from concurrent.futures import FIRST_EXCEPTION, Executor, ThreadPoolExecutor, wait
 from functools import wraps
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import requests
 from requests import Request, Session
@@ -34,9 +39,8 @@ KiB = 1024
 MiB = KiB * KiB
 GiB = MiB * KiB
 IO_CHUNK_SIZE = 256 * KiB
-S3_MULTIPART_THRESHOLD = 128 * MiB
-S3_MAX_PART_SIZE = 128 * MiB
-S3_UPLOAD_SIZE_LIMIT = 5 * GiB  # 5 GiB
+S3_MULTIPART_THRESHOLD = 64 * MiB
+S3_MAX_PART_SIZE = 64 * MiB
 S3_RETRYABLE_DOWNLOAD_ERRORS = (
     socket.timeout,
     ConnectionError,
@@ -57,6 +61,7 @@ class DownloadManager:
         max_part_size: int = S3_MAX_PART_SIZE,
         max_retries: int = MAX_RETRIES,
     ) -> None:
+        """Initializes DownloadManager."""
         self._io_chunk_size = io_chunk_size
         self._multipart_threshold = multipart_threshold
         self._max_part_size = max_part_size
@@ -83,7 +88,7 @@ class DownloadManager:
     def _download_file_sequential(
         self, url: str, out: str, content_length: int
     ) -> None:
-        """Download a file without parallelism."""
+        """Downloads a file sequentially."""
         response = requests.get(url, stream=True, timeout=DEFAULT_REQ_TIMEOUT)
 
         with tqdm.wrapattr(
@@ -97,7 +102,7 @@ class DownloadManager:
                 fout.write(chunk)
 
     def _download_file_parallel(self, url: str, out: str, content_length: int) -> None:
-        """Download a file in parallel."""
+        """Downloads a file in parallel."""
         chunks = range(0, content_length, self._max_part_size)
 
         temp_out_prefix = os.path.join(
@@ -113,7 +118,7 @@ class DownloadManager:
                 unit_divisor=KiB,
             ) as pbar:
                 with ThreadPoolExecutor() as executor:
-                    futs = [
+                    futs = {
                         executor.submit(
                             self._download_range,
                             url,
@@ -123,7 +128,7 @@ class DownloadManager:
                             pbar,
                         )
                         for i, start in enumerate(chunks)
-                    ]
+                    }
                     not_done = futs
                     try:
                         while not_done:
@@ -184,12 +189,12 @@ class DownloadManager:
 
         with open(output, "wb") as f:
             wrapped_object = CallbackIOWrapper(ctx.update, f, "write")
-            iter = response.iter_content(IO_CHUNK_SIZE)
+            downloaded_iter = response.iter_content(IO_CHUNK_SIZE)
             while True:
                 final_exc = None
                 for i in range(self._max_retries):
                     try:
-                        part = next(iter)
+                        part = next(downloaded_iter)
                         final_exc = None
                         break
                     except StopIteration:
@@ -223,17 +228,23 @@ class UploadManager:
     """Upload manager."""
 
     def __init__(self, executor: Executor) -> None:
+        """Initializes UploadManager."""
         self._executor = executor
 
     @classmethod
     def list_multipart_upload_objects(cls, path: Path) -> List[str]:
         """Lists file paths that requires multipart upload under the given path."""
         if path.is_file():
-            paths = [str(path)] if get_file_size(str(path)) >= S3_UPLOAD_SIZE_LIMIT else []
+            paths = (
+                [str(path)]
+                if get_file_size(str(path)) >= S3_MULTIPART_THRESHOLD
+                else []
+            )
         else:
             paths = [
-                str(p) for p in path.rglob("*")
-                if p.is_file() and get_file_size(str(p)) >= S3_UPLOAD_SIZE_LIMIT
+                str(p)
+                for p in path.rglob("*")
+                if p.is_file() and get_file_size(str(p)) >= S3_MULTIPART_THRESHOLD
             ]
         return paths
 
@@ -241,11 +252,16 @@ class UploadManager:
     def list_upload_objects(cls, path: Path) -> List[str]:
         """Lists file paths that requires upload under the given path."""
         if path.is_file():
-            paths = [str(path)] if 0 < get_file_size(str(path)) < S3_UPLOAD_SIZE_LIMIT else []
+            paths = (
+                [str(path)]
+                if 0 < get_file_size(str(path)) < S3_MULTIPART_THRESHOLD
+                else []
+            )
         else:
             paths = [
-                str(p) for p in path.rglob("*")
-                if p.is_file() and 0 < get_file_size(str(p)) < S3_UPLOAD_SIZE_LIMIT
+                str(p)
+                for p in path.rglob("*")
+                if p.is_file() and 0 < get_file_size(str(p)) < S3_MULTIPART_THRESHOLD
             ]
         return paths
 
@@ -254,6 +270,7 @@ class UploadManager:
         upload_task: UploadTask,
         source_path: Optional[Path] = None,
     ) -> None:
+        """Uploads a file in the local file system to PeriFlow."""
         if source_path is not None:
             local_path = storage_path_to_local_path(upload_task.path, source_path)
         else:
@@ -291,9 +308,10 @@ class UploadManager:
         self,
         upload_task: MultipartUploadTask,
         source_path: Path,
-        complete_callback: Callable[[str, str, List[UploadedPartETag]], None],
+        complete_callback: Callable[[str, str, List[Dict[str, Any]]], None],
         abort_callback: Callable[[str, str], None],
     ) -> None:
+        """Uploads a file in the local file system to PeriFlow in multi-part."""
         local_path = storage_path_to_local_path(upload_task.path, source_path)
         file_size = get_file_size(local_path)
         total_num_parts = len(upload_task.upload_urls)
@@ -307,19 +325,19 @@ class UploadManager:
             unit_divisor=KiB,
         ) as pbar:
             with self._executor as executor:
-                futs = [
+                futs = {
                     executor.submit(
                         self._upload_part,
                         file_path=local_path,
                         file_size=file_size,
                         chunk_index=idx,
                         part_number=url_info.part_number,
-                        upload_url=url_info.upload_url,
+                        upload_url=str(url_info.upload_url),
                         ctx=pbar,
                         is_last_part=(idx == total_num_parts - 1),
                     )
                     for idx, url_info in enumerate(upload_task.upload_urls)
-                ]
+                }
                 not_done = futs
                 try:
                     while not_done:
@@ -330,23 +348,17 @@ class UploadManager:
                             part_etag = fut.result()
                             uploaded_part_etags.append(part_etag.model_dump())
                     complete_callback(
-                        path=upload_task.path,
-                        upload_id=upload_task.upload_id,
-                        parts=uploaded_part_etags,
+                        upload_task.path, upload_task.upload_id, uploaded_part_etags
                     )
                 except KeyboardInterrupt:
                     logger.warn(
                         "Keyboard interrupted. Wait a few seconds for the shutdown."
                     )
                     executor.shutdown(wait=False, cancel_futures=True)
-                    abort_callback(
-                        path=upload_task.path, upload_id=upload_task.upload_id
-                    )
+                    abort_callback(upload_task.path, upload_task.upload_id)
                     raise
                 except Exception as exc:
-                    abort_callback(
-                        path=upload_task.path, upload_id=upload_task.upload_id
-                    )
+                    abort_callback(upload_task.path, upload_task.upload_id)
                     raise TransferError(str(exc)) from exc
 
     def _upload_part(

@@ -172,5 +172,5 @@ class UserAccessKeyClient(Client, UserRequestMixin):
 
     def list_access_keys(self) -> List[Dict[str, Any]]:
         """List access keys."""
-        data = self.list(path=f"{self.user_id}/api_key")
+        data = self.list(path=f"{self.user_id}/api_key", pagination=False)
         return data

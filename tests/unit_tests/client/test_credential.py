@@ -25,7 +25,7 @@ def credential_type_client() -> CredentialTypeClient:
     return CredentialTypeClient()
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_credential_client_get_credential(
     requests_mock: requests_mock.Mocker, credential_client: CredentialClient
 ):
@@ -50,7 +50,7 @@ def test_credential_client_get_credential(
         credential_client.get_credential(cred_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_credential_client_update_credential(
     requests_mock: requests_mock.Mocker, credential_client: CredentialClient
 ):
@@ -80,7 +80,7 @@ def test_credential_client_update_credential(
         )
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_credential_client_delete_credential(
     requests_mock: requests_mock.Mocker, credential_client: CredentialClient
 ):
@@ -98,7 +98,7 @@ def test_credential_client_delete_credential(
         credential_client.delete_credential(cred_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_credential_type_client_get_schema_by_type(
     requests_mock: requests_mock.Mocker,
     credential_type_client: CredentialTypeClient,

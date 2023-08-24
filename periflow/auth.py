@@ -6,10 +6,11 @@ from __future__ import annotations
 
 import functools
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
 from requests import HTTPError, JSONDecodeError
+from typing_extensions import TypeAlias
 
 import periflow
 from periflow.di.injector import get_injector
@@ -36,6 +37,8 @@ token_path_map = {
     TokenType.REFRESH: refresh_token_path,
     TokenType.MFA: mfa_token_path,
 }
+
+ResponseBody: TypeAlias = Union[Dict[str, Any], List[Dict[str, Any]], None]
 
 
 def get_auth_header() -> Dict[str, Any]:
@@ -90,13 +93,11 @@ def clear_tokens() -> None:
 
 
 # pylint: disable=too-many-nested-blocks
-def auto_token_refresh(
-    func: Callable[..., requests.Response]
-) -> Callable[..., Dict[str, Any]]:
+def safe_request(func: Callable[..., requests.Response]) -> Callable[..., Any]:
     """Decorator for automatic token refresh."""
 
     @functools.wraps(func)
-    def inner(*args, **kwargs) -> requests.Response:
+    def inner(*args, **kwargs) -> Any:
         injector = get_injector()
         url_provider = injector.get(URLProvider)
 
@@ -145,6 +146,6 @@ def auto_token_refresh(
         try:
             return resp.json()
         except JSONDecodeError:
-            return {}
+            return None
 
     return inner

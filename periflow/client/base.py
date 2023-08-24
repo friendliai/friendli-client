@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import copy
 import math
-import os
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -16,13 +15,14 @@ from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
 from urllib.parse import urljoin, urlparse
 
 import requests
+from requests import HTTPError
 from requests.models import Response
 from urllib3.exceptions import ReadTimeoutError
 
-from periflow.auth import auto_token_refresh, get_auth_header
+from periflow.auth import get_auth_header, safe_request
 from periflow.context import get_current_group_id, get_current_project_id
 from periflow.di.injector import get_injector
-from periflow.errors import MaxRetriesExceededError
+from periflow.errors import APIError, MaxRetriesExceededError
 from periflow.logging import logger
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.fs import get_file_size
@@ -99,7 +99,7 @@ class URLTemplate:
 class RequestInterface:
     """Request API mixin."""
 
-    def safe_request(self, func: Callable[..., Response]) -> Callable[..., Response]:
+    def check_request(self, func: Callable[..., Response]) -> Callable[..., Response]:
         """Wrapper function to send requests with the retry and error handling."""
 
         @wraps(func)
@@ -114,8 +114,7 @@ class RequestInterface:
                         i + 1,
                         API_REQUEST_MAX_RETRIES,
                     )
-            if final_exc is not None:
-                raise MaxRetriesExceededError(final_exc)
+            raise MaxRetriesExceededError(final_exc)
 
         return wrapper
 
@@ -128,7 +127,7 @@ class RequestInterface:
     ) -> List[Dict[str, Any]]:
         """List objects with pagination."""
         page_size = min(DEFAULT_PAGINATION_SIZE, limit)
-        params = {"limit": page_size, **params}
+        params = {"limit": page_size, **(params or {})}
         response_dict = callback(path=path, params=params).json()
         items = response_dict["results"]
         next_cursor = response_dict["next_cursor"]
@@ -173,7 +172,7 @@ class Client(ABC, Generic[T], RequestInterface):
         pagination: bool = True,
         limit: int = DEFAULT_PAGINATION_SIZE,
         **kwargs,
-    ) -> List[Dict[str, Any]]:
+    ) -> Any:
         """Send a request to list objects."""
         if pagination:
             page_size = min(DEFAULT_PAGINATION_SIZE, limit)
@@ -193,53 +192,52 @@ class Client(ABC, Generic[T], RequestInterface):
                 next_cursor = data["next_cursor"]
 
             return items
-        else:
-            return self._list(path=path, **kwargs)
+        return self._list(path=path, **kwargs)
 
-    @auto_token_refresh
+    @safe_request
     def retrieve(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to retrieve a specific object."""
-        resp = self.safe_request(requests.get)(
+        resp = self.check_request(requests.get)(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
         return resp
 
-    @auto_token_refresh
+    @safe_request
     def post(self, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to post an object."""
-        resp = self.safe_request(requests.post)(
+        resp = self.check_request(requests.post)(
             self.url_template.render(path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
         return resp
 
-    @auto_token_refresh
+    @safe_request
     def partial_update(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to partially update a specific object."""
-        resp = self.safe_request(requests.patch)(
+        resp = self.check_request(requests.patch)(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
         return resp
 
-    @auto_token_refresh
+    @safe_request
     def delete(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to delete a specific obejct."""
-        resp = self.safe_request(requests.delete)(
+        resp = self.check_request(requests.delete)(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
         )
         return resp
 
-    @auto_token_refresh
+    @safe_request
     def update(self, pk: T, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to update a specific object."""
-        resp = self.safe_request(requests.put)(
+        resp = self.check_request(requests.put)(
             self.url_template.render(pk=pk, path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
@@ -248,18 +246,21 @@ class Client(ABC, Generic[T], RequestInterface):
 
     def bare_post(self, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request without automatic auth."""
-        resp = self.safe_request(requests.post)(
+        resp = self.check_request(requests.post)(
             self.url_template.render(path=path, **self.url_kwargs),
             timeout=DEFAULT_REQ_TIMEOUT,
             **kwargs,
         )
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except HTTPError as exc:
+            raise APIError(str(exc)) from exc
         return resp
 
-    @auto_token_refresh
+    @safe_request
     def _list(self, path: Optional[str] = None, **kwargs) -> Response:
         """Send a request to list objects."""
-        resp = self.safe_request(requests.get)(
+        resp = self.check_request(requests.get)(
             self.url_template.render(path=path, **self.url_kwargs),
             **self.default_request_options,
             **kwargs,
@@ -272,23 +273,24 @@ class UserRequestMixin(RequestInterface):
 
     user_id: uuid.UUID
 
-    @auto_token_refresh
+    @safe_request
     def get_current_user_info(self) -> Response:
+        """Gets the current user info."""
         injector = get_injector()
         url_provider = injector.get(URLProvider)
-        return self.safe_request(requests.get)(
+        return self.check_request(requests.get)(
             url_provider.get_auth_uri("oauth2/userinfo"),
             headers=get_auth_header(),
             timeout=DEFAULT_REQ_TIMEOUT,
         )
 
     def get_current_user_id(self) -> uuid.UUID:
-        """Get the currently logged-in user ID."""
+        """Gets the currently logged-in user ID."""
         userinfo = self.get_current_user_info()
         return uuid.UUID(userinfo["sub"].split("|")[1])
 
     def initialize_user(self):
-        """Initialize user settings."""
+        """Initializes user settings."""
         self.user_id = self.get_current_user_id()
 
 

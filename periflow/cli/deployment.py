@@ -397,7 +397,7 @@ def usage(
             1,
             tzinfo=timezone.utc,
         )
-    usages = DeploymentAPI.get_usage(start_date, end_date)
+    usages = DeploymentAPI.get_project_deployment_durations(start_date, end_date)
     deployments = [
         {
             "id": id,
