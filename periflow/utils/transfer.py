@@ -142,7 +142,10 @@ class DownloadManager:
                             "Keyboard interrupted. Wait a few seconds for the shutdown."
                         )
                         try:
-                            executor.shutdown(wait=False, cancel_futures=True)  # type: ignore
+                            executor.shutdown(
+                                wait=False,
+                                cancel_futures=True,  # pylint: disable=unexpected-keyword-arg
+                            )
                         except TypeError:
                             # py38 does not support cancel_futures option.
                             executor.shutdown(wait=False)
@@ -358,7 +361,10 @@ class UploadManager:
                     "Keyboard interrupted. Wait a few seconds for the shutdown."
                 )
                 try:
-                    self._executor.shutdown(wait=False, cancel_futures=True)  # type: ignore
+                    self._executor.shutdown(
+                        wait=False,
+                        cancel_futures=True,  # pylint: disable=unexpected-keyword-arg
+                    )
                 except TypeError:
                     # py38 does not support cancel_futures option.
                     self._executor.shutdown(wait=False)
