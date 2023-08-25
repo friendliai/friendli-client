@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import heapq
+import math
 import os
 import socket
 from concurrent.futures import FIRST_EXCEPTION, Executor, ThreadPoolExecutor, wait
@@ -31,6 +32,7 @@ from periflow.errors import (
 from periflow.logging import logger
 from periflow.schema.resource.v1.transfer import (
     MultipartUploadTask,
+    MultipartUploadUrlInfo,
     UploadedPartETag,
     UploadTask,
 )
@@ -42,7 +44,9 @@ MiB = KiB * KiB
 GiB = MiB * KiB
 IO_CHUNK_SIZE = 256 * KiB
 S3_MULTIPART_THRESHOLD = 16 * MiB
-S3_MAX_PART_SIZE = 16 * MiB
+S3_MULTIPART_CHUNK_SIZE = 16 * MiB
+S3_MAX_SINGLE_UPLOAD_SIZE = 5 * GiB
+NUM_MAX_PARTS = 10000
 S3_RETRYABLE_DOWNLOAD_ERRORS = (
     socket.timeout,
     ConnectionError,
@@ -61,7 +65,7 @@ class DownloadManager:
         write_queue: DeferQueue,
         io_chunk_size: int = IO_CHUNK_SIZE,
         multipart_threshold: int = S3_MULTIPART_THRESHOLD,
-        max_part_size: int = S3_MAX_PART_SIZE,
+        max_part_size: int = S3_MULTIPART_CHUNK_SIZE,
         max_retries: int = MAX_RETRIES,
     ) -> None:
         """Initializes DownloadManager."""
@@ -149,7 +153,7 @@ class DownloadManager:
                     raise exc
 
     def _download_range(
-        self, url: str, start: int, end: int, output: str, ctx: tqdm
+        self, url: str, start: int, end: int, output: str, pbar: tqdm
     ) -> None:
         """Download a specific part of a file from the URL."""
         headers = {"Range": f"bytes={start}-{end}"}
@@ -183,7 +187,7 @@ class DownloadManager:
             for i in range(self._max_retries):
                 try:
                     part = next(downloaded_iter)
-                    ctx.update(len(part))
+                    pbar.update(len(part))
                     with self._io_lock:
                         writes = self._write_queue.request_writes(
                             offset=start + inner_offset, data=part
@@ -223,9 +227,10 @@ class DownloadManager:
 class UploadManager:
     """Upload manager."""
 
-    def __init__(self, executor: Executor) -> None:
+    def __init__(self, executor: Executor, chunk_adjuster: ChunksizeAdjuster) -> None:
         """Initializes UploadManager."""
         self._executor = executor
+        self._adjuster = chunk_adjuster
 
     @classmethod
     def list_multipart_upload_objects(cls, path: Path) -> List[str]:
@@ -312,6 +317,9 @@ class UploadManager:
         file_size = get_file_size(local_path)
         total_num_parts = len(upload_task.upload_urls)
         uploaded_part_etags = []
+        chunk_size = self._adjuster.adjust_chunksize(
+            current_chunksize=S3_MULTIPART_CHUNK_SIZE, file_size=file_size
+        )
 
         with tqdm(
             desc=os.path.basename(local_path),
@@ -324,11 +332,9 @@ class UploadManager:
                 self._executor.submit(
                     self._upload_part,
                     file_path=local_path,
-                    file_size=file_size,
-                    chunk_index=idx,
-                    part_number=url_info.part_number,
-                    upload_url=str(url_info.upload_url),
-                    ctx=pbar,
+                    chunk_size=chunk_size,
+                    url_info=url_info,
+                    pbar=pbar,
                     is_last_part=(idx == total_num_parts - 1),
                 )
                 for idx, url_info in enumerate(upload_task.upload_urls)
@@ -363,34 +369,35 @@ class UploadManager:
     def _upload_part(
         self,
         file_path: str,
-        file_size: int,
-        chunk_index: int,
-        part_number: int,
-        upload_url: str,
-        ctx: tqdm,
+        chunk_size: int,
+        url_info: MultipartUploadUrlInfo,
+        pbar: tqdm,
         is_last_part: bool = False,
     ) -> UploadedPartETag:
         with open(file_path, "rb") as f:
-            cursor = chunk_index * S3_MAX_PART_SIZE
+            cursor = (url_info.part_number - 1) * chunk_size
             f.seek(cursor)
 
-            chunk_size = min(S3_MAX_PART_SIZE, file_size - cursor)
-            wrapped_object = CustomCallbackIOWrapper(ctx.update, f, "read", chunk_size)
+            file_size = get_file_size(file_path)
+            chunk_size = min(chunk_size, file_size - cursor)
+            wrapped_object = CustomCallbackIOWrapper(pbar.update, f, "read", chunk_size)
 
             with Session() as s:
-                req = Request("PUT", upload_url, data=wrapped_object)
+                req = Request("PUT", url_info.upload_url, data=wrapped_object)
                 prep = req.prepare()
                 prep.headers["Content-Length"] = str(chunk_size)
                 response = s.send(prep)
             response.raise_for_status()
 
             if is_last_part:
-                if f.read(S3_MAX_PART_SIZE):
+                if f.read(chunk_size):
                     raise TransferError(
                         "Some parts of your data is not uploaded. Please try again."
                     )
 
-        return UploadedPartETag(etag=response.headers["ETag"], part_number=part_number)
+        return UploadedPartETag(
+            etag=response.headers["ETag"], part_number=url_info.part_number
+        )
 
 
 class CustomCallbackIOWrapper(CallbackIOWrapper):
@@ -474,3 +481,77 @@ class DeferQueue:
             self._pending_offsets.remove(commit_offset)
             self._next_offset += len(commit_data)
         return writes
+
+
+# We modifed the original implementation of ChunksizeAdjuster at boto/s3transfer.
+# See https://github.com/boto/s3transfer.
+class ChunksizeAdjuster:
+    """Upload chunk size adjuster."""
+
+    def __init__(
+        self,
+        max_size=S3_MAX_SINGLE_UPLOAD_SIZE,
+        min_size=S3_MULTIPART_THRESHOLD,
+        max_parts=NUM_MAX_PARTS,
+    ):
+        """Initializes ChunksizeAdjuster."""
+        self._max_size = max_size
+        self._min_size = min_size
+        self._max_parts = max_parts
+
+    def adjust_chunksize(
+        self, current_chunksize: int, file_size: Optional[int] = None
+    ) -> int:
+        """Get a chunksize close to current that fits within all S3 limits.
+
+        Args:
+            current_chunksize (int): The currently configured chunksize.
+            file_size (Optional[int], optional): The size of the file to upload. This
+                might be None if the object being transferred has an unknown size.
+                Defaults to None.
+
+        Returns:
+            int: A valid chunksize that fits within configured limits.
+
+        """
+        chunksize = current_chunksize
+        if file_size is not None:
+            chunksize = self._adjust_for_max_parts(chunksize, file_size)
+        return self._adjust_for_chunksize_limits(chunksize)
+
+    def _adjust_for_chunksize_limits(self, current_chunksize: int) -> int:
+        if current_chunksize > self._max_size:
+            logger.debug(
+                "Chunksize greater than maximum chunksize. Setting to %s from %s.",
+                self._max_size,
+                current_chunksize,
+            )
+            return self._max_size
+        if current_chunksize < self._min_size:
+            logger.debug(
+                "Chunksize less than minimum chunksize. Setting to %s from %s.",
+                self._min_size,
+                current_chunksize,
+            )
+            return self._min_size
+        return current_chunksize
+
+    def _adjust_for_max_parts(self, current_chunksize: int, file_size: int) -> int:
+        chunksize = current_chunksize
+        num_parts = int(math.ceil(file_size / float(chunksize)))
+
+        while num_parts > self._max_parts:
+            chunksize *= 2
+            num_parts = int(math.ceil(file_size / float(chunksize)))
+
+        if chunksize != current_chunksize:
+            logger.debug(
+                (
+                    "Chunksize would result in the number of parts exceeding the "
+                    "maximum. Setting to %s from %s."
+                ),
+                chunksize,
+                current_chunksize,
+            )
+
+        return chunksize

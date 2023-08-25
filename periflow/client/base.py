@@ -27,7 +27,7 @@ from periflow.logging import logger
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.fs import get_file_size
 from periflow.utils.request import DEFAULT_REQ_TIMEOUT
-from periflow.utils.transfer import S3_MAX_PART_SIZE
+from periflow.utils.transfer import S3_MULTIPART_CHUNK_SIZE, ChunksizeAdjuster
 from periflow.utils.url import URLProvider
 
 T = TypeVar("T", bound=Union[int, str, uuid.UUID])
@@ -360,8 +360,13 @@ class UploadableClient(Client[T], Generic[T]):
 
         """
         start_mpu_resps = []
+        adjuster = ChunksizeAdjuster()
         for local_path, storage_path in zip(local_paths, storage_paths):
-            num_parts = math.ceil(get_file_size(local_path) / S3_MAX_PART_SIZE)
+            file_size = get_file_size(local_path)
+            part_size = adjuster.adjust_chunksize(
+                current_chunksize=S3_MULTIPART_CHUNK_SIZE, file_size=file_size
+            )
+            num_parts = math.ceil(file_size / part_size)
             data = self.post(
                 path=f"{obj_id}/start_mpu/",
                 json={

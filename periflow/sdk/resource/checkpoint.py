@@ -2,7 +2,7 @@
 
 """PeriFlow Checkpoint SDK."""
 
-# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-statements, too-many-locals, redefined-builtin
+# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-statements, too-many-locals, redefined-builtin, too-many-lines
 
 from __future__ import annotations
 
@@ -49,7 +49,12 @@ from periflow.utils.fs import (
     strip_storage_path_prefix,
 )
 from periflow.utils.maps import cred_type_map, cred_type_map_inv
-from periflow.utils.transfer import DeferQueue, DownloadManager, UploadManager
+from periflow.utils.transfer import (
+    ChunksizeAdjuster,
+    DeferQueue,
+    DownloadManager,
+    UploadManager,
+)
 from periflow.utils.validate import (
     validate_checkpoint_attributes,
     validate_cloud_storage_type,
@@ -634,7 +639,8 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
         ckpt_form_id = ckpt_created.forms[0].id
 
         executor = ThreadPoolExecutor(max_workers=max_workers)
-        upload_manager = UploadManager(executor=executor)
+        adjuster = ChunksizeAdjuster()
+        upload_manager = UploadManager(executor=executor, chunk_adjuster=adjuster)
 
         try:
             logger.info("Start uploading objects to create a checkpoint(%s)...", name)

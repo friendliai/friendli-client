@@ -22,7 +22,7 @@ from periflow.client.checkpoint import (
 )
 from periflow.enums import CheckpointCategory, StorageType
 from periflow.errors import APIError
-from periflow.utils.transfer import S3_MAX_PART_SIZE, S3_MULTIPART_THRESHOLD
+from periflow.utils.transfer import S3_MULTIPART_CHUNK_SIZE, S3_MULTIPART_THRESHOLD
 
 
 @pytest.fixture
@@ -240,7 +240,7 @@ def test_checkpoint_client_start_multipart_upload(
                 "upload_url": f"https://s3.download.amazone.com/{paths[0]}-part{part_num}",
                 "part_number": part_num,
             }
-            for part_num in range(math.ceil(file_size / S3_MAX_PART_SIZE))
+            for part_num in range(math.ceil(file_size / S3_MULTIPART_CHUNK_SIZE))
         ],
     }
 

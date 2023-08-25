@@ -50,7 +50,12 @@ from periflow.schema.resource.v1.transfer import UploadTask
 from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
 from periflow.utils.maps import cloud_vm_map, vm_num_gpu_map
-from periflow.utils.transfer import DeferQueue, DownloadManager, UploadManager
+from periflow.utils.transfer import (
+    ChunksizeAdjuster,
+    DeferQueue,
+    DownloadManager,
+    UploadManager,
+)
 from periflow.utils.validate import validate_enums
 
 
@@ -232,7 +237,10 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 )
 
                 executor = ThreadPoolExecutor()
-                upload_manager = UploadManager(executor=executor)
+                adjuster = ChunksizeAdjuster()
+                upload_manager = UploadManager(
+                    executor=executor, chunk_adjuster=adjuster
+                )
                 try:
                     upload_manager.upload_file(upload_task=upload_task)
                     file_client.make_misc_file_uploaded(misc_file_id=file_id)
