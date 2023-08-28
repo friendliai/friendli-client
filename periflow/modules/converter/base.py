@@ -13,18 +13,18 @@ import torch
 from tqdm.auto import tqdm
 from transformers import GenerationConfig, PretrainedConfig  # type: ignore[import]
 
-from periflow.converter.interface import (
+from periflow.enums import CheckpointDataType
+from periflow.errors import NotSupportedCheckpointError
+from periflow.logging import logger
+from periflow.modules.converter.interface import (
     ConversionInterface,
     DecoderConversionInterface,
     EncoderConversionInterface,
 )
-from periflow.converter.utils import (
+from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
 )
-from periflow.enums import CheckpointDataType
-from periflow.errors import NotSupportedCheckpointError
-from periflow.logging import logger
 
 SUPPORTED_GELU_FAMILY = [
     "gelu",

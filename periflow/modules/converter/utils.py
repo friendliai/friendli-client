@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import torch
-from transformers import AutoTokenizer  # type: ignore[import]
+import transformers  # type: ignore[import]
 
 from periflow.enums import CheckpointDataType
 from periflow.errors import (
@@ -111,18 +111,14 @@ def convert_tensor_to_np_array(
     return param.detach().to(dtype).numpy()
 
 
-def save_tokenizer(
+def get_tokenizer(
     model_name_or_path: str,
     *,
     cache_dir: Optional[str] = None,
-    save_dir: str,
-) -> None:
-    """Try to save `tokenizer.json` of a pretrained model."""
-    if not os.path.isdir(save_dir):
-        raise NotFoundError(f"Directory '{save_dir}' is not found.")
-
+) -> transformers.AutoTokenizer:
+    """Try to get tokenizer of a pretrained model."""
     try:
-        tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer = transformers.AutoTokenizer.from_pretrained(
             model_name_or_path,
             cache_dir=cache_dir,
             trust_remote_code=True,
@@ -135,6 +131,20 @@ def save_tokenizer(
             "This model does not support PeriFlow-compatible tokenizer"
         )
 
+    return tokenizer
+
+
+def save_tokenizer(
+    model_name_or_path: str,
+    *,
+    cache_dir: Optional[str] = None,
+    save_dir: str,
+) -> None:
+    """Try to save `tokenizer.json` of a pretrained model."""
+    if not os.path.isdir(save_dir):
+        raise NotFoundError(f"Directory '{save_dir}' is not found.")
+
+    tokenizer = get_tokenizer(model_name_or_path, cache_dir=cache_dir)
     saved_file_paths = tokenizer.save_pretrained(save_directory=save_dir)
 
     tokenizer_json_path = None
