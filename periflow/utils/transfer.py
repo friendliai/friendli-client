@@ -445,7 +445,7 @@ class CustomCallbackIOWrapper(CallbackIOWrapper):
 class DeferQueue:
     """IO queue that defers the file writes until they are queued sequentially."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initializes DeferQueue."""
         self._writes = []
         self._pending_offsets = set()
@@ -493,7 +493,7 @@ class ChunksizeAdjuster:
         max_size: int = S3_MAX_SINGLE_UPLOAD_SIZE,
         min_size: int = S3_MULTIPART_THRESHOLD,
         max_parts: int = NUM_MAX_PARTS,
-    ):
+    ) -> None:
         """Initializes ChunksizeAdjuster."""
         self._max_size = max_size
         self._min_size = min_size
