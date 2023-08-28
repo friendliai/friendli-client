@@ -7,26 +7,23 @@
 }
 
 .cardContainer {
+  max-width: 40rem;
+  max-height: 25rem;
   background-color: #ffffff;
   border-radius: 0.3rem;
   box-shadow: 0.1rem 0.1rem 0.1rem 0.1rem #dceafb;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-
-  &:hover {
-    background-color: #dceafb;
-    text-decoration: none;
-  }
+}
+.cardContainer:hover {
+  background-color: #dceafb;
+  text-decoration: none;
 }
 
 .cardBody {
   color: #000000;
   padding: 1rem 2rem;
-
-  &:hover {
-    text-decoration: none;
-  };
 }
 
 .cardImage {
