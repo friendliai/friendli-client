@@ -490,9 +490,9 @@ class ChunksizeAdjuster:
 
     def __init__(
         self,
-        max_size=S3_MAX_SINGLE_UPLOAD_SIZE,
-        min_size=S3_MULTIPART_THRESHOLD,
-        max_parts=NUM_MAX_PARTS,
+        max_size: int = S3_MAX_SINGLE_UPLOAD_SIZE,
+        min_size: int = S3_MULTIPART_THRESHOLD,
+        max_parts: int = NUM_MAX_PARTS,
     ):
         """Initializes ChunksizeAdjuster."""
         self._max_size = max_size
