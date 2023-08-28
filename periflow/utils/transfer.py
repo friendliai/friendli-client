@@ -15,7 +15,7 @@ from concurrent.futures import FIRST_EXCEPTION, Executor, ThreadPoolExecutor, wa
 from functools import wraps
 from pathlib import Path
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Set
 
 import requests
 from requests import Request, Session
@@ -447,9 +447,9 @@ class DeferQueue:
 
     def __init__(self) -> None:
         """Initializes DeferQueue."""
-        self._writes = []
-        self._pending_offsets = set()
-        self._next_offset = 0
+        self._writes: List[Any] = []
+        self._pending_offsets: Set[int] = set()
+        self._next_offset: int = 0
 
     def request_writes(self, offset: int, data: Any) -> List[Any]:
         """Requests any available writes given new incoming data.
