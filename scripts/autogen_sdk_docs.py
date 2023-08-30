@@ -187,9 +187,6 @@ def generate_docstring_mdx(docstring: Docstring) -> str:
 {docstring.short_description}
 """
 
-    if docstring.long_description:
-        res += f"{docstring.long_description}\n"
-
     # Create argument docs
     if docstring.params:
         res += generate_params_mdx(docstring.params)
@@ -199,6 +196,9 @@ def generate_docstring_mdx(docstring: Docstring) -> str:
 
     if docstring.raises:
         res += generate_raises_mdx(docstring.raises)
+
+    if docstring.long_description:
+        res += f"#### Descriptions\n{docstring.long_description}\n"
 
     if docstring.examples:
         for example in docstring.examples:

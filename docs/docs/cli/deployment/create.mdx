@@ -34,16 +34,30 @@ The format of the file is as follows.
 
 ```json
 {
-    "stop": Optional[array[str]],
-    "stop_tokens": Optional[array[int]],
-    "bad_words": Optional[array[str]],
-    "bad_word_tokens": Optional[array[int]]
+    "stop": Optional[List[str]],
+    "stop_tokens": Optional[List[TokenSequence]],
+    "bad_words": Optional[List[str]],
+    "bad_word_tokens": Optional[List[TokenSequence]]
 }
 ```
 
 :::caution
 Both `bad_words` and `bad_word_tokens` cannot be set at the same time. Also, both
 `stop` and `stop_tokens` cannot be set at the same time.
+
+And a TokenSequence type is a dict with the key 'tokens' and the value type List[int].
+```json
+# Wrong Example: Both `bad_words` and `bad_word_tokens` are set.
+{
+    "bad_words": ["bad", "words", " bad", " words"]
+    "bad_word_tokens": [{"tokens": [568, 36]}, {"tokens": [423, 76]}, {"tokens": [32, 67]}, {"tokens": [1790]}]
+}
+
+# Correct Example
+{
+    "bad_words": ["bad", "words", " bad", " words"]
+    "stop_tokens": [{"tokens": [568, 36]}, {"tokens": [423, 76]}, {"tokens": [32, 67]}, {"tokens": [1790]}]
+}
 :::
 
 ## Options

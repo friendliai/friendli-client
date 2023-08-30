@@ -39,11 +39,8 @@ Creates a completion.
 | Type | Description |
 |------|-------------|
 | `APIError` | Raised when the HTTP API request to the deployment fails. |
-
-#### Options
-
-The `options` argument gets a `V1CompletionOptions` object, which has the
-following schema.
+#### Descriptions
+The `options` argument gets a `V1CompletionOptions` object, which has the following schema.
 
 | Argument | Type | Default |
 |----------|------|---------|
@@ -67,13 +64,13 @@ following schema.
 | `top_k` | `Optional[int]` | `None` |
 | `top_p` | `Optional[float]` | `None` |
 | `stop` | `Optional[List[str]]` | `None` |
-| `stop_tokens` | `Optional[List[TokenSequence]]` | `None` |
+| `stop_tokens` | `Optional[List[TokenSequence]]` <br></br> `(TokenSequence: {"tokens": List[int]})` | `None` |
 | `seed` | `Optional[List[int]]` | `None` |
 | `beam_search_type` | `Optional[BeamSearchType]` | `None` |
 | `beam_compat_pre_normalization` | `Optional[bool]` | `None` |
 | `beam_compat_no_post_normalization` | `Optional[bool]` | `None` |
 | `bad_words` | `Optional[List[str]]` | `None` |
-| `bad_word_tokens` | `Optional[List[TokenSequence]]` | `None` |
+| `bad_word_tokens` | `Optional[List[TokenSequence]]` <br></br> `(TokenSequence: {"tokens": List[int]})` | `None` |
 | `include_output_logits` | `Optional[bool]` | `None` |
 | `eos_token` | `Optional[List[int]]` | `None` |
 
@@ -99,11 +96,11 @@ Followings are the descriptions for each field.
 - **top_k**: The number of highest probability tokens to keep for sampling. Numbers between 0 and the vocab size of the model (both inclusive) are allowed. The default value is 0, which means that the API does not apply top-k filtering. This is similar to Hugging Face's [`top_k`](https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationConfig.top_k) argument.
 - **top_p**: Tokens comprising the top `top_p` probability mass are kept for sampling. Numbers between 0.0 (exclusive) and 1.0 (inclusive) are allowed. Defaults to 1.0. This is similar to Hugging Face's [`top_p`](https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationConfig.top_p) argument.
 - **stop**: When one of the stop phrases appears in the generation result, the API will stop generation. The phrase is included in the generated result. If you are using beam search, all of the active beams should contain the stop phrase to terminate generation. Before checking whether a stop phrase is included in the result, the phrase is converted into tokens. We recommend using `stop_tokens` because it is clearer. For example, after tokenization, phrases "clear" and " clear" can result in different token sequences due to the prepended space character. Defaults to empty list.
-- **stop_tokens**: Same as the above `stop` field, but receives token sequences instead of text phrases.
+- **stop_tokens**: Same as the above `stop` field, but receives token sequences instead of text phrases. A TokenSequence type is a dict with the key 'tokens' and the value type List[int].
 - **seed**: Seed to control random procedure. If nothing is given, the API generate the seed randomly, use it for sampling, and return the seed along with the generated result. When using the `n` argument, you can pass a list of seed values to control all of the independent generations.
 - **beam_search_type**: Which beam search type to use. `DETERMINISTIC` means the standard, deterministic beam search, which is similar to Hugging Face's [`beam_search`](https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationMixin.beam_search). Argmuents for controlling random sampling such as `top_k` and `top_p` are not allowed for this option. `STOCHASTIC` means stochastic beam search (more details in [Kool et al. (2019)](https://proceedings.mlr.press/v97/kool19a.html)). `NAIVE_SAMPLING` is similar to Hugging Face's [`beam_sample`](https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationMixin.beam_sample). Defaults to `DETERMINISTIC`.
 - **bad_words**: Text phrases that should not be generated. For a bad word phrase that contains N tokens, if the first N-1 tokens appears at the last of the generated result, the logit for the last token of the phrase is set to -inf. We recommend using `bad_word_tokens` because it is clearer (more details in the document for `stop` field). Defaults to empty list.
-- **bad_word_tokens**: Same as the above `bad_words` field, but receives token sequences instead of text phrases. This is similar to Hugging Face's <a href="https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationConfig.bad_words_ids(List[List[int]]," target="_top">`bad_word_ids`</a> argument.
+- **bad_word_tokens**: Same as the above `bad_words` field, but receives token sequences instead of text phrases. A TokenSequence type is a dict with the key 'tokens' and the value type List[int]. This is similar to Hugging Face's <a href="https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationConfig.bad_words_ids(List[List[int]]," target="_top">`bad_word_ids`</a> argument.
 - **include_output_logits**: Whether to include the output logits to the generation output.
 - **eos_token**: A list of endpoint sentence tokens.
 
@@ -129,6 +126,8 @@ To sum up, you have three choices:
 When `stream` argument of the `create` method is set as `True`, `stream` of
 `V1Completion` is also set as `True`.
 :::
+
+#### Examples
 
 Basic usage:
 
@@ -183,9 +182,6 @@ acreate(
 ```
 
 Creates a completion.
-:::info
-You must open API session with `api_session()` before `acreate()`.
-:::
 
 #### Arguments
 
@@ -208,6 +204,9 @@ You must open API session with `api_session()` before `acreate()`.
 
 #### Examples
 
+:::info
+You must open API session with `api_session()` before `acreate()`.
+:::
 Basic usage:
 
 ```python
