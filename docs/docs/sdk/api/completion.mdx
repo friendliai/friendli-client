@@ -50,6 +50,9 @@ acreate(
 ```
 
 Creates a completion.
+:::info
+You must open API session with `api_session()` before `acreate()`.
+:::
 
 #### Arguments
 
@@ -69,9 +72,6 @@ Creates a completion.
 |------|-------------|
 | `APIError` | Raised when the HTTP API request to the deployment fails. |
 | `SessionClosedError` | Raised when the client session is not opened with `api_session()`. |
-:::info
-You must open API session with `api_session()` before `acreate()`.
-:::
 
 #### Examples
 
