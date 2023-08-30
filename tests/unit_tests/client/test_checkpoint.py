@@ -86,7 +86,7 @@ def test_checkpoint_client_delete_checkpoint(
         url_template.render(checkpoint_id=checkpoint_id), status_code=404
     )
     with pytest.raises(typer.Exit):
-        assert checkpoint_client.delete_checkpoint(checkpoint_id)
+        checkpoint_client.delete_checkpoint(checkpoint_id)
 
 
 @pytest.mark.usefixtures("patch_auto_token_refresh")

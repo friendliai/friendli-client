@@ -12,7 +12,6 @@ from uuid import UUID
 from periflow.client.base import Client, safe_request
 from periflow.enums import CredType
 from periflow.utils.maps import cred_type_map
-from periflow.utils.url import get_auth_uri, get_training_uri
 
 
 class CredentialClient(Client[UUID]):
@@ -21,7 +20,7 @@ class CredentialClient(Client[UUID]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("credential"))
+        return Template(self.url_provider.get_auth_uri("credential"))
 
     def get_credential(self, credential_id: UUID) -> Dict[str, Any]:
         """Get a credential info."""
@@ -64,7 +63,7 @@ class CredentialTypeClient(Client):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_training_uri("credential_type/"))
+        return Template(self.url_provider.get_training_uri("credential_type/"))
 
     def get_schema_by_type(self, cred_type: CredType) -> Optional[Dict[str, Any]]:
         """Get a credential JSON schema."""

@@ -19,10 +19,11 @@ from periflow.context import (
     project_context_path,
     set_current_group_id,
 )
+from periflow.di.injector import get_injector
 from periflow.formatter import PanelFormatter
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.request import DEFAULT_REQ_TIMEOUT
-from periflow.utils.url import get_training_uri
+from periflow.utils.url import URLProvider
 from periflow.utils.validate import validate_package_version
 from periflow.utils.version import get_installed_version
 
@@ -65,8 +66,10 @@ def login(
     password: str = typer.Option(..., prompt="Enter your password", hide_input=True),
 ):
     """Sign in."""
+    injector = get_injector()
+    url_provider = injector.get(URLProvider)
     r = requests.post(
-        get_training_uri("token/"),
+        url_provider.get_training_uri("token/"),
         data={"username": email, "password": password},
         timeout=DEFAULT_REQ_TIMEOUT,
     )
@@ -142,12 +145,15 @@ def version():
 
 
 def _mfa_verify(_, code: str = typer.Option(..., prompt="Enter MFA Code")):
+    injector = get_injector()
+    url_provider = injector.get(URLProvider)
+
     mfa_token = get_token(TokenType.MFA)
     # TODO: MFA type currently defaults to totp, need changes when new options are added
     mfa_type = "totp"
     username = f"mfa://{mfa_type}/{mfa_token}"
     r = requests.post(
-        get_training_uri("token/"),
+        url_provider.get_training_uri("token/"),
         data={"username": username, "password": code},
         timeout=DEFAULT_REQ_TIMEOUT,
     )
