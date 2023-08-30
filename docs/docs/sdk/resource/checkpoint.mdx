@@ -598,37 +598,3 @@ When a checkpoint is deleted, it becomes "soft-deleted", meaning it is
 recoverable within the 24-hour retention period. After the retention period,
 the checkpoint is "hard-deleted" and cannot be restored.
 :::
-
-### _def_ `convert`
-
-```python
-convert(
-    model_name_or_path: str,
-    model_output_path: str,
-    data_type: CheckpointDataType,
-    tokenizer_output_dir: Optional[str] = None,
-    attr_output_path: Optional[str] = None,
-    cache_dir: Optional[str] = None,
-    dry_run: bool = False
-) -> None
-```
-
-Convert Hugging Face model checkpoint to PeriFlow format.
-
-#### Arguments
-
-| Name | Type | Description | Default | Optional |
-|------|------|-------------|---------|----------|
-| `model_name_or_path` | `str` | Hugging Face model name or local path to the checkpoint. | - | ❌ |
-| `model_output_path` | `str` | Path to the converted checkpoint to save. | - | ❌ |
-| `data_type` | `CheckpointDataType` | Converted checkpoint data type. | - | ❌ |
-| `tokenizer_output_dir` | `Optional[str]` | Directory path to save 'tokenizer.json' for the converted checkpoint. Defaults to None. | `None` | ✅ |
-| `attr_output_path` | `Optional[str]` | Path to create the attribute YAML file for the converted checkpoint. Defaults to None. | `None` | ✅ |
-| `cache_dir` | `Optional[str]` | Path for downloading checkpoint. Defaults to None. | `None` | ✅ |
-| `dry_run` | `bool` | Check only if checkpoint is convertable. Defaults to False. | `False` | ✅ |
-#### Raises
-
-| Type | Description |
-|------|-------------|
-| `NotFoundError` | Raised when `model_name_or_path` is not found. Also raised when `tokenizer_output_dir` is not found. |
-| `CheckpointConversionError` | Raised when given model architecture from checkpoint is not supported to convert. |

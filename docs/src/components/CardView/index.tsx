@@ -12,7 +12,7 @@ const CardDatas = [
     name: 'PeriFlow Cloud',
     png: cloud_img,
     url: {
-      page: 'cloud/how_to_use_your_checkpoint',
+      page: '/tutorials/cloud/how_to_use_your_checkpoint',
     },
     description: 'Use PeriFlow as a managed cloud service.'
   },
@@ -20,7 +20,7 @@ const CardDatas = [
     name: 'PeriFlow Container',
     png: container_img,
     url: {
-      page: 'container/how_to_run_periflow_container',
+      page: '/tutorials/container/how_to_run_periflow_container',
     },
     description: 'Use PeriFlow in the form of a Docker image.'
   },

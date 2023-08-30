@@ -5,12 +5,12 @@ sidebar_position: 1
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# How to Run Periflow Container?
+# How to Run PeriFlow Container?
 
 ## Introduction
 
-Periflow Container enables you to effortlessly deploy your generative AI model on your machine.
-This tutorial will guide you through the process of running Periflow Container.
+PeriFlow Container enables you to effortlessly deploy your generative AI model on your machine.
+This tutorial will guide you through the process of running PeriFlow Container.
 Current version of PeriFlow Container supports all major generative language models, including LLaMA 2, Falcon, MPT, and Dolly.
 
 Supported model types are:
@@ -30,10 +30,12 @@ If your model does not belong to one of the above model types, please ask for su
 
 ## Prerequisites
 
-Before you begin, make sure you have to signup to Periflow Container service.
+Before you begin, make sure you have to signup to PeriFlow Container service.
 You can use PeriFlow Container trial for a period of two weeks free of charge.
 In the next step, you will need to pull the Docker container image.
-You can find instructions on how to do this in the guide on the [Periflow Container webpage](https://container.periflow.ai).
+You can find instructions on how to do this in the guide on the [PeriFlow Container webpage](https://container.periflow.ai).
+
+If you're new to PeriFlow Container and you don't yet have an account, sign up to the [waitlist](https://waitlist.periflow.ai/container) and we'll let you know as soon as we open up new account.
 
 :::info
 ### Requirement for converting Hugging Face model checkpoints (Optional)
@@ -99,7 +101,7 @@ Here's the instructions to run your model with PeriFlow Container:
 ### Run PeriFlow Container
 ```sh
 docker run --gpus $GPU_ENUMERATION -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher [OPTIONS]"
 ```
 
@@ -175,7 +177,7 @@ The following tables are the options for encoder decoder models: T5, BlenderBot
 
 
 ### Example
-The following examples show how to launch Periflow Container for each model type.
+The following examples show how to launch PeriFlow Container for each model type.
 
 :::caution
 The following instructions assumed that `model.h5` file (and `tokenizer.json`) is in $LOCAL_CKPT_PATH.
@@ -190,7 +192,7 @@ This is an example how to launch [GPT2-XL model](https://huggingface.co/gpt2-xl)
 # Run GPT2-XL model with float16 data type and 1 gpu.
 
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type gpt\
@@ -207,7 +209,7 @@ This is an example how to launch [Meta Llama-2-70b-hf model](https://huggingface
 # Run Llama-2-70b-hf model with float16 data type and 4 gpus (tensor parallel).
 
 $ docker run --gpus=4 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type llama --num-devices 4 \
@@ -225,7 +227,7 @@ This is an example how to launch [MosaicML MPT-7B-instruct model](https://www.mo
 # Run MPT-7B model with float16 data type and 1 gpu.
 
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type mpt \
@@ -242,7 +244,7 @@ This is an example how to launch [TII UAE Falcon-7B-Instruct model](https://hugg
 # Run Falcon-7B-Instruct model with float16 data type and 1 gpu.
 
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type falcon-7b \
@@ -261,7 +263,7 @@ This is an example how to launch [BigSicence BLOOMZ-7B1 model](https://huggingfa
 # Run BLOOMZ-7B1 model with float16 data type and 1 gpu.
 
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type bloom \
@@ -279,7 +281,7 @@ This is an example how to launch [EleutherAI GPT-J-6B model](https://huggingface
 # Run GPT-J-6B model with float16 data type and 1 gpu.
 
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type gpt-j \
@@ -298,7 +300,7 @@ This is an example how to launch [Databricks Dolly-V2-12B model](https://hugging
 # Run Dolly-V2-12B model with float16 data type and 2 gpus (tensor parallel).
 
 $ docker run --gpus=2 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type gpt-neox --num-devices 2 \
@@ -317,7 +319,7 @@ This is an example how to launch [Facebook OPT-13B model](https://huggingface.co
 # Run Dolly-V2-12B model with float16 data type and 2 gpus (tensor parallel).
 
 $ docker run --gpus=2 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type opt --num-devices 2 \
@@ -335,7 +337,7 @@ This is an example how to launch [T5-Base model](https://huggingface.co/t5-base)
 # Run T5-Base model with float16 data type and 1 gpu.
 
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type t5 \
@@ -355,7 +357,7 @@ This is an example how to launch [Google Flan-T5-Xl model](https://huggingface.c
 # Run Flan-T5-Xl model with float16 data type and 2 gpus (tensor parallel).
 
 $ docker run --gpus=2 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type t5-v1_1 --num-devices 2 \
@@ -375,7 +377,7 @@ This is an example how to launch [Facebook BlenderBot-3B model](https://huggingf
 # Run BlenderBot-3B model with float16 data type and 1 gpu.
 
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
-  --network=host --ipc=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
+  --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
     --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type blenderbot \
