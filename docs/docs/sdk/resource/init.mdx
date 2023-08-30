@@ -14,10 +14,6 @@ init(
 ```
 
 Setup PeriFlow authorization info.
-All PeriFlow APIs followed by this function will be executed with the API key,
-provided in the `api_key` argument, and project context provided in the `project`
-argument. If you call the PeriFlow APIs without calling this function, the context
-set by `pf login` CLI command will be used.
 
 #### Arguments
 
@@ -30,3 +26,7 @@ set by `pf login` CLI command will be used.
 | Type | Description |
 |------|-------------|
 | `AuthorizationError` | Raised if the API key, provided in the `api_key` argument, does not have permission to any organization or to the project provided in the `project` argument. |
+All PeriFlow APIs followed by this function will be executed with the API key,
+provided in the `api_key` argument, and project context provided in the `project`
+argument. If you call the PeriFlow APIs without calling this function, the context
+set by `pf login` CLI command will be used.

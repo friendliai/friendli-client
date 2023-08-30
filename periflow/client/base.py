@@ -10,6 +10,7 @@ import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import wraps
+from pathlib import Path
 from string import Template
 from typing import Any, Callable, Dict, Generic, List, Optional, TypeVar, Union
 from urllib.parse import urljoin, urlparse
@@ -17,7 +18,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 from requests import HTTPError
 from requests.models import Response
-from urllib3.exceptions import ReadTimeoutError
+from urllib3.exceptions import ConnectTimeoutError, ReadTimeoutError
 
 from periflow.auth import get_auth_header, safe_request
 from periflow.context import get_current_group_id, get_current_project_id
@@ -37,6 +38,7 @@ RETRYABLE_REQUEST_ERRORS = (
     requests.exceptions.ReadTimeout,
     requests.exceptions.ConnectionError,
     ReadTimeoutError,
+    ConnectTimeoutError,
 )
 API_REQUEST_MAX_RETRIES = 3
 DEFAULT_PAGINATION_SIZE = 20
@@ -114,6 +116,8 @@ class RequestInterface:
                         i + 1,
                         API_REQUEST_MAX_RETRIES,
                     )
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    final_exc = exc
             raise MaxRetriesExceededError(final_exc)
 
         return wrapper
@@ -177,12 +181,15 @@ class Client(ABC, Generic[T], RequestInterface):
         if pagination:
             page_size = min(DEFAULT_PAGINATION_SIZE, limit)
             params = kwargs.pop("params", {})
-            params = {"limit": page_size, **params}
+            params = {"limit": page_size, "page_size": page_size, **params}
             data = self._list(path=path, params=params, **kwargs)
             items = data["results"]
             next_cursor = data["next_cursor"]
 
             while next_cursor is not None and len(items) < limit:
+                params["limit"] = params["page_size"] = min(
+                    page_size, limit - len(items)
+                )
                 data = self._list(
                     path=path,
                     params={**params, "cursor": next_cursor},
@@ -344,15 +351,15 @@ class UploadableClient(Client[T], Generic[T]):
     def get_multipart_upload_urls(
         self,
         obj_id: T,
-        local_paths: List[str],
+        local_paths: List[Path],
         storage_paths: List[str],
     ) -> List[Dict[str, Any]]:
         """Get multipart upload URLs for multiple file-like objects.
 
         Args:
             obj_id (T): Uploadable object ID
-            local_paths (List[str]): A list local paths to target files. The path can be
-                either absolute or relative.
+            local_paths (List[Path]): A list local paths to target files. The path can
+                be either absolute or relative.
             storage_paths (List[str]): A list of storage paths to target files.
 
         Returns:

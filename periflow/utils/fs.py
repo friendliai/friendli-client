@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from io import BufferedReader
 from pathlib import Path
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Union
 
 import pathspec  # type: ignore
 import typer
@@ -77,35 +77,36 @@ def get_workspace_files(dir_path: Path) -> List[Path]:
     return list(all_files.difference(matched_files))
 
 
-def storage_path_to_local_path(storage_path: str, source_path: Path) -> str:
+def storage_path_to_local_path(storage_path: str, source_path: Path) -> Path:
     """Translate a cloud storage path to the local file system path."""
-    return strip_storage_path_prefix(str(source_path / storage_path))
+    return Path(strip_storage_path_prefix(str(source_path / storage_path)))
 
 
 def get_file_info(storage_path: str, source_path: Path) -> Dict[str, Any]:
     """Get file metadata."""
-    loacl_path = storage_path_to_local_path(storage_path, source_path)
+    local_path = storage_path_to_local_path(storage_path, source_path)
+    stat = local_path.stat()
     return {
         "name": os.path.basename(storage_path),
         "path": storage_path,
-        "mtime": datetime.fromtimestamp(
-            os.stat(loacl_path).st_mtime, tz=tzlocal()
-        ).isoformat(),
-        "size": os.stat(loacl_path).st_size,
+        "mtime": datetime.fromtimestamp(stat.st_mtime, tz=tzlocal()).isoformat(),
+        "size": stat.st_size,
     }
 
 
-def get_file_size(file_path: str) -> int:
+def get_file_size(file_path: Union[str, Path]) -> int:
     """Calculate a file size in bytes.
 
     Args:
-        file_path (str): Path to the target file.
+        file_path (Union[str, Path]): Path to the target file.
 
     Returns:
         int: The size of a file.
 
     """
-    return os.stat(file_path).st_size
+    if isinstance(file_path, str):
+        return os.stat(file_path).st_size
+    return file_path.stat().st_size
 
 
 def strip_storage_path_prefix(path: str) -> str:
@@ -127,7 +128,7 @@ def strip_storage_path_prefix(path: str) -> str:
 
 
 def attach_storage_path_prefix(
-    path: str,
+    path: Union[str, Path],
     iteration: int,
     mp_rank: int,
     mp_degree: int,
@@ -137,7 +138,7 @@ def attach_storage_path_prefix(
     """Attach a filename prefix to mark up iteration and dist info.
 
     Args:
-        path (str): The relative path to file.
+        path (Union[str, Path]): The relative path to file.
         iteration (int): Checkpoint iteration number.
         mp_rank (int): Model parallelism(a.k.a. tensor parallelism) rank.
         mp_degree (int): Model parallelism(a.k.a. tensor parallelism) degree.

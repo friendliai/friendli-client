@@ -591,8 +591,8 @@ def update(
     """Updates configuration of a deployment.
 
     :::tip
-    To turn off the deployment autoscaling, set `--min-replicas` and
-    `--max-replicas` to the same value.
+    To turn off the deployment autoscaling, set `--min-replicas` and `--max-replicas`
+    to the same value.
     :::
 
     """

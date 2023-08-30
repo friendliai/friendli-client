@@ -10,6 +10,7 @@ import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -51,6 +52,7 @@ from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
 from periflow.utils.maps import cloud_vm_map, vm_num_gpu_map
 from periflow.utils.transfer import (
+    MAX_DEFAULT_REQUEST_CONFIG_SIZE,
     ChunksizeAdjuster,
     DeferQueue,
     DownloadManager,
@@ -216,9 +218,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                     json.dump(default_request_config, file)
 
                 file_size = os.stat(drc_file_path).st_size
-                if file_size > 10737418240:  # 10GiB
+                if file_size > MAX_DEFAULT_REQUEST_CONFIG_SIZE:
                     raise EntityTooLargeError(
-                        "The default request config size should be smaller than 10GiB."
+                        "The default request config size should be smaller than 1GiB."
                     )
 
                 file_info = {
@@ -396,7 +398,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             until (datetime): End datetime of the deployment usages to fetch.
 
         Returns:
-            List[Dict[str, Any]]: Retrieved deployment usage info.
+            Dict[str, Any]: Retrieved deployment usage info.
 
         """
         client = PFSProjectUsageClient()
@@ -499,5 +501,5 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             filename = f"{deployment_id_part}_{timestamp_part}.log"
             logger.info("Downloading files %d/%d...", i + 1, len(download_infos))
             download_manager.download_file(
-                url=download_info["url"], out=os.path.join(save_dir, filename)
+                url=download_info["url"], out=Path(save_dir) / filename
             )

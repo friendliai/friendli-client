@@ -55,6 +55,7 @@ S3_RETRYABLE_DOWNLOAD_ERRORS = (
     ReadTimeoutError,
 )
 MAX_RETRIES = 5
+MAX_DEFAULT_REQUEST_CONFIG_SIZE = GiB
 
 
 class DownloadManager:
@@ -76,7 +77,7 @@ class DownloadManager:
         self._max_retries = max_retries
         self._io_lock = Lock()
 
-    def download_file(self, url: str, out: str) -> None:
+    def download_file(self, url: str, out: Path) -> None:
         """Download a file from the URL."""
         file_size = self._get_content_size(url)
 
@@ -95,7 +96,7 @@ class DownloadManager:
             self._download_file_parallel(url, out, file_size)
 
     def _download_file_sequential(
-        self, url: str, out: str, content_length: int
+        self, url: str, out: Path, content_length: int
     ) -> None:
         """Downloads a file sequentially."""
         response = requests.get(url, stream=True, timeout=DEFAULT_REQ_TIMEOUT)
@@ -103,19 +104,19 @@ class DownloadManager:
         with tqdm.wrapattr(
             open(out, "wb"),
             "write",
-            desc=os.path.basename(out),
+            desc=out.name,
             miniters=1,
             total=content_length,
         ) as fout:
-            for chunk in response.iter_content(IO_CHUNK_SIZE):
+            for chunk in response.iter_content(self._io_chunk_size):
                 fout.write(chunk)
 
-    def _download_file_parallel(self, url: str, out: str, content_length: int) -> None:
+    def _download_file_parallel(self, url: str, out: Path, content_length: int) -> None:
         """Downloads a file in parallel."""
         chunks = range(0, content_length, self._max_part_size)
 
         with tqdm(
-            desc=os.path.basename(out),
+            desc=out.name,
             total=content_length,
             unit="B",
             unit_scale=True,
@@ -153,7 +154,7 @@ class DownloadManager:
                     raise exc
 
     def _download_range(
-        self, url: str, start: int, end: int, output: str, pbar: tqdm
+        self, url: str, start: int, end: int, out: Path, pbar: tqdm
     ) -> None:
         """Download a specific part of a file from the URL."""
         headers = {"Range": f"bytes={start}-{end}"}
@@ -180,7 +181,7 @@ class DownloadManager:
         if final_exc is not None:
             raise MaxRetriesExceededError(final_exc)
 
-        downloaded_iter = response.iter_content(IO_CHUNK_SIZE)
+        downloaded_iter = response.iter_content(self._io_chunk_size)
         inner_offset = 0
         while True:
             final_exc = None
@@ -193,7 +194,7 @@ class DownloadManager:
                             offset=start + inner_offset, data=part
                         )
                         for write in writes:
-                            with open(output, "ab") as f:
+                            with open(out, "ab") as f:
                                 f.write(write)
 
                     inner_offset += len(part)
@@ -233,36 +234,28 @@ class UploadManager:
         self._adjuster = chunk_adjuster
 
     @classmethod
-    def list_multipart_upload_objects(cls, path: Path) -> List[str]:
+    def list_multipart_upload_objects(cls, path: Path) -> List[Path]:
         """Lists file paths that requires multipart upload under the given path."""
         if path.is_file():
-            paths = (
-                [str(path)]
-                if get_file_size(str(path)) >= S3_MULTIPART_THRESHOLD
-                else []
-            )
+            paths = [path] if get_file_size(path) >= S3_MULTIPART_THRESHOLD else []
         else:
             paths = [
-                str(p)
+                p
                 for p in path.rglob("*")
-                if p.is_file() and get_file_size(str(p)) >= S3_MULTIPART_THRESHOLD
+                if p.is_file() and get_file_size(p) >= S3_MULTIPART_THRESHOLD
             ]
         return paths
 
     @classmethod
-    def list_upload_objects(cls, path: Path) -> List[str]:
+    def list_upload_objects(cls, path: Path) -> List[Path]:
         """Lists file paths that requires upload under the given path."""
         if path.is_file():
-            paths = (
-                [str(path)]
-                if 0 < get_file_size(str(path)) < S3_MULTIPART_THRESHOLD
-                else []
-            )
+            paths = [path] if 0 < get_file_size(path) < S3_MULTIPART_THRESHOLD else []
         else:
             paths = [
-                str(p)
+                p
                 for p in path.rglob("*")
-                if p.is_file() and 0 < get_file_size(str(p)) < S3_MULTIPART_THRESHOLD
+                if p.is_file() and 0 < get_file_size(p) < S3_MULTIPART_THRESHOLD
             ]
         return paths
 
@@ -275,12 +268,12 @@ class UploadManager:
         if source_path is not None:
             local_path = storage_path_to_local_path(upload_task.path, source_path)
         else:
-            local_path = upload_task.path
+            local_path = Path(upload_task.path)
 
         file_size = get_file_size(local_path)
 
         with tqdm(
-            desc=os.path.basename(local_path),
+            desc=local_path.name,
             total=file_size,
             unit="B",
             unit_scale=True,
@@ -322,7 +315,7 @@ class UploadManager:
         )
 
         with tqdm(
-            desc=os.path.basename(local_path),
+            desc=local_path.name,
             total=file_size,
             unit="B",
             unit_scale=True,
@@ -368,7 +361,7 @@ class UploadManager:
 
     def _upload_part(
         self,
-        file_path: str,
+        file_path: Path,
         chunk_size: int,
         url_info: MultipartUploadUrlInfo,
         pbar: tqdm,

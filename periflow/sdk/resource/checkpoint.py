@@ -652,7 +652,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             src_path = src_path if expand else src_path.parent
             upload_storage_dst_paths = [
                 attach_storage_path_prefix(
-                    path=str(Path(p).relative_to(src_path)),
+                    path=p.relative_to(src_path),
                     iteration=iteration or 0,
                     mp_rank=0,
                     mp_degree=1,
@@ -663,7 +663,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             ]
             multipart_upload_storage_dst_paths = [
                 attach_storage_path_prefix(
-                    path=str(Path(p).relative_to(src_path)),
+                    path=p.relative_to(src_path),
                     iteration=iteration or 0,
                     mp_rank=0,
                     mp_degree=1,
@@ -784,7 +784,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             logger.info("Downloading files %d/%d...", i + 1, len(files))
             download_manager.download_file(
                 url=file["download_url"],
-                out=os.path.join(save_dir, strip_storage_path_prefix(file["path"])),
+                out=Path(save_dir) / strip_storage_path_prefix(file["path"]),
             )
 
     @staticmethod
