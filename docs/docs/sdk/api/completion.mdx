@@ -39,7 +39,9 @@ Creates a completion.
 | Type | Description |
 |------|-------------|
 | `APIError` | Raised when the HTTP API request to the deployment fails. |
-#### Descriptions
+
+#### Description
+
 The `options` argument gets a `V1CompletionOptions` object, which has the following schema.
 
 | Argument | Type | Default |
@@ -72,8 +74,6 @@ The `options` argument gets a `V1CompletionOptions` object, which has the follow
 | `bad_words` | `Optional[List[str]]` | `None` |
 | `bad_word_tokens` | `Optional[List[TokenSequence]]` <br></br> `(TokenSequence: {"tokens": List[int]})` | `None` |
 | `include_output_logits` | `Optional[bool]` | `None` |
-| `include_output_logprobs` | `Optional[bool]` | `None` |
-| `forced_output_tokens` | `Optional[List[int]]` | `None` |
 | `eos_token` | `Optional[List[int]]` | `None` |
 
 Followings are the descriptions for each field.
@@ -104,8 +104,6 @@ Followings are the descriptions for each field.
 - **bad_words**: Text phrases that should not be generated. For a bad word phrase that contains N tokens, if the first N-1 tokens appears at the last of the generated result, the logit for the last token of the phrase is set to -inf. We recommend using `bad_word_tokens` because it is clearer (more details in the document for `stop` field). Defaults to empty list.
 - **bad_word_tokens**: Same as the above `bad_words` field, but receives token sequences instead of text phrases. A TokenSequence type is a dict with the key 'tokens' and the value type List[int]. This is similar to Hugging Face's <a href="https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationConfig.bad_words_ids(List[List[int]]," target="_top">`bad_word_ids`</a> argument.
 - **include_output_logits**: Whether to include the output logits to the generation output.
-- **include_output_logprobs**: Whether to include the output logprobs to the generation output.
-- **forced_output_tokens**: A token sequence that is enforced as a generation output. This option can be used when evaluating the model for the datasets with multi-choice problems (e.g., [HellaSwag](https://huggingface.co/datasets/hellaswag), [MMLU](https://huggingface.co/datasets/cais/mmlu)). Use this option with `include_output_logprobs` to get logprobs for the evaluation..
 - **eos_token**: A list of endpoint sentence tokens.
 
 :::note

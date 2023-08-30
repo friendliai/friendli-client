@@ -50,13 +50,13 @@ And a TokenSequence type is a dict with the key 'tokens' and the value type List
 # Wrong Example: Both `bad_words` and `bad_word_tokens` are set.
 {
     "bad_words": ["bad", "words", " bad", " words"]
-    "bad_word_tokens": [{"tokens": [568, 36]}, {"tokens": [423, 76]}, {"tokens": [32, 67]}, {"tokens": [1790]}]
+    "bad_word_tokens": [{"tokens": [568, 36]}, {"tokens": [423, 76]}]
 }
 
 # Correct Example
 {
     "bad_words": ["bad", "words", " bad", " words"]
-    "stop_tokens": [{"tokens": [568, 36]}, {"tokens": [423, 76]}, {"tokens": [32, 67]}, {"tokens": [1790]}]
+    "stop_tokens": [{"tokens": [568, 36]}, {"tokens": [423, 76]}]
 }
 :::
 
