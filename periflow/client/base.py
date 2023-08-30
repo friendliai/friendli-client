@@ -23,6 +23,7 @@ from tqdm import tqdm
 
 from periflow.auth import auto_token_refresh, get_auth_header
 from periflow.context import get_current_group_id, get_current_project_id
+from periflow.di.injector import get_injector
 from periflow.errors import AuthTokenNotFoundError
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.fs import (
@@ -34,7 +35,7 @@ from periflow.utils.fs import (
     upload_part,
 )
 from periflow.utils.request import DEFAULT_REQ_TIMEOUT, decode_http_err
-from periflow.utils.url import get_auth_uri
+from periflow.utils.url import URLProvider
 
 T = TypeVar("T", bound=Union[int, str, uuid.UUID])
 
@@ -116,6 +117,8 @@ class Client(ABC, Generic[T]):
 
     def __init__(self, **kwargs):
         """Initialize client."""
+        injector = get_injector()
+        self.url_provider = injector.get(URLProvider)
         self.url_template = URLTemplate(self.url_path)
         self.url_kwargs = kwargs
 
@@ -207,9 +210,11 @@ class UserRequestMixin:
 
     @auto_token_refresh
     def _userinfo(self) -> Response:
+        injector = get_injector()
+        url_provider = injector.get(URLProvider)
         try:
             return requests.get(
-                get_auth_uri("oauth2/userinfo"),
+                url_provider.get_auth_uri("oauth2/userinfo"),
                 headers=get_auth_header(),
                 timeout=DEFAULT_REQ_TIMEOUT,
             )

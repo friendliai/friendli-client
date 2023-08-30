@@ -8,10 +8,7 @@ from string import Template
 from typing import Any, Dict, List
 from uuid import UUID
 
-from requests.models import Response
-
 from periflow.client.base import Client, UploadableClient, safe_request
-from periflow.utils.url import get_mr_uri
 
 
 class CheckpointClient(Client[UUID]):
@@ -20,7 +17,7 @@ class CheckpointClient(Client[UUID]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_mr_uri("models/"))
+        return Template(self.url_provider.get_mr_uri("models/"))
 
     def get_checkpoint(self, checkpoint_id: UUID) -> Dict[str, Any]:
         """Get a checkpoint info."""
@@ -36,12 +33,18 @@ class CheckpointClient(Client[UUID]):
         )(pk=checkpoint_id)
         return UUID(response.json()["forms"][0]["id"])
 
-    def delete_checkpoint(self, checkpoint_id: UUID) -> Response:
+    def activate_checkpoint(self, checkpoint_id: UUID) -> Dict[str, Any]:
+        """Make checkpoint status active."""
+        response = safe_request(
+            self.partial_update, err_prefix="Failed to activate checkpoint."
+        )(pk=checkpoint_id, json={"status": "Active"})
+        return response.json()
+
+    def delete_checkpoint(self, checkpoint_id: UUID) -> None:
         """Delete a checkpoint."""
-        response = safe_request(self.delete, err_prefix="Failed to delete checkpoint.")(
+        safe_request(self.delete, err_prefix="Failed to delete checkpoint.")(
             pk=checkpoint_id
         )
-        return response
 
     def restore_checkpoint(self, checkpoint_id: UUID) -> Dict[str, Any]:
         """Restore a soft-deleted checkpoint."""
@@ -57,7 +60,7 @@ class CheckpointFormClient(UploadableClient[UUID]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_mr_uri("model_forms/"))
+        return Template(self.url_provider.get_mr_uri("model_forms/"))
 
     def update_checkpoint_files(
         self,

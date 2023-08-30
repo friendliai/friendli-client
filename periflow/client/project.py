@@ -17,7 +17,6 @@ from periflow.enums import CredType
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.maps import cred_type_map
 from periflow.utils.request import paginated_get
-from periflow.utils.url import get_auth_uri
 
 
 def find_project_id(projects: List[Dict[str, Any]], project_name: str) -> UUID:
@@ -34,7 +33,7 @@ class ProjectClient(Client[UUID]):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("pf_project"))
+        return Template(self.url_provider.get_auth_uri("pf_project"))
 
     def get_project(self, pf_project_id: UUID) -> Dict[str, Any]:
         """Get project info."""
@@ -76,7 +75,9 @@ class ProjectCredentialClient(Client, ProjectRequestMixin):
     @property
     def url_path(self) -> Template:
         """Get an URL path."""
-        return Template(get_auth_uri("pf_project/$project_id/credential"))
+        return Template(
+            self.url_provider.get_auth_uri("pf_project/$project_id/credential")
+        )
 
     def list_credentials(
         self, cred_type: Optional[CredType] = None

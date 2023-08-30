@@ -50,6 +50,10 @@ class V1CompletionOptions(BaseModel):
     bad_words: Optional[List[str]] = None  # List of bad words.
     bad_word_tokens: Optional[List[TokenSequence]] = None  # List of bad word tokens.
     include_output_logits: Optional[bool] = None  # Include logits in the output.
+    include_output_logprobs: Optional[bool] = None  # Include logprobs in the output.
+    forced_output_tokens: Optional[
+        List[int]
+    ] = None  # List of tokens enforced to be generated.
     eos_token: Optional[List[int]] = None  # List of EOS tokens.
 
 

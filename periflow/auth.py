@@ -11,11 +11,12 @@ from typing import Any, Callable, Dict, Optional, Union
 import requests
 
 import periflow
+from periflow.di.injector import get_injector
 from periflow.errors import AuthTokenNotFoundError
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.fs import get_periflow_directory
 from periflow.utils.request import DEFAULT_REQ_TIMEOUT
-from periflow.utils.url import get_training_uri
+from periflow.utils.url import URLProvider
 
 access_token_path = get_periflow_directory() / "access_token"
 refresh_token_path = get_periflow_directory() / "refresh_token"
@@ -98,12 +99,15 @@ def auto_token_refresh(
 
     @functools.wraps(func)
     def inner(*args, **kwargs) -> requests.Response:
+        injector = get_injector()
+        url_provider = injector.get(URLProvider)
+
         resp = func(*args, **kwargs)
         if resp.status_code in (401, 403):
             refresh_token = get_token(TokenType.REFRESH)
             if refresh_token is not None:
                 refresh_r = requests.post(
-                    get_training_uri("token/refresh/"),
+                    url_provider.get_training_uri("token/refresh/"),
                     data={"refresh_token": refresh_token},
                     timeout=DEFAULT_REQ_TIMEOUT,
                 )

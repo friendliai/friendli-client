@@ -1,0 +1,53 @@
+.featurePng {
+  height: 90%;
+  width: 90%;
+  display: block;
+  margin: 1rem auto;
+  border-radius: 0.5rem;
+}
+
+.cardContainer {
+  max-width: 40rem;
+  max-height: 25rem;
+  border-radius: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cardContainerLight {
+  background-color: #ffffff;
+  box-shadow: 0.1rem 0.1rem 0.1rem 0.1rem #dceafb;
+}
+
+.cardContainerLight:hover {
+  background-color: #dceafb;
+}
+
+.cardContainerDark {
+  background-color: #282a36;
+  box-shadow: 0.1rem 0.1rem 0.1rem 0.1rem #3e4152;
+}
+
+.cardContainerDark:hover {
+  background-color: #3e4152;
+}
+
+.cardBody {
+  color: #000000;
+  padding: 1rem 2rem;
+}
+
+.cardBodyLight {
+  color: #000000;
+  padding: 1rem 2rem;
+}
+
+.cardBodyDark {
+  color: #ffffff;
+  padding: 1rem 2rem;
+}
+
+.cardImage {
+  padding-top: 0;
+}

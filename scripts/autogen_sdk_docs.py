@@ -181,6 +181,15 @@ def generate_examples_mdx(example: DocstringExample) -> str:
 """
 
 
+def generate_long_description_mdx(desc: str) -> str:
+    """Generate long description docs."""
+    return f"""
+#### Description
+
+{desc}
+"""
+
+
 def generate_docstring_mdx(docstring: Docstring) -> str:
     """Generate MDX format string of docstring docs."""
     res = f"""
@@ -198,7 +207,7 @@ def generate_docstring_mdx(docstring: Docstring) -> str:
         res += generate_raises_mdx(docstring.raises)
 
     if docstring.long_description:
-        res += f"#### Descriptions\n{docstring.long_description}\n"
+        res += generate_long_description_mdx(docstring.long_description)
 
     if docstring.examples:
         for example in docstring.examples:
