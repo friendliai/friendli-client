@@ -10,7 +10,7 @@ import functools
 import os
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import List, Optional, cast
+from typing import List, Optional
 from uuid import UUID
 
 import yaml
@@ -26,19 +26,11 @@ from periflow.cloud.storage import build_storage_client
 from periflow.enums import (
     CatalogImportMethod,
     CheckpointCategory,
-    CheckpointDataType,
     CheckpointStatus,
     CredType,
     StorageType,
 )
-from periflow.errors import (
-    CheckpointConversionError,
-    InvalidConfigError,
-    NotFoundError,
-    NotSupportedCheckpointError,
-    PeriFlowInternalError,
-    TokenizerNotFoundError,
-)
+from periflow.errors import InvalidConfigError, NotFoundError, PeriFlowInternalError
 from periflow.logging import logger
 from periflow.schema.resource.v1.checkpoint import V1Checkpoint
 from periflow.schema.resource.v1.transfer import MultipartUploadTask, UploadTask
@@ -861,143 +853,3 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             for file in ckpt.forms[0].files:
                 file.path = strip_storage_path_prefix(file.path)
         return ckpt
-
-    @staticmethod
-    def convert(
-        model_name_or_path: str,
-        model_output_path: str,
-        data_type: CheckpointDataType,
-        *,
-        tokenizer_output_dir: Optional[str] = None,
-        attr_output_path: Optional[str] = None,
-        cache_dir: Optional[str] = None,
-        dry_run: bool = False,
-    ) -> None:
-        """Convert Hugging Face model checkpoint to PeriFlow format.
-
-        Args:
-            model_name_or_path (str): Hugging Face model name or local path to the checkpoint.
-            model_output_path (str): Path to the converted checkpoint to save.
-            data_type (CheckpointDataType): Converted checkpoint data type.
-            tokenizer_output_dir (Optional[str], optional): Directory path to save 'tokenizer.json' for the converted checkpoint. Defaults to None.
-            attr_output_path (Optional[str], optional): Path to create the attribute YAML file for the converted checkpoint. Defaults to None.
-            cache_dir (Optional[str], optional): Path for downloading checkpoint. Defaults to None.
-            dry_run (bool, optional): Check only if checkpoint is convertable. Defaults to False.
-
-        Raises:
-            NotFoundError: Raised when `model_name_or_path` is not found. Also raised when `tokenizer_output_dir` is not found.
-            CheckpointConversionError: Raised when given model architecture from checkpoint is not supported to convert.
-
-        """
-        try:
-            import torch  # type: ignore[import] # pylint: disable=import-outside-toplevel
-        except ImportError as exc:
-            raise CheckpointConversionError(
-                "To convert the checkpoint, you must install 'torch'."
-            ) from exc
-
-        try:
-            import transformers  # type: ignore[import] # pylint: disable=import-outside-toplevel
-
-            from periflow.converter.maps import (  # pylint: disable=import-outside-toplevel
-                model_arch_converter_map,
-            )
-            from periflow.converter.utils import (  # pylint: disable=import-outside-toplevel
-                save_tokenizer,
-            )
-        except ImportError as exc:
-            raise CheckpointConversionError(
-                "To convert the checkpoint, your must install the package with 'pip install periflow-client[mllib]'"
-            ) from exc
-
-        data_type = validate_enums(data_type, CheckpointDataType)
-
-        try:
-            config = transformers.AutoConfig.from_pretrained(
-                model_name_or_path, cache_dir=cache_dir, trust_remote_code=True
-            )
-        except OSError as exc:  # from transformers.AutoConfig.from_pretrained()
-            config_dir = Path(model_name_or_path)
-            model_output_dir = Path(model_output_path).parent
-            if (
-                config_dir.exists()
-                and model_output_dir.absolute() == config_dir.absolute()
-            ):
-                raise NotFoundError(
-                    f"'output_dir' ({model_output_dir.as_posix()}) and "
-                    f"'model_name_or_path' ({model_name_or_path}) are the same. "
-                    "In such a case, checkpoints should be prepared in 'output_dir'."
-                ) from exc
-            raise NotFoundError(str(exc)) from exc
-
-        try:
-            generation_config = transformers.GenerationConfig.from_pretrained(
-                model_name_or_path, cache_dir=cache_dir, trust_remote_code=True
-            )
-        except (OSError, TypeError) as exc:
-            generation_config = None
-
-        try:
-            model_arch_list = cast(
-                List[str], cast(transformers.PretrainedConfig, config).architectures
-            )
-        except AttributeError as exc:
-            raise CheckpointConversionError(str(exc)) from exc
-
-        if len(model_arch_list) == 0:
-            raise NotSupportedCheckpointError(
-                invalid_option=f"'architectures={model_arch_list}'",
-                valid_options=list(model_arch_converter_map.keys()),
-            )
-        model_arch = model_arch_list[0]
-        if model_arch not in model_arch_converter_map:
-            raise NotSupportedCheckpointError(
-                invalid_option=f"'architectures={model_arch}'",
-                valid_options=list(model_arch_converter_map.keys()),
-            )
-
-        hf_factory, converter_factory = model_arch_converter_map[model_arch]
-        converter = converter_factory(
-            config=config,
-            generation_config=generation_config,
-            output_path=model_output_path,
-            data_type=data_type,
-        )
-        converter.check_config()
-
-        if not dry_run:
-            logger.info(
-                "Start loading Hugging Face checkpoint(%s) for conversion...",
-                model_name_or_path,
-            )
-            state_dict = hf_factory.from_pretrained(
-                model_name_or_path,
-                torch_dtype=torch.float32,
-                cache_dir=cache_dir,
-                trust_remote_code=True,
-                low_cpu_mem_usage=True,  # For model loading faster and using ~1x model size CPU memory. https://huggingface.co/docs/transformers/main_classes/model#transformers.PreTrainedModel.from_pretrained.example
-            ).state_dict()
-            logger.info(
-                "Hugging Face checkpoint(%s) is successfully loaded!",
-                model_name_or_path,
-            )
-            converter.convert(state_dict=state_dict)
-            logger.info(
-                "Hugging Face checkpoint(%s) is successfully converted to Periflow format!",
-                model_name_or_path,
-            )
-
-        if attr_output_path is not None:
-            attr = converter.get_attributes()
-            with open(attr_output_path, "w", encoding="utf-8") as file:
-                yaml.dump(attr, file, sort_keys=False)
-
-        if tokenizer_output_dir is not None:
-            try:
-                save_tokenizer(
-                    model_name_or_path=model_name_or_path,
-                    cache_dir=cache_dir,
-                    save_dir=tokenizer_output_dir,
-                )
-            except TokenizerNotFoundError as exc:
-                logger.warn(str(exc))

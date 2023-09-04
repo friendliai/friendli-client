@@ -8,10 +8,10 @@ from typing import Any, Dict, Union
 
 from transformers import PretrainedConfig  # type: ignore[import]
 
-from periflow.converter.base import DecoderOnlyConverter
-from periflow.converter.interface import DECODER_PREFIX
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
+from periflow.modules.converter.base import DecoderOnlyConverter
+from periflow.modules.converter.interface import DECODER_PREFIX
 
 
 def safe_config_get(config: Union[Dict[str, Any], PretrainedConfig], key: str) -> Any:

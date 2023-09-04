@@ -10,15 +10,15 @@ import numpy as np
 import torch
 from transformers import T5Config  # type: ignore[import]
 
-from periflow.converter.base import EncoderDecoderConverter
-from periflow.converter.interface import DECODER_PREFIX, ENCODER_PREFIX
-from periflow.converter.utils import (
-    convert_tensor_to_np_array,
-    get_tensor_from_state_dict,
-)
 from periflow.enums import CheckpointDataType
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
+from periflow.modules.converter.base import EncoderDecoderConverter
+from periflow.modules.converter.interface import DECODER_PREFIX, ENCODER_PREFIX
+from periflow.modules.converter.utils import (
+    convert_tensor_to_np_array,
+    get_tensor_from_state_dict,
+)
 
 
 class T5Converter(EncoderDecoderConverter):
