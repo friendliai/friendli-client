@@ -63,6 +63,7 @@ deployment_panel = PanelFormatter(
         "config.region",
         "config.orca_config.max_batch_size",
         "config.orca_config.max_token_count",
+        "config.orca_config.max_num_tokens_to_replace",
     ],
     headers=[
         "ID",
@@ -86,6 +87,7 @@ deployment_panel = PanelFormatter(
         "Region",
         "Max batch size",
         "Max token count",
+        "Max num tokens to replace",
     ],
     extra_fields=["error"],
     extra_headers=["error"],
@@ -471,9 +473,9 @@ def create(
     passed to the `-f` option. The following is an example YAML file:
 
     ```yaml
-    orca_config:
-        max_batch_size: 384
-        max_token_count: 12288
+    max_batch_size: 384
+    max_token_count: 12288
+    max_num_tokens_to_replace: 0
     ```
 
     :::tip
@@ -523,17 +525,23 @@ def create(
     if config_file:
         try:
             config = yaml.safe_load(config_file)
-            if default_request_config_file is not None:
-                default_request_config = yaml.safe_load(default_request_config_file)
         except yaml.YAMLError as e:
             secho_error_and_exit(
                 f"Error occurred while parsing engine config file... {e}"
             )
-    else:
-        config["orca_config"] = {
-            "max_batch_size": DEFAULT_MAX_BATCH_SIZE,
-            "max_token_count": DEFAULT_MAX_TOKEN_COUNT,
-        }
+
+    if "max_batch_size" not in config:
+        config["max_batch_size"] = DEFAULT_MAX_BATCH_SIZE
+    if "max_token_count" not in config:
+        config["max_token_count"] = DEFAULT_MAX_TOKEN_COUNT
+
+    if default_request_config_file is not None:
+        try:
+            default_request_config = yaml.safe_load(default_request_config_file)
+        except yaml.YAMLError as e:
+            secho_error_and_exit(
+                f"Error occurred while parsing engine config file... {e}"
+            )
 
     try:
         deployment = DeploymentAPI.create(

@@ -83,13 +83,11 @@ class OrcaDeploymentConfigurator(DeploymentConfigurator):
         return {
             "type": "object",
             "properties": {
-                "orca_config": {
-                    "type": "object",
-                    "properties": {
-                        "max_batch_size": {"type": "integer"},
-                        "max_token_count": {"type": "integer"},
-                    },
-                },
+                "max_batch_size": {"type": "integer"},
+                "max_token_count": {"type": "integer"},
+                "max_num_tokens_to_replace": {"type": "integer"},
             },
-            "required": ["orca_config"],
+            "minProperties": 1,
+            "additionalProperties": False,
         }
+
