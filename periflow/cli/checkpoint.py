@@ -732,6 +732,13 @@ def convert(
     :::
 
     """
+    try:
+        from periflow.modules.converter.convert import (  # pylint: disable=import-outside-toplevel
+            convert_checkpoint,
+        )
+    except ModuleNotFoundError as exc:
+        secho_error_and_exit(str(exc))
+
     if not os.path.isdir(output_dir):
         if os.path.exists(output_dir):
             secho_error_and_exit(f"'{output_dir}' exists, but its not a directory.")
@@ -742,7 +749,7 @@ def convert(
     attr_output_path = os.path.join(output_dir, output_attr_file_name)
 
     try:
-        CheckpointAPI.convert(
+        convert_checkpoint(
             model_name_or_path=model_name_or_path,
             model_output_path=model_output_path,
             data_type=data_type,
