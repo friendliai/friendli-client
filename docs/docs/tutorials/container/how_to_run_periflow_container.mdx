@@ -35,7 +35,7 @@ You can use PeriFlow Container trial for a period of two weeks free of charge.
 In the next step, you will need to pull the Docker container image.
 You can find instructions on how to do this in the guide on the [PeriFlow Container webpage](https://container.periflow.ai).
 
-If you're new to PeriFlow Container and you don't yet have an account, sign up to the [waitlist](https://waitlist.periflow.ai/container) and we'll let you know as soon as we open up new account.
+If you're new to PeriFlow Container and you don't yet have an account, sign up to the [preview](https://preview.periflow.ai/container) and we'll let you know as soon as we open up new account.
 
 :::info
 ### Requirement for converting Hugging Face model checkpoints (Optional)
@@ -165,7 +165,7 @@ The following tables are the options for encoder decoder models: T5, BlenderBot
 | `--num-heads` | INT | Number of attention heads. | - | ✅ |
 | `--head-size` | INT | Attention head size | - | ✅ |
 | `--hidden-size` | INT | Hidden size of model. | `num-heads * head-size` | ❌ |
-| `--ff-intermediate-size` | INT | Feed forward intermediate size. | `hidden-size * 4` | ✅ |
+| `--ff-intermediate-size` | INT | Feed forward intermediate size. | `hidden-size * 4` | ❌ |
 | `--max-input-length` | INT | Max input token length. | - | ✅ |
 | `--max-output-length` | INT | Max output token length. | - | ✅ |
 | `--num-pos-emb-buckets` | INT | Number of position embedding buckets. Only for models with T5-style relative pos embedding. | - | <ul><li> T5: ✅ </li><li> BlenderBot: ❌ </li></ul> |
