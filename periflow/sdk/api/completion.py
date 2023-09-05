@@ -2,7 +2,7 @@
 
 """PeriFlow Completion API (v1)."""
 
-# pylint: disable=line-too-long
+# pylint: disable=line-too-long, no-name-in-module
 
 from __future__ import annotations
 
@@ -10,10 +10,12 @@ import json
 from typing import Literal, Optional, Union, overload
 
 import requests
+from google.protobuf import json_format
 from pydantic import ValidationError
 from requests import HTTPError
 
 from periflow.errors import APIError, InvalidGenerationError, SessionClosedError
+from periflow.schema.api.v1.codegen.completion_pb2 import V1CompletionsRequest
 from periflow.schema.api.v1.completion import (
     V1Completion,
     V1CompletionLine,
@@ -80,12 +82,16 @@ class Completion(
         | `stop` | `Optional[List[str]]` | `None` |
         | `stop_tokens` | `Optional[List[TokenSequence]]` <br></br> `(TokenSequence: {"tokens": List[int]})` | `None` |
         | `seed` | `Optional[List[int]]` | `None` |
+        | `token_index_to_replace` | `Optional[List[int]]` | `None` |
+        | `embedding_to_replace` | `Optional[List[float]]` | `None` |
         | `beam_search_type` | `Optional[BeamSearchType]` | `None` |
         | `beam_compat_pre_normalization` | `Optional[bool]` | `None` |
         | `beam_compat_no_post_normalization` | `Optional[bool]` | `None` |
         | `bad_words` | `Optional[List[str]]` | `None` |
         | `bad_word_tokens` | `Optional[List[TokenSequence]]` <br></br> `(TokenSequence: {"tokens": List[int]})` | `None` |
         | `include_output_logits` | `Optional[bool]` | `None` |
+        | `include_output_logprobs` | `Optional[bool]` | `None` |
+        | `forced_output_tokens` | `Optional[List[int]]` | `None` |
         | `eos_token` | `Optional[List[int]]` | `None` |
 
         Followings are the descriptions for each field.
@@ -112,10 +118,14 @@ class Completion(
         - **stop**: When one of the stop phrases appears in the generation result, the API will stop generation. The phrase is included in the generated result. If you are using beam search, all of the active beams should contain the stop phrase to terminate generation. Before checking whether a stop phrase is included in the result, the phrase is converted into tokens. We recommend using `stop_tokens` because it is clearer. For example, after tokenization, phrases "clear" and " clear" can result in different token sequences due to the prepended space character. Defaults to empty list.
         - **stop_tokens**: Same as the above `stop` field, but receives token sequences instead of text phrases. A TokenSequence type is a dict with the key 'tokens' and the value type List[int].
         - **seed**: Seed to control random procedure. If nothing is given, the API generate the seed randomly, use it for sampling, and return the seed along with the generated result. When using the `n` argument, you can pass a list of seed values to control all of the independent generations.
+        - **token_index_to_replace**: A list of token indices where to replace the embeddings of input tokens provided via either `tokens` or `prompt`.
+        - **embedding_to_replace**: A list of flattened embedding vectors used for replacing the tokens at the specified indices provided via `token_index_to_replace`.
         - **beam_search_type**: Which beam search type to use. `DETERMINISTIC` means the standard, deterministic beam search, which is similar to Hugging Face's [`beam_search`](https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationMixin.beam_search). Argmuents for controlling random sampling such as `top_k` and `top_p` are not allowed for this option. `STOCHASTIC` means stochastic beam search (more details in [Kool et al. (2019)](https://proceedings.mlr.press/v97/kool19a.html)). `NAIVE_SAMPLING` is similar to Hugging Face's [`beam_sample`](https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationMixin.beam_sample). Defaults to `DETERMINISTIC`.
         - **bad_words**: Text phrases that should not be generated. For a bad word phrase that contains N tokens, if the first N-1 tokens appears at the last of the generated result, the logit for the last token of the phrase is set to -inf. We recommend using `bad_word_tokens` because it is clearer (more details in the document for `stop` field). Defaults to empty list.
         - **bad_word_tokens**: Same as the above `bad_words` field, but receives token sequences instead of text phrases. A TokenSequence type is a dict with the key 'tokens' and the value type List[int]. This is similar to Hugging Face's <a href="https://huggingface.co/docs/transformers/v4.26.0/en/main_classes/text_generation#transformers.GenerationConfig.bad_words_ids(List[List[int]]," target="_top">`bad_word_ids`</a> argument.
         - **include_output_logits**: Whether to include the output logits to the generation output.
+        - **include_output_logprobs**: Whether to include the output logprobs to the generation output.
+        - **forced_output_tokens**: A token sequence that is enforced as a generation output. This option can be used when evaluating the model for the datasets with multi-choice problems (e.g., [HellaSwag](https://huggingface.co/datasets/hellaswag), [MMLU](https://huggingface.co/datasets/cais/mmlu)). Use this option with `include_output_logprobs` to get logprobs for the evaluation..
         - **eos_token**: A list of endpoint sentence tokens.
 
         :::note
@@ -197,11 +207,15 @@ class Completion(
 
         """
         options.stream = stream
+        request_pb = V1CompletionsRequest()
+        option_dict = options.model_dump()
+        json_format.ParseDict(option_dict, request_pb)
 
+        request_data = request_pb.SerializeToString()
         try:
             response = requests.post(
                 url=self._endpoint,
-                json=options.model_dump(),
+                data=request_data,
                 headers=self._get_headers(),
                 stream=stream,
                 timeout=DEFAULT_REQ_TIMEOUT,
@@ -293,14 +307,16 @@ class Completion(
             ```
 
         """
-        options.stream = stream
-
         if self._session is None:
             raise SessionClosedError("Create a session with 'api_session' first.")
 
-        response = await self._session.post(
-            url=self._endpoint, json=options.model_dump()
-        )
+        options.stream = stream
+        request_pb = V1CompletionsRequest()
+        option_dict = options.model_dump()
+        json_format.ParseDict(option_dict, request_pb)
+
+        request_data = request_pb.SerializeToString()
+        response = await self._session.post(url=self._endpoint, data=request_data)
 
         if 400 <= response.status < 500:
             raise APIError(
