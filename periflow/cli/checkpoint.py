@@ -649,6 +649,8 @@ def import_from_catalog(
     for cat in catalogs:
         if cat.name == catalog_name:
             catalog = cat
+            break
+
     if catalog is None:
         msg = (
             f"Public checkpoint with name '{catalog_name}' is not found in the catalog."

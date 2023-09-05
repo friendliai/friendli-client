@@ -19,7 +19,8 @@ create(
     name: str,
     cloud: CloudType,
     region: str,
-    vm_type: VMType,
+    gpu_type: GpuType,
+    num_gpus: int,
     config: Dict[str, Any],
     deployment_type: DeploymentType = DeploymentType.PROD,
     description: Optional[str] = None,
@@ -41,6 +42,8 @@ Creates a new deployment.
 | `name` | `str` | The name of deployment. | - | ❌ |
 | `cloud` | `CloudType` | Type of cloud provider. | - | ❌ |
 | `region` | `str` | Cloud region to create a deployment. | - | ❌ |
+| `gpu_type` | `GpuType` | Type of GPU. | - | ❌ |
+| `num_gpus` | `int` | The number of GPUs. | - | ❌ |
 | `vm_type` | `VMType` | Type of VM. | - | ❌ |
 | `config` | `Dict[str, Any]` | Deployment configuration. | - | ❌ |
 | `deployment_type` | `DeploymentType` | Type of deployment. Defaults to DeploymentType.PROD. | `DeploymentType.PROD` | ✅ |
@@ -82,13 +85,15 @@ pf.init(
 config = {
     "max_batch_size": 256,
     "max_token_count": 8146,
+    "max_num_tokens_to_replace": 0,
 }
 deployment = pf.Deployment.create(
     checkpoint_id="YOUR_CHECKPOINT_ID",
     name="my-deployment",
     cloud="gcp",
     region="asia-northeast3",
-    vm_type="a2-highgpu-1g",
+    gpu_type="a100",
+    num_gpus=1,
     config=config,
 )
 ```
@@ -97,10 +102,9 @@ The format of `config` should be:
 
 ```python
 {
-    "orca_config": {
-        "max_batch_size": Optioanl[int],
-        "max_token_count": Optioanl[int],
-    }
+    "max_batch_size": Optioanl[int],
+    "max_token_count": Optioanl[int],
+    "max_num_tokens_to_replace": Optional[int],
 }
 ```
 

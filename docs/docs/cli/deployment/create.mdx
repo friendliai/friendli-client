@@ -14,9 +14,9 @@ The deployment settings are described in a configuration YAML file, and the path
 passed to the `-f` option. The following is an example YAML file:
 
 ```yaml
-orca_config:
-    max_batch_size: 384
-    max_token_count: 12288
+max_batch_size: 384
+max_token_count: 12288
+max_num_tokens_to_replace: 0
 ```
 
 :::tip
@@ -68,7 +68,8 @@ And a TokenSequence type is a dict with the key 'tokens' and the value type List
 | **`--name`**, **`-n`** | TEXT | The name of deployment.  | - | ✅ |
 | **`--cloud`**, **`-c`** | CHOICE: [aws, azure, gcp] | Type of cloud. | - | ✅ |
 | **`--region`**, **`-r`** | TEXT | Region of cloud. | - | ✅ |
-| **`--vm-type`**, **`-v`** | CHOICE: [g5.xlarge, a2-highgpu-1g, a2-ultragpu-1g, a2-ultragpu-2g, a2-ultragpu-4g, a2-ultragpu-8g] | The VM type for the deployment. | - | ✅ |
+| **`--gpu-type`**, **`-g`** | CHOICE: [a10g, a100, a100-80g] | The GPU type for the deployment. | - | ✅ |
+| **`--num-gpus`**, **`-ng`** | INTEGER | The number of GPUs for the deployment. Equals to the tensor parallelism degree. | - | ✅ |
 | `--config-file`, `-f` | FILENAME | Path to configuration file. | None | ❌ |
 | `--type`, `-t` | CHOICE: [dev, prod] | Type of deployment. | DeploymentType.PROD | ❌ |
 | `--description`, `-d` | TEXT | Deployment description. | None | ❌ |
