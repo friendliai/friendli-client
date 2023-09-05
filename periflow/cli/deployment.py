@@ -546,7 +546,7 @@ def create(
             default_request_config = yaml.safe_load(default_request_config_file)
         except yaml.YAMLError as e:
             secho_error_and_exit(
-                f"Error occurred while parsing engine config file... {e}"
+                f"Error occurred while parsing default request config file... {e}"
             )
 
     try:
