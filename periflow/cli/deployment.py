@@ -15,7 +15,7 @@ import yaml
 from dateutil.parser import parse
 
 from periflow.client.user import UserGroupProjectClient
-from periflow.enums import CloudType, DeploymentSecurityLevel, DeploymentType, VMType
+from periflow.enums import CloudType, DeploymentSecurityLevel, DeploymentType, GpuType
 from periflow.errors import (
     AuthenticationError,
     EntityTooLargeError,
@@ -424,8 +424,14 @@ def create(
     ),
     cloud: CloudType = typer.Option(..., "--cloud", "-c", help="Type of cloud."),
     region: str = typer.Option(..., "--region", "-r", help="Region of cloud."),
-    vm_type: VMType = typer.Option(
-        ..., "--vm-type", "-v", help="The VM type for the deployment."
+    gpu_type: GpuType = typer.Option(
+        ..., "--gpu-type", "-g", help="The GPU type for the deployment."
+    ),
+    num_gpus: int = typer.Option(
+        ...,
+        "--num-gpus",
+        "-ng",
+        help="The number of GPUs for the deployment. Equals to the tensor parallelism degree.",
     ),
     config_file: Optional[typer.FileText] = typer.Option(
         None, "--config-file", "-f", help="Path to configuration file."
@@ -550,7 +556,8 @@ def create(
             deployment_type=deployment_type,
             cloud=cloud,
             region=region,
-            vm_type=vm_type,
+            gpu_type=gpu_type,
+            num_gpus=num_gpus,
             config=config,
             description=description,
             default_request_config=default_request_config,

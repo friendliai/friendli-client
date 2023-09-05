@@ -90,4 +90,3 @@ class OrcaDeploymentConfigurator(DeploymentConfigurator):
             "minProperties": 1,
             "additionalProperties": False,
         }
-
