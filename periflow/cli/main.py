@@ -11,7 +11,16 @@ import typer
 from requests import HTTPError, Response
 
 from periflow.auth import TokenType, clear_tokens, get_token, update_token
-from periflow.cli import checkpoint, credential, deployment, gpu, group, key, project
+from periflow.cli import (
+    catalog,
+    checkpoint,
+    credential,
+    deployment,
+    gpu,
+    group,
+    key,
+    project,
+)
 from periflow.client.project import ProjectClient
 from periflow.client.user import UserClient, UserGroupClient, UserMFAClient
 from periflow.context import (
@@ -21,6 +30,7 @@ from periflow.context import (
 )
 from periflow.di.injector import get_injector
 from periflow.formatter import PanelFormatter
+from periflow.utils.decorator import check_api
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.request import DEFAULT_REQ_TIMEOUT
 from periflow.utils.url import URLProvider
@@ -36,6 +46,7 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
+app.add_typer(catalog.app, name="catalog", help="Manage catalog")
 app.add_typer(credential.app, name="credential", help="Manage credentials")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
 app.add_typer(gpu.app, name="gpu", help="Manage GPUs")
@@ -53,14 +64,17 @@ user_panel_formatter = PanelFormatter(
 
 
 @app.command()
+@check_api
 def whoami():
     """Show my user info."""
     client = UserClient()
     info = client.get_current_userinfo()
+
     user_panel_formatter.render([info])
 
 
 @app.command()
+@check_api
 def login(
     email: str = typer.Option(..., prompt="Enter your email"),
     password: str = typer.Option(..., prompt="Enter your password", hide_input=True),
@@ -115,6 +129,7 @@ def logout():
 
 
 @app.command()
+@check_api
 def passwd(
     old_password: str = typer.Option(
         ..., prompt="Enter your current password", hide_input=True

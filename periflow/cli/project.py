@@ -20,6 +20,7 @@ from periflow.context import (
 )
 from periflow.enums import GroupRole, ProjectRole
 from periflow.formatter import PanelFormatter, TableFormatter
+from periflow.utils.decorator import check_api
 from periflow.utils.format import secho_error_and_exit
 
 app = typer.Typer(
@@ -44,6 +45,7 @@ member_table_formatter = TableFormatter(
 
 # pylint: disable=redefined-builtin
 @app.command()
+@check_api
 def list(
     tail: Optional[int] = typer.Option(
         None, "--tail", help="The number of project list to view at the tail"
@@ -86,6 +88,7 @@ def list(
 
 
 @app.command()
+@check_api
 def create(name: str = typer.Argument(..., help="Name of project to create")):
     """Create a new project.
 
@@ -101,6 +104,7 @@ def create(name: str = typer.Argument(..., help="Name of project to create")):
 
 
 @app.command()
+@check_api
 def current():
     """Get the current working project."""
     client = ProjectClient()
@@ -112,6 +116,7 @@ def current():
 
 
 @app.command()
+@check_api
 def switch(
     name: str = typer.Argument(
         ...,
@@ -143,6 +148,7 @@ def switch(
 
 
 @app.command()
+@check_api
 def delete(
     name: str = typer.Argument(
         ...,
@@ -159,26 +165,8 @@ def delete(
     typer.secho(f"Project {name} deleted.", fg=typer.colors.BLUE)
 
 
-def _check_project_and_get_id() -> Tuple[UUID, UUID]:
-    """Get org_id and project_id if valid."""
-    user_client = UserClient()
-
-    org = get_current_org()
-    project_id = get_current_project_id()
-    if project_id is None:
-        secho_error_and_exit("Failed to identify project... Please set project again.")
-
-    if org["privilege_level"] == GroupRole.OWNER:
-        return UUID(org["id"]), project_id
-
-    requester = user_client.get_project_membership(project_id)
-    if requester["access_level"] != ProjectRole.ADMIN:
-        secho_error_and_exit("Only the admin of the project can add-user/set-role")
-
-    return org["id"], project_id
-
-
 @app.command("add-user")
+@check_api
 def add_user(
     email: str = typer.Argument(
         ...,
@@ -212,6 +200,7 @@ def add_user(
 
 
 @app.command("delete-user")
+@check_api
 def delete_user(
     email: str = typer.Argument(
         ...,
@@ -250,6 +239,7 @@ def delete_user(
 
 
 @app.command("set-role")
+@check_api
 def set_role(
     email: str = typer.Argument(
         ...,
@@ -298,6 +288,7 @@ def set_role(
 
 
 @app.command()
+@check_api
 def members():
     """List project members."""
     project_client = ProjectClient()
@@ -308,3 +299,22 @@ def members():
 
     members = project_client.list_users(project_id)
     member_table_formatter.render(members)
+
+
+def _check_project_and_get_id() -> Tuple[UUID, UUID]:
+    """Get org_id and project_id if valid."""
+    user_client = UserClient()
+
+    org = get_current_org()
+    project_id = get_current_project_id()
+    if project_id is None:
+        secho_error_and_exit("Failed to identify project... Please set project again.")
+
+    if org["privilege_level"] == GroupRole.OWNER:
+        return UUID(org["id"]), project_id
+
+    requester = user_client.get_project_membership(project_id)
+    if requester["access_level"] != ProjectRole.ADMIN:
+        secho_error_and_exit("Only the admin of the project can add-user/set-role")
+
+    return org["id"], project_id

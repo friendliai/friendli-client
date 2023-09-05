@@ -16,6 +16,7 @@ from periflow.configurator.credential import CredentialInteractiveConfigurator
 from periflow.enums import CredType
 from periflow.formatter import PanelFormatter, TableFormatter
 from periflow.sdk.resource.credential import Credential as CredentialAPI
+from periflow.utils.decorator import check_api
 from periflow.utils.format import secho_error_and_exit
 
 app = typer.Typer(
@@ -84,6 +85,7 @@ def main(
 
 
 @create_app.command()
+@check_api
 def s3(
     name: str = typer.Option(..., "--name", "-n", help="Name of the new credential."),
     aws_access_key_id: str = typer.Option(
@@ -127,6 +129,7 @@ def s3(
 
 
 @create_app.command()
+@check_api
 def azure_blob(
     name: str = typer.Option(..., "--name", "-n", help="Name of the new credential."),
     storage_account_name: str = typer.Option(
@@ -175,6 +178,7 @@ def azure_blob(
 
 
 @create_app.command()
+@check_api
 def gcs(
     name: str = typer.Option(..., "--name", "-n", help="Name of the new credential."),
     service_account_key_file: typer.FileText = typer.Option(
@@ -231,6 +235,7 @@ def gcs(
 
 # pylint: disable=redefined-builtin
 @app.command()
+@check_api
 def list(
     cred_type: CredType = typer.Option(
         None, "--cred-type", "-t", help="Filter credentials by the type."
@@ -242,6 +247,7 @@ def list(
 
 
 @app.command()
+@check_api
 def update(
     credential_id: UUID = typer.Argument(..., help="ID of credential to update.")
 ):
@@ -260,6 +266,7 @@ def update(
 
 
 @app.command()
+@check_api
 def delete(
     credential_id: UUID = typer.Argument(..., help="ID of credential to delete."),
     force: bool = typer.Option(

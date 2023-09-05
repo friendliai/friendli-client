@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Test CheckpointClient Service"""
+"""Test Checkpoint Client."""
 
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ from uuid import uuid4
 
 import pytest
 import requests_mock
-import typer
 
 from periflow.client.checkpoint import CheckpointClient, CheckpointFormClient
+from periflow.errors import APIError
 from periflow.utils.fs import S3_MPU_PART_MAX_SIZE, S3_UPLOAD_SIZE_LIMIT
 
 
@@ -33,7 +33,6 @@ def checkpoint_form_client() -> CheckpointFormClient:
 def test_checkpoint_client_get_checkpoint(
     requests_mock: requests_mock.Mocker, checkpoint_client: CheckpointClient
 ):
-    assert isinstance(checkpoint_client, CheckpointClient)
     checkpoint_id = uuid4()
     ckpt_form_id = uuid4()
     resp_body = {
@@ -58,7 +57,7 @@ def test_checkpoint_client_get_checkpoint(
 
     # Failed due to HTTP error
     requests_mock.get(url_template.render(checkpoint_id=checkpoint_id), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         assert checkpoint_client.get_checkpoint(checkpoint_id)
 
 
@@ -66,7 +65,6 @@ def test_checkpoint_client_get_checkpoint(
 def test_checkpoint_client_delete_checkpoint(
     requests_mock: requests_mock.Mocker, checkpoint_client: CheckpointClient
 ):
-    assert isinstance(checkpoint_client, CheckpointClient)
     checkpoint_id = uuid4()
 
     url_template = deepcopy(checkpoint_client.url_template)
@@ -76,16 +74,13 @@ def test_checkpoint_client_delete_checkpoint(
     requests_mock.delete(
         url_template.render(checkpoint_id=checkpoint_id), status_code=204
     )
-    try:
-        checkpoint_client.delete_checkpoint(checkpoint_id)
-    except typer.Exit:
-        raise pytest.fail("Checkpoint delete test failed.")
+    checkpoint_client.delete_checkpoint(checkpoint_id)
 
     # Failed due to HTTP error
     requests_mock.delete(
         url_template.render(checkpoint_id=checkpoint_id), status_code=404
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         checkpoint_client.delete_checkpoint(checkpoint_id)
 
 
@@ -93,7 +88,6 @@ def test_checkpoint_client_delete_checkpoint(
 def test_checkpoint_client_restore_checkpoint(
     requests_mock: requests_mock.Mocker, checkpoint_client: CheckpointClient
 ):
-    assert isinstance(checkpoint_client, CheckpointClient)
     checkpoint_id = uuid4()
 
     url_template = deepcopy(checkpoint_client.url_template)
@@ -103,16 +97,13 @@ def test_checkpoint_client_restore_checkpoint(
     requests_mock.post(
         url_template.render(checkpoint_id=checkpoint_id), status_code=204, json={}
     )
-    try:
-        checkpoint_client.restore_checkpoint(checkpoint_id)
-    except typer.Exit:
-        raise pytest.fail("Checkpoint restore test failed.")
+    checkpoint_client.restore_checkpoint(checkpoint_id)
 
     # Failed due to HTTP error
     requests_mock.post(
         url_template.render(checkpoint_id=checkpoint_id), status_code=404, json={}
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         assert checkpoint_client.restore_checkpoint(checkpoint_id)
 
 
@@ -121,7 +112,6 @@ def test_checkpoint_client_get_checkpoint_download_urls(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
 ):
-    assert isinstance(checkpoint_form_client, CheckpointFormClient)
     ckpt_form_id = uuid4()
     base_url = checkpoint_form_client.url_template.get_base_url()
 
@@ -151,7 +141,7 @@ def test_checkpoint_client_get_checkpoint_download_urls(
     requests_mock.get(
         f"{base_url}/model_forms/{ckpt_form_id}/download/", status_code=404
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         assert checkpoint_form_client.get_checkpoint_download_urls(ckpt_form_id)
 
 
@@ -182,7 +172,7 @@ def test_checkpoint_client_update_checkpoint_files(
     )
 
     requests_mock.patch(f"{base_url}/model_forms/{ckpt_form_id}/", status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         checkpoint_form_client.update_checkpoint_files(
             ckpt_form_id=ckpt_form_id, files=files
         )
@@ -193,7 +183,6 @@ def test_checkpoint_client_upload(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
 ):
-    assert isinstance(checkpoint_form_client, CheckpointFormClient)
     ckpt_form_id = uuid4()
     base_url = checkpoint_form_client.url_template.get_base_url()
     url = f"{base_url}/model_forms/{ckpt_form_id}/upload/"
@@ -212,7 +201,7 @@ def test_checkpoint_client_upload(
         == resp_body
     )
     requests_mock.post(url, status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         checkpoint_form_client.get_spu_urls(
             obj_id=ckpt_form_id,
             storage_paths=paths,
@@ -224,7 +213,6 @@ def test_checkpoint_client_start_multipart_upload(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
 ):
-    assert isinstance(checkpoint_form_client, CheckpointFormClient)
     ckpt_form_id = uuid4()
     base_url = checkpoint_form_client.url_template.get_base_url()
     url = f"{base_url}/model_forms/{ckpt_form_id}/start_mpu/"
@@ -255,7 +243,7 @@ def test_checkpoint_client_start_multipart_upload(
             storage_paths=paths,
         ) == [resp_body]
         requests_mock.post(url, status_code=404)
-        with pytest.raises(typer.Exit):
+        with pytest.raises(APIError):
             checkpoint_form_client.get_mpu_urls(
                 obj_id=ckpt_form_id,
                 local_paths=[os.path.join(dir, path) for path in paths],
@@ -268,7 +256,6 @@ def test_checkpoint_client_complete_multipart_upload(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
 ):
-    assert isinstance(checkpoint_form_client, CheckpointFormClient)
     ckpt_form_id = uuid4()
     base_url = checkpoint_form_client.url_template.get_base_url()
     url = f"{base_url}/model_forms/{ckpt_form_id}/complete_mpu/"
@@ -291,7 +278,7 @@ def test_checkpoint_client_complete_multipart_upload(
     )
 
     requests_mock.post(url, status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         checkpoint_form_client.complete_mpu(
             obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
         )
@@ -302,7 +289,6 @@ def test_checkpoint_client_abort_multipart_upload(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
 ):
-    assert isinstance(checkpoint_form_client, CheckpointFormClient)
     ckpt_form_id = uuid4()
     base_url = checkpoint_form_client.url_template.get_base_url()
     url = f"{base_url}/model_forms/{ckpt_form_id}/abort_mpu/"
@@ -315,7 +301,7 @@ def test_checkpoint_client_abort_multipart_upload(
     )
 
     requests_mock.post(url, status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         checkpoint_form_client.abort_mpu(
             obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id
         )
@@ -324,7 +310,6 @@ def test_checkpoint_client_abort_multipart_upload(
 def test_actual_s3_upload(
     requests_mock: requests_mock.Mocker, checkpoint_form_client: CheckpointClient
 ):
-    assert isinstance(checkpoint_form_client, CheckpointFormClient)
     ckpt_form_id = uuid4()
 
     small_file_1_name = "small_1.bin"

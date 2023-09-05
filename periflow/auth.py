@@ -12,8 +12,7 @@ import requests
 
 import periflow
 from periflow.di.injector import get_injector
-from periflow.errors import AuthTokenNotFoundError
-from periflow.utils.format import secho_error_and_exit
+from periflow.errors import AuthorizationError, AuthTokenNotFoundError
 from periflow.utils.fs import get_periflow_directory
 from periflow.utils.request import DEFAULT_REQ_TIMEOUT
 from periflow.utils.url import URLProvider
@@ -68,9 +67,7 @@ def get_token(token_type: TokenType) -> Union[str, None]:
             return refresh_token_path.read_text()
         if token_type == TokenType.MFA:
             return mfa_token_path.read_text()
-        secho_error_and_exit(
-            "token_type should be one of 'access' or 'refresh' or 'mfa'."
-        )
+        raise ValueError("token_type should be one of 'access' or 'refresh' or 'mfa'.")
     except FileNotFoundError:
         return None
 
@@ -113,10 +110,10 @@ def auto_token_refresh(
                 )
                 try:
                     refresh_r.raise_for_status()
-                except requests.HTTPError:
-                    secho_error_and_exit(
-                        "Failed to refresh access token... Please login again"
-                    )
+                except requests.HTTPError as exc:
+                    raise AuthorizationError(
+                        "Failed to refresh access token. Please login again."
+                    ) from exc
 
                 update_token(
                     token_type=TokenType.ACCESS, token=refresh_r.json()["access_token"]
@@ -136,8 +133,8 @@ def auto_token_refresh(
                 resp = func(*args, **kwargs)
                 resp.raise_for_status()
             else:
-                secho_error_and_exit(
-                    "Failed to refresh access token... Please login again"
+                raise AuthorizationError(
+                    "Failed to refresh access token. Please login again."
                 )
         else:
             resp.raise_for_status()
