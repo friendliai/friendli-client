@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Test UserClient Service"""
+"""Test User Client."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ from datetime import datetime
 
 import pytest
 import requests_mock
-import typer
 
 from periflow.client.user import (
     UserAccessKeyClient,
@@ -19,6 +18,7 @@ from periflow.client.user import (
     UserMFAClient,
 )
 from periflow.enums import GroupRole, ProjectRole
+from periflow.errors import APIError
 
 
 @pytest.fixture
@@ -50,16 +50,16 @@ def test_user_initiate_mfa(
     requests_mock.post(url_template.render(mfa_type="totp"), status_code=204)
     try:
         user_mfa.initiate_mfa(mfa_type="totp", mfa_token="MFA_TOKEN")
-    except typer.Exit:
+    except APIError:
         raise pytest.fail("Test initiate MFA failed.")
 
     # Failed
     requests_mock.post(url_template.render(mfa_type="totp"), status_code=400)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_mfa.initiate_mfa(mfa_type="totp", mfa_token="MFA_TOKEN")
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_change_password(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -69,16 +69,16 @@ def test_user_client_change_password(
     requests_mock.put(url_template.render(**user_client.url_kwargs), status_code=204)
     try:
         user_client.change_password("1234", "5678")
-    except typer.Exit:
+    except APIError:
         raise pytest.fail("Test change password failed.")
 
     # Failed
     requests_mock.put(url_template.render(**user_client.url_kwargs), status_code=400)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_client.change_password("1234", "5678")
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_set_group_privilege(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -94,18 +94,18 @@ def test_user_client_set_group_privilege(
     )
     try:
         user_client.set_group_privilege(group_id, user_id, GroupRole.OWNER)
-    except typer.Exit:
+    except APIError:
         raise pytest.fail("Test set group privilege failed.")
 
     # Failed
     requests_mock.patch(
         url_template.render(pf_user_id=user_id, pf_group_id=group_id), status_code=404
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_client.set_group_privilege(group_id, user_id, GroupRole.OWNER)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_get_project_membership(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -128,11 +128,11 @@ def test_user_client_get_project_membership(
 
     # Failed
     requests_mock.get(url_template.render(pf_project_id=project_id), status_code=404)
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_client.get_project_membership(project_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_add_to_project(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -149,7 +149,7 @@ def test_user_client_add_to_project(
     )
     try:
         user_client.add_to_project(user_id, project_id, ProjectRole.ADMIN)
-    except typer.Exit:
+    except APIError:
         raise pytest.fail("Test add to project failed.")
 
     # Failed
@@ -157,11 +157,11 @@ def test_user_client_add_to_project(
         url_template.render(pf_user_id=user_id, pf_project_id=project_id),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_client.add_to_project(user_id, project_id, ProjectRole.ADMIN)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_delete_from_project(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -178,7 +178,7 @@ def test_user_client_delete_from_project(
     )
     try:
         user_client.delete_from_project(user_id, project_id)
-    except typer.Exit:
+    except APIError:
         raise pytest.fail("Test add to project failed.")
 
     # Failed
@@ -186,11 +186,11 @@ def test_user_client_delete_from_project(
         url_template.render(pf_user_id=user_id, pf_project_id=project_id),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_client.add_to_project(user_id, project_id, ProjectRole.ADMIN)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_set_project_privilege(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -207,7 +207,7 @@ def test_user_client_set_project_privilege(
     )
     try:
         user_client.set_project_privilege(user_id, project_id, ProjectRole.ADMIN)
-    except typer.Exit:
+    except APIError:
         raise pytest.fail("Test set project privilege failed.")
 
     # Failed
@@ -215,11 +215,11 @@ def test_user_client_set_project_privilege(
         url_template.render(pf_user_id=user_id, pf_project_id=project_id),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_client.set_project_privilege(user_id, project_id, ProjectRole.ADMIN)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_group_client_get_group_info(
     requests_mock: requests_mock.Mocker, user_group_client: UserGroupClient
 ):
@@ -240,11 +240,11 @@ def test_user_group_client_get_group_info(
     requests_mock.get(
         url_template.render(**user_group_client.url_kwargs), status_code=404
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_group_client.get_group_info()
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_access_key_client_create_key(
     requests_mock: requests_mock.Mocker,
     user_access_key_client: UserAccessKeyClient,
@@ -280,11 +280,11 @@ def test_user_access_key_client_create_key(
         json=result,
         status_code=400,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_access_key_client.create_access_key("test")
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_access_key_client_list_key(
     requests_mock: requests_mock.Mocker,
     user_access_key_client: UserAccessKeyClient,
@@ -314,11 +314,11 @@ def test_user_access_key_client_list_key(
         json=result,
         status_code=400,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_access_key_client.list_access_keys()
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_access_key_client_delete_key(
     requests_mock: requests_mock.Mocker,
     user_access_key_client: UserAccessKeyClient,
@@ -346,5 +346,5 @@ def test_user_access_key_client_delete_key(
         ),
         status_code=400,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         user_access_key_client.delete_access_key(access_key_id)

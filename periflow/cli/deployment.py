@@ -24,6 +24,7 @@ from periflow.errors import (
 )
 from periflow.formatter import PanelFormatter, TableFormatter
 from periflow.sdk.resource.deployment import Deployment as DeploymentAPI
+from periflow.utils.decorator import check_api
 from periflow.utils.format import (
     datetime_to_pretty_str,
     datetime_to_simple_string,
@@ -160,19 +161,6 @@ deployment_org_table = TableFormatter(
     substitute_exact_match_only=False,
 )
 
-deployment_metrics_table = TableFormatter(
-    name="Deployment Metrics",
-    fields=[
-        "id",
-        "latency",
-        "throughput",
-        "time_window",
-    ],
-    headers=["ID", "Latency(ms)", "Throughput(req/s)", "Time Window(sec)"],
-    extra_fields=["error"],
-    extra_headers=["error"],
-)
-
 deployment_usage_table = TableFormatter(
     name="Deployment Usage",
     fields=[
@@ -249,6 +237,7 @@ def get_deployment_id_from_namespace(namespace: str):
 
 
 @app.command()
+@check_api
 def list(
     include_terminated: bool = typer.Option(
         False,
@@ -298,6 +287,7 @@ def list(
 
 
 @app.command()
+@check_api
 def stop(deployment_id: str = typer.Argument(..., help="ID of deployment to stop")):
     """Stops a running deployment."""
     DeploymentAPI.stop(id=deployment_id)
@@ -308,6 +298,7 @@ def stop(deployment_id: str = typer.Argument(..., help="ID of deployment to stop
 
 
 @app.command()
+@check_api
 def view(
     deployment_id: str = typer.Argument(..., help="deployment id to inspect detail.")
 ):
@@ -327,30 +318,61 @@ def view(
 
 
 @app.command()
+@check_api
 def metrics(
     deployment_id: str = typer.Argument(
         ..., help="ID of deployment to inspect in detail."
     ),
-    time_window: int = typer.Option(
-        60, "--time-window", "-t", help="Time window of metrics in seconds."
+    since: str = typer.Option(
+        ...,
+        "--since",
+        help=(
+            "Start time of metrics to fetch. The format should be {YYYY}-{MM}-{DD}T{HH}. "
+            "The UTC timezone will be used by default."
+        ),
+    ),
+    until: str = typer.Option(
+        ...,
+        "--until",
+        help=(
+            "End time of metrics to fetch. The format should be {YYYY}-{MM}-{DD}T{HH}. "
+            "The UTC timezone will be used by default."
+        ),
+    ),
+    window: int = typer.Option(
+        60, "--window", "-w", help="Time window of metrics in seconds."
     ),
 ):
     """Show metrics of a deployment."""
-    metrics = DeploymentAPI.get_metrics(id=deployment_id, time_window=time_window)
-    metrics["id"] = metrics["deployment_id"]
-    if metrics["latency"]:
-        # ns => ms
-        metrics["latency"] = (
-            f"{metrics['latency'] / 1000000:.3f}" if "latency" in metrics else None
+    try:
+        start = datetime.strptime(since, "%Y-%m-%dT%H").astimezone(tz=timezone.utc)
+        end = datetime.strptime(until, "%Y-%m-%dT%H").astimezone(tz=timezone.utc)
+    except ValueError:
+        secho_error_and_exit(
+            "Invalid datetime format. The format should be {YYYY}-{MM}-{DD}T{HH} "
+            "(e.g., 1999-01-01T01)."
         )
-    if metrics["throughput"]:
-        metrics["throughput"] = (
-            f"{metrics['throughput']:.3f}" if "throughput" in metrics else None
+
+    metrics = DeploymentAPI.get_metrics(
+        id=deployment_id, since=start, until=end, time_window=window
+    )
+    for metric in metrics:
+        metric_key = metric["metric"]
+        metric_data = metric["points"]
+
+        deployment_metrics_table = TableFormatter(
+            name=metric_key,
+            fields=[
+                "value",
+                "timestamp",
+            ],
+            headers=["Value", "Timestamp"],
         )
-    deployment_metrics_table.render([metrics])
+        deployment_metrics_table.render(metric_data)
 
 
 @app.command()
+@check_api
 def usage(
     year: int = typer.Argument(...),
     month: int = typer.Argument(...),
@@ -377,7 +399,7 @@ def usage(
             1,
             tzinfo=timezone.utc,
         )
-    usages = DeploymentAPI.get_usage(start_date, end_date)
+    usages = DeploymentAPI.get_project_deployment_durations(start_date, end_date)
     deployments = [
         {
             "id": id,
@@ -398,6 +420,7 @@ def usage(
 
 
 @app.command()
+@check_api
 def log(
     deployment_id: str = typer.Argument(..., help="ID of deployment to get log."),
     replica_index: int = typer.Argument(
@@ -415,6 +438,7 @@ def log(
 
 
 @app.command()
+@check_api
 def create(
     checkpoint_id: UUID = typer.Option(
         ..., "--checkpoint-id", "-i", help="Checkpoint id to deploy."
@@ -546,7 +570,7 @@ def create(
             default_request_config = yaml.safe_load(default_request_config_file)
         except yaml.YAMLError as e:
             secho_error_and_exit(
-                f"Error occurred while parsing engine config file... {e}"
+                f"Error occurred while parsing default request config file... {e}"
             )
 
     try:
@@ -583,6 +607,7 @@ def create(
 
 
 @app.command()
+@check_api
 def update(
     deployment_id: str = typer.Argument(..., help="ID of deployment to update."),
     min_replicas: int = typer.Option(
@@ -595,8 +620,8 @@ def update(
     """Updates configuration of a deployment.
 
     :::tip
-    To turn off the deployment autoscaling, set `--min-replicas` and
-    `--max-replicas` to the same value.
+    To turn off the deployment autoscaling, set `--min-replicas` and `--max-replicas`
+    to the same value.
     :::
 
     """
@@ -611,6 +636,7 @@ def update(
 
 
 @app.command()
+@check_api
 def event(
     deployment_id: str = typer.Argument(..., help="ID of deployment to get events."),
 ):
@@ -623,6 +649,7 @@ def event(
 
 
 @app.command()
+@check_api
 def req_resp(
     deployment_id: str = typer.Argument(
         ..., help="ID of deployment to download request-response logs."

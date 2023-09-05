@@ -14,7 +14,7 @@ from periflow.utils.url import URLProvider
 
 
 @pytest.fixture
-def patch_auto_token_refresh(requests_mock: requests_mock.Mocker):
+def patch_safe_request(requests_mock: requests_mock.Mocker):
     periflow.api_key = "fake-api-key"
     injector = get_injector()
     url_provider = injector.get(URLProvider)

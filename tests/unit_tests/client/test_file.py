@@ -9,9 +9,9 @@ from uuid import uuid4
 
 import pytest
 import requests_mock
-import typer
 
 from periflow.client.file import FileClient, GroupProjectFileClient
+from periflow.errors import APIError
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def group_file_client(
 class TestFileClient:
     """Unit test for `FileClientService`."""
 
-    @pytest.mark.usefixtures("patch_auto_token_refresh")
+    @pytest.mark.usefixtures("patch_safe_request")
     def test_get_misc_file_upload_url(
         self,
         requests_mock: requests_mock.Mocker,
@@ -52,10 +52,10 @@ class TestFileClient:
         )
 
         requests_mock.post(f"{base_url}/files/{misc_file_id}/upload/", status_code=404)
-        with pytest.raises(typer.Exit):
+        with pytest.raises(APIError):
             file_client.get_misc_file_upload_url(misc_file_id=misc_file_id)
 
-    @pytest.mark.usefixtures("patch_auto_token_refresh")
+    @pytest.mark.usefixtures("patch_safe_request")
     def test_get_misc_file_download_url(
         self,
         requests_mock: requests_mock.Mocker,
@@ -80,10 +80,10 @@ class TestFileClient:
         requests_mock.post(
             f"{base_url}/files/{misc_file_id}/download/", status_code=404
         )
-        with pytest.raises(typer.Exit):
+        with pytest.raises(APIError):
             file_client.get_misc_file_download_url(misc_file_id=misc_file_id)
 
-    @pytest.mark.usefixtures("patch_auto_token_refresh")
+    @pytest.mark.usefixtures("patch_safe_request")
     def test_make_misc_file_uploaded(
         self,
         requests_mock: requests_mock.Mocker,
@@ -114,14 +114,14 @@ class TestFileClient:
         requests_mock.patch(
             f"{base_url}/files/{misc_file_id}/uploaded/", status_code=404
         )
-        with pytest.raises(typer.Exit):
+        with pytest.raises(APIError):
             file_client.make_misc_file_uploaded(misc_file_id=misc_file_id)
 
 
 class TestGroupProjectFileClient:
     """Unit test for `GroupProjectFileClientService`."""
 
-    @pytest.mark.usefixtures("patch_auto_token_refresh")
+    @pytest.mark.usefixtures("patch_safe_request")
     def test_make_create_misc_file(
         self,
         requests_mock: requests_mock.Mocker,
@@ -148,5 +148,5 @@ class TestGroupProjectFileClient:
         assert group_file_client.create_misc_file(file_info=file_info) == resp_body
 
         requests_mock.post(url, status_code=409)
-        with pytest.raises(typer.Exit):
+        with pytest.raises(APIError):
             group_file_client.create_misc_file(file_info=file_info)

@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Test DeploymentClient Service"""
+"""Test Deployment Client."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from uuid import uuid4
 
 import pytest
 import requests_mock
-import typer
 
 from periflow.client.deployment import (
     DeploymentClient,
@@ -19,6 +18,7 @@ from periflow.client.deployment import (
     PFSProjectUsageClient,
 )
 from periflow.enums import DeploymentType
+from periflow.errors import APIError
 
 
 @pytest.fixture
@@ -51,7 +51,7 @@ def deployment_req_resp_client(deployment_id: str) -> DeploymentReqRespClient:
     return DeploymentReqRespClient(deployment_id=deployment_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_deployment_client_get_deployment(
     requests_mock: requests_mock.Mocker, deployment_client: DeploymentClient
 ):
@@ -75,21 +75,21 @@ def test_deployment_client_get_deployment(
         ),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         deployment_client.get_deployment(1)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_deployment_client_list_deployment(
     requests_mock: requests_mock.Mocker, deployment_client: DeploymentClient
 ):
     assert isinstance(deployment_client, DeploymentClient)
     results = {
-        "deployments": [
+        "results": [
             {"id": 1, "config": {"name": "one", "gpu_type": "t4", "total_gpus": 1}},
             {"id": 2, "config": {"name": "two", "gpu_type": "t4", "total_gpus": 2}},
         ],
-        "cursor": "1681093356202075-abcdefgh",
+        "next_cursor": "1681093356202075-abcdefgh",
     }
 
     # Success
@@ -104,7 +104,7 @@ def test_deployment_client_list_deployment(
         deployment_client.list_deployments(
             project_id=1, archived=False, limit=2, from_oldest=False
         )
-        == results["deployments"]
+        == results["results"]
     )
 
     # Failed due to HTTP error
@@ -115,13 +115,13 @@ def test_deployment_client_list_deployment(
         ),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         deployment_client.list_deployments(
             project_id=1, archived=False, limit=2, from_oldest=False
         )
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_deployment_client_create_deployment(
     requests_mock: requests_mock.Mocker, deployment_client: DeploymentClient
 ):
@@ -157,7 +157,7 @@ def test_deployment_client_create_deployment(
         ),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         deployment_client.create_deployment(config)
 
     # Set num_replicas to 2
@@ -182,7 +182,7 @@ def test_deployment_client_create_deployment(
     assert deployment_client.create_deployment(config) == result
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_deployment_client_update_scaler(
     requests_mock: requests_mock.Mocker, deployment_client: DeploymentClient
 ):
@@ -204,13 +204,13 @@ def test_deployment_client_update_scaler(
         ),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         deployment_client.update_deployment_scaler(
             deployment_id=deployment_id, min_replicas=2, max_replicas=1
         )
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_deployment_client_delete_deployment(
     requests_mock: requests_mock.Mocker, deployment_client: DeploymentClient
 ):
@@ -227,21 +227,11 @@ def test_deployment_client_delete_deployment(
         deployment_client.url_template.render(**deployment_client.url_kwargs, pk=1),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         deployment_client.stop_deployment(1)
 
 
-@pytest.mark.skip
-@pytest.mark.usefixtures("patch_auto_token_refresh")
-def test_deployment_metrics_client(
-    requests_mock: requests_mock.Mocker,
-    deployment_metrics_client: DeploymentMetricsClient,
-):
-    # TODO: Add testcase.
-    pass
-
-
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_deployment_usage_client(
     requests_mock: requests_mock.Mocker,
     project_usage_client: PFSProjectUsageClient,
@@ -265,7 +255,10 @@ def test_deployment_usage_client(
 
     start_date = datetime(2023, 1, 1)
     end_date = datetime(2023, 2, 1)
-    assert project_usage_client.get_usage(start_date, end_date) == result
+    assert (
+        project_usage_client.get_project_deployment_durations(start_date, end_date)
+        == result
+    )
 
     # Failed due to HTTP error
     requests_mock.get(
@@ -274,11 +267,11 @@ def test_deployment_usage_client(
         ),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
-        project_usage_client.get_usage(start_date, end_date)
+    with pytest.raises(APIError):
+        project_usage_client.get_project_deployment_durations(start_date, end_date)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_deployment_event_client(
     requests_mock: requests_mock.Mocker,
     deployment_event_client: DeploymentEventClient,
@@ -303,7 +296,7 @@ def test_deployment_event_client(
         json=result,
     )
 
-    assert deployment_event_client.get_events(deployment_id=deployment_id) == result
+    assert deployment_event_client.get_events() == result
 
     # Failed due to HTTP error
     requests_mock.get(
@@ -312,11 +305,11 @@ def test_deployment_event_client(
         ),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
-        deployment_event_client.get_events(deployment_id=deployment_id)
+    with pytest.raises(APIError):
+        deployment_event_client.get_events()
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_deployment_req_resp_client(
     requests_mock: requests_mock.Mocker,
     deployment_req_resp_client: DeploymentReqRespClient,
@@ -350,7 +343,6 @@ def test_deployment_req_resp_client(
     )
     assert (
         deployment_req_resp_client.get_download_urls(
-            deployment_id=deployment_id,
             start=datetime(year=2023, month=1, day=1, hour=0),
             end=datetime(year=2023, month=1, day=1, hour=3),
         )
@@ -363,9 +355,8 @@ def test_deployment_req_resp_client(
         ),
         status_code=404,
     )
-    with pytest.raises(typer.Exit):
+    with pytest.raises(APIError):
         assert deployment_req_resp_client.get_download_urls(
-            deployment_id=deployment_id,
             start=datetime(year=2099, month=1, day=1, hour=0),
             end=datetime(year=2099, month=1, day=1, hour=3),
         )

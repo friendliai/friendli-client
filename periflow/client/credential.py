@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""PeriFlow CredentialClient Service."""
+"""PeriFlow Credential Clients."""
 
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from string import Template
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-from periflow.client.base import Client, safe_request
+from periflow.client.base import Client
 from periflow.enums import CredType
 from periflow.utils.maps import cred_type_map
 
@@ -24,10 +24,10 @@ class CredentialClient(Client[UUID]):
 
     def get_credential(self, credential_id: UUID) -> Dict[str, Any]:
         """Get a credential info."""
-        response = safe_request(self.retrieve, err_prefix="Credential is not found.")(
-            pk=credential_id
+        data = self.retrieve(
+            pk=credential_id,
         )
-        return response.json()
+        return data
 
     def update_credential(
         self,
@@ -45,15 +45,16 @@ class CredentialClient(Client[UUID]):
             request_data["type_version"] = type_version
         if value is not None:
             request_data["value"] = value
-        response = safe_request(
-            self.partial_update, err_prefix="Failed to updated credential"
-        )(pk=credential_id, json=request_data)
-        return response.json()
+        data = self.partial_update(
+            pk=credential_id,
+            json=request_data,
+        )
+        return data
 
     def delete_credential(self, credential_id: UUID) -> None:
         """Delete a credential."""
-        safe_request(self.delete, err_prefix="Failed to delete credential")(
-            pk=credential_id
+        self.delete(
+            pk=credential_id,
         )
 
 
@@ -68,10 +69,10 @@ class CredentialTypeClient(Client):
     def get_schema_by_type(self, cred_type: CredType) -> Optional[Dict[str, Any]]:
         """Get a credential JSON schema."""
         type_name = cred_type_map[cred_type]
-        response = safe_request(
-            self.list, err_prefix="Failed to get credential schema."
-        )()
-        for cred_type_json in response.json():
+        data = self.list(
+            pagination=False,
+        )
+        for cred_type_json in data:
             if cred_type_json["type_name"] == type_name:
                 return cred_type_json["versions"][-1][
                     "schema"

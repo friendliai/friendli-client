@@ -124,6 +124,14 @@ class RequestTimeoutError(PeriFlowError):
         super().__init__(f"Request timeout: {detail}")
 
 
+class TransferError(PeriFlowError):
+    """Object transfer failed."""
+
+    def __init__(self, detail: Optional[str] = None) -> None:
+        """Initialize TransferError."""
+        super().__init__(f"Transfer failed: {detail}")
+
+
 class APIError(PeriFlowError):
     """PeriFlow API error."""
 
@@ -140,6 +148,14 @@ class SessionClosedError(PeriFlowError):
         super().__init__(
             f"Cannot send requests to the API server because session is not opened: {detail}"
         )
+
+
+class MaxRetriesExceededError(PeriFlowError):
+    """Max retries exceeded."""
+
+    def __init__(self, exc: Optional[Exception] = None) -> None:
+        """Initialize MaxRetriesExceededError."""
+        super().__init__(f"Max retries limit exceeded due to an error: {str(exc)}")
 
 
 class NotSupportedError(PeriFlowError):

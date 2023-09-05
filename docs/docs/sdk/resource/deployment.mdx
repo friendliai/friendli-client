@@ -202,8 +202,10 @@ Stops a running deployment.
 ```python
 get_metrics(
     id: str,
+    since: datetime,
+    until: datetime,
     time_window: int = 60
-) -> Dict[str, Any]
+) -> List[Dict[str, Any]]
 ```
 
 Gets metrics of a deployment.
@@ -213,18 +215,20 @@ Gets metrics of a deployment.
 | Name | Type | Description | Default | Optional |
 |------|------|-------------|---------|----------|
 | `id` | `str` | ID of deployment to get metrics. | - | ❌ |
+| `since` | `datetime` | Start time of metrics to fetch. | - | ❌ |
+| `until` | `datetime` | End time of metrics to fetch. | - | ❌ |
 | `time_window` | `int` | Time window of results in seconds. Defaults to 60. | `60` | ✅ |
 
 #### Returns
 
 | Type | Description |
 |------|-------------|
-| `Dict[str, Any]` | Retrieved metrics data. |
+| `List[Dict[str, Any]]` | Retrieved metrics data. |
 
-### _def_ `get_usage`
+### _def_ `get_project_deployment_durations`
 
 ```python
-get_usage(
+get_project_deployment_durations(
     since: datetime,
     until: datetime
 ) -> Dict[str, Any]

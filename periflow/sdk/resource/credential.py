@@ -83,7 +83,10 @@ class Credential(ResourceAPI[V1Credential, UUID]):
         creds = []
         for raw_cred in raw_creds:
             cred = V1Credential.model_validate(raw_cred)
-            cred.type = cred_type_map_inv[cred.type].value
+            cred_type = cred_type_map_inv.get(cred.type)
+            if cred_type is None:
+                continue
+            cred.type = cred_type.value
             creds.append(cred)
         return creds
 

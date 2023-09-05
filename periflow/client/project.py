@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""PeriFlow ProjectClient Service."""
+"""PeriFlow Project Clients."""
 
 # pylint: disable=too-many-arguments
 
@@ -12,11 +12,10 @@ from uuid import UUID
 
 from requests import HTTPError
 
-from periflow.client.base import Client, ProjectRequestMixin, safe_request
+from periflow.client.base import Client, ProjectRequestMixin
 from periflow.enums import CredType
-from periflow.utils.format import secho_error_and_exit
+from periflow.errors import NotFoundError
 from periflow.utils.maps import cred_type_map
-from periflow.utils.request import paginated_get
 
 
 def find_project_id(projects: List[Dict[str, Any]], project_name: str) -> UUID:
@@ -24,7 +23,7 @@ def find_project_id(projects: List[Dict[str, Any]], project_name: str) -> UUID:
     for project in projects:
         if project["name"] == project_name:
             return UUID(project["id"])
-    secho_error_and_exit(f"No project exists with name {project_name}.")
+    raise NotFoundError(f"No project exists with name {project_name}.")
 
 
 class ProjectClient(Client[UUID]):
@@ -37,10 +36,8 @@ class ProjectClient(Client[UUID]):
 
     def get_project(self, pf_project_id: UUID) -> Dict[str, Any]:
         """Get project info."""
-        response = safe_request(self.retrieve, err_prefix="Failed to get a project.")(
-            pk=pf_project_id
-        )
-        return response.json()
+        data = self.retrieve(pk=pf_project_id)
+        return data
 
     def check_project_membership(self, pf_project_id: UUID) -> bool:
         """Check accessibility to the project."""
@@ -52,16 +49,15 @@ class ProjectClient(Client[UUID]):
 
     def delete_project(self, pf_project_id: UUID) -> None:
         """Delete a project."""
-        safe_request(self.delete, err_prefix="Failed to delete a project.")(
-            pk=pf_project_id
-        )
+        self.delete(pk=pf_project_id)
 
     def list_users(self, pf_project_id: UUID) -> List[Dict[str, Any]]:
         """List all project members."""
-        get_response_dict = safe_request(
-            self.list, err_prefix="Failed to list users in the current project"
+        users = self.list(
+            path=f"{pf_project_id}/pf_user",
+            pagination=True,
         )
-        return paginated_get(get_response_dict, path=f"{pf_project_id}/pf_user")
+        return users
 
 
 class ProjectCredentialClient(Client, ProjectRequestMixin):
@@ -86,10 +82,8 @@ class ProjectCredentialClient(Client, ProjectRequestMixin):
         params = {}
         if cred_type is not None:
             params["type"] = cred_type_map[cred_type]
-        response = safe_request(
-            self.list, err_prefix=f"Failed to list credential for {cred_type}."
-        )(params=params)
-        return response.json()
+        data = self.list(pagination=False, params=params)
+        return data
 
     def create_credential(
         self, cred_type: CredType, name: str, type_version: int, value: Dict[str, Any]
@@ -102,7 +96,5 @@ class ProjectCredentialClient(Client, ProjectRequestMixin):
             "type_version": type_version,
             "value": value,
         }
-        response = safe_request(
-            self.post, err_prefix="Failed to create user credential."
-        )(json=request_data)
-        return response.json()
+        data = self.post(json=request_data)
+        return data

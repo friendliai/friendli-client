@@ -251,7 +251,7 @@ To get the deleted checkpoints created by users:
 
 ```python
 checkpoints = pf.Checkpoint.list(
-    category=CheckpointCategory.USER_PROVIDED, deleted=True
+    category="USER", deleted=True
 )
 ```
 
@@ -598,3 +598,29 @@ When a checkpoint is deleted, it becomes "soft-deleted", meaning it is
 recoverable within the 24-hour retention period. After the retention period,
 the checkpoint is "hard-deleted" and cannot be restored.
 :::
+
+### _def_ `import_from_catalog`
+
+```python
+import_from_catalog(
+    id: UUID,
+    name: str,
+    method: CatalogImportMethod
+) -> V1Checkpoint
+```
+
+Tries out a public checkpoint in catalog.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `id` | `UUID` | ID of a catalog. | - | ❌ |
+| `name` | `str` | The name of the checkpoint that will be created in the project. | - | ❌ |
+| `method` | `CatalogImportMethod` | Import method. | - | ❌ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `V1Checkpoint` | The created checkpoint object by importing the public checkpoint in the catalog. |

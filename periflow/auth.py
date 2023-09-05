@@ -6,16 +6,17 @@ from __future__ import annotations
 
 import functools
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import requests
+from requests import HTTPError, JSONDecodeError
+from typing_extensions import TypeAlias
 
 import periflow
 from periflow.di.injector import get_injector
-from periflow.errors import AuthTokenNotFoundError
-from periflow.utils.format import secho_error_and_exit
+from periflow.errors import APIError, AuthorizationError, AuthTokenNotFoundError
 from periflow.utils.fs import get_periflow_directory
-from periflow.utils.request import DEFAULT_REQ_TIMEOUT
+from periflow.utils.request import DEFAULT_REQ_TIMEOUT, decode_http_err
 from periflow.utils.url import URLProvider
 
 access_token_path = get_periflow_directory() / "access_token"
@@ -36,6 +37,8 @@ token_path_map = {
     TokenType.REFRESH: refresh_token_path,
     TokenType.MFA: mfa_token_path,
 }
+
+ResponseBody: TypeAlias = Union[Dict[str, Any], List[Dict[str, Any]], None]
 
 
 def get_auth_header() -> Dict[str, Any]:
@@ -68,9 +71,7 @@ def get_token(token_type: TokenType) -> Union[str, None]:
             return refresh_token_path.read_text()
         if token_type == TokenType.MFA:
             return mfa_token_path.read_text()
-        secho_error_and_exit(
-            "token_type should be one of 'access' or 'refresh' or 'mfa'."
-        )
+        raise ValueError("token_type should be one of 'access' or 'refresh' or 'mfa'.")
     except FileNotFoundError:
         return None
 
@@ -92,13 +93,11 @@ def clear_tokens() -> None:
 
 
 # pylint: disable=too-many-nested-blocks
-def auto_token_refresh(
-    func: Callable[..., requests.Response]
-) -> Callable[..., requests.Response]:
+def safe_request(func: Callable[..., requests.Response]) -> Callable[..., Any]:
     """Decorator for automatic token refresh."""
 
     @functools.wraps(func)
-    def inner(*args, **kwargs) -> requests.Response:
+    def inner(*args, **kwargs) -> Any:
         injector = get_injector()
         url_provider = injector.get(URLProvider)
 
@@ -113,10 +112,10 @@ def auto_token_refresh(
                 )
                 try:
                     refresh_r.raise_for_status()
-                except requests.HTTPError:
-                    secho_error_and_exit(
-                        "Failed to refresh access token... Please login again"
-                    )
+                except requests.HTTPError as exc:
+                    raise AuthorizationError(
+                        "Failed to refresh access token. Please login again."
+                    ) from exc
 
                 update_token(
                     token_type=TokenType.ACCESS, token=refresh_r.json()["access_token"]
@@ -136,11 +135,17 @@ def auto_token_refresh(
                 resp = func(*args, **kwargs)
                 resp.raise_for_status()
             else:
-                secho_error_and_exit(
-                    "Failed to refresh access token... Please login again"
+                raise AuthorizationError(
+                    "Failed to refresh access token. Please login again."
                 )
         else:
-            resp.raise_for_status()
-        return resp
+            try:
+                resp.raise_for_status()
+            except HTTPError as exc:
+                raise APIError(decode_http_err(exc)) from exc
+        try:
+            return resp.json()
+        except JSONDecodeError:
+            return None
 
     return inner

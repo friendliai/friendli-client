@@ -20,4 +20,6 @@ Show metrics of a deployment.
 
 | Option | Type | Summary | Default | Required |
 |--------|------|---------|---------|----------|
-| `--time-window`, `-t` | INTEGER | Time window of metrics in seconds. | 60 | ❌ |
+| **`--since`** | TEXT | Start time of metrics to fetch. The format should be {YYYY}-{MM}-{DD}T{HH}. The UTC timezone will be used by default. | - | ✅ |
+| **`--until`** | TEXT | End time of metrics to fetch. The format should be {YYYY}-{MM}-{DD}T{HH}. The UTC timezone will be used by default. | - | ✅ |
+| `--window`, `-w` | INTEGER | Time window of metrics in seconds. | 60 | ❌ |
