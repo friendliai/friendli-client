@@ -121,7 +121,10 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
     config = get_model_pretrained_config(
         model_name_or_path, model_output_path, cache_dir
     )
-    generation_config = get_model_generation_config(model_name_or_path, cache_dir)
+    try:
+        generation_config = get_model_generation_config(model_name_or_path, cache_dir)
+    except NotFoundError:
+        generation_config = None
     model_arch = get_model_arch(config)
     hf_factory, converter_factory = model_arch_converter_map[model_arch]
     converter = converter_factory(
