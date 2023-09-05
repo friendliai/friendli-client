@@ -44,6 +44,12 @@ class V1CompletionOptions(BaseModel):
     stop: Optional[List[str]] = None  # List of stop words.
     stop_tokens: Optional[List[TokenSequence]] = None  # List of stop tokens.
     seed: Optional[List[int]] = None  # Seed.
+    token_index_to_replace: Optional[
+        List[int]
+    ] = None  # List of token indices where to replace embeddings.
+    embedding_to_replace: Optional[
+        List[float]
+    ] = None  # List of flattened embedding vectors to replace the tokens.
     beam_search_type: Optional[BeamSearchType] = None  # Beam search type.
     beam_compat_pre_normalization: Optional[bool] = None
     beam_compat_no_post_normalization: Optional[bool] = None

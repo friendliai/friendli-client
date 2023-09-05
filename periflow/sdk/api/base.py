@@ -123,9 +123,12 @@ class ServingAPI(
         self._session: Optional[aiohttp.ClientSession] = None
 
     def _get_headers(self) -> Dict[str, Any]:
+        headers = {"Content-Type": "application/protobuf"}
+
         if self._auth_required:
-            return get_auth_header()
-        return {}
+            headers = {**headers, **get_auth_header()}
+
+        return headers
 
     @property
     @abstractmethod
