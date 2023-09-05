@@ -11,7 +11,16 @@ import typer
 from requests import HTTPError, Response
 
 from periflow.auth import TokenType, clear_tokens, get_token, update_token
-from periflow.cli import catalog, checkpoint, credential, deployment, gpu, group, key, project
+from periflow.cli import (
+    catalog,
+    checkpoint,
+    credential,
+    deployment,
+    gpu,
+    group,
+    key,
+    project,
+)
 from periflow.client.project import ProjectClient
 from periflow.client.user import UserClient, UserGroupClient, UserMFAClient
 from periflow.context import (
