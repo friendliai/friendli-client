@@ -19,7 +19,7 @@ def project_credential_client(
     return ProjectCredentialClient()
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_project_credential_client_service(
     requests_mock: requests_mock.Mocker,
     project_credential_client: ProjectCredentialClient,

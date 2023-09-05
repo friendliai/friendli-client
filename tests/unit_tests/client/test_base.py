@@ -58,12 +58,24 @@ def test_url_template_attach_pattern(base_url: str):
     )
 
 
-def test_client_service_base(requests_mock: requests_mock.Mocker, base_url: str):
+@pytest.mark.parametrize("pagination", [True, False])
+def test_client_service_base(
+    requests_mock: requests_mock.Mocker, base_url: str, pagination: bool
+):
     url_pattern = f"{base_url}test/$test_id/job/"
 
     # Mock CRUD requests
     template = URLTemplate(Template(url_pattern))
-    requests_mock.get(template.render(test_id=1), json=[{"data": "value"}])
+    if pagination:
+        mock_list_resp = {
+            "results": [
+                {"data": "value"},
+            ],
+            "next_cursor": None,
+        }
+    else:
+        mock_list_resp = [{"data": "value"}]
+    requests_mock.get(template.render(test_id=1), json=mock_list_resp)
     requests_mock.get(template.render("abcd", test_id=1), json={"data": "value"})
     requests_mock.post(
         template.render(test_id=1), json={"data": "value"}, status_code=201
@@ -79,21 +91,16 @@ def test_client_service_base(requests_mock: requests_mock.Mocker, base_url: str)
     client = TestClient(test_id=1)
 
     periflow.api_key = "test-api-key"
-    resp = client.list()
-    assert resp.json() == [{"data": "value"}]
-    assert resp.status_code == 200
+    data = client.list(pagination=pagination)
+    assert data == [{"data": "value"}]
 
-    resp = client.retrieve("abcd")
-    assert resp.json() == {"data": "value"}
-    assert resp.status_code == 200
+    data = client.retrieve("abcd")
+    assert data == {"data": "value"}
 
-    resp = client.post()
-    assert resp.json() == {"data": "value"}
-    assert resp.status_code == 201
+    data = client.post()
+    assert data == {"data": "value"}
 
-    resp = client.partial_update("abcd")
-    assert resp.json() == {"data": "value"}
-    assert resp.status_code == 200
+    data = client.partial_update("abcd")
+    assert data == {"data": "value"}
 
-    resp = client.delete("abcd")
-    assert resp.status_code == 204
+    data = client.delete("abcd")

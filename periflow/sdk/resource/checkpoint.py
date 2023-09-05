@@ -2,11 +2,13 @@
 
 """PeriFlow Checkpoint SDK."""
 
-# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-statements, too-many-locals, redefined-builtin
+# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-statements, too-many-locals, redefined-builtin, too-many-lines
 
 from __future__ import annotations
 
+import functools
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Optional
 from uuid import UUID
@@ -14,29 +16,37 @@ from uuid import UUID
 import yaml
 
 from periflow.client.catalog import CatalogClient
-from periflow.client.checkpoint import CheckpointClient, CheckpointFormClient
+from periflow.client.checkpoint import (
+    CheckpointClient,
+    CheckpointFormClient,
+    GroupProjectCheckpointClient,
+)
 from periflow.client.credential import CredentialClient
-from periflow.client.group import GroupProjectCheckpointClient
 from periflow.cloud.storage import build_storage_client
 from periflow.enums import (
     CatalogImportMethod,
     CheckpointCategory,
+    CheckpointStatus,
     CredType,
     StorageType,
 )
 from periflow.errors import InvalidConfigError, NotFoundError, PeriFlowInternalError
 from periflow.logging import logger
 from periflow.schema.resource.v1.checkpoint import V1Checkpoint
+from periflow.schema.resource.v1.transfer import MultipartUploadTask, UploadTask
 from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.fs import (
-    FileSizeType,
     attach_storage_path_prefix,
-    download_file,
-    expand_paths,
     get_file_info,
     strip_storage_path_prefix,
 )
 from periflow.utils.maps import cred_type_map, cred_type_map_inv
+from periflow.utils.transfer import (
+    ChunksizeAdjuster,
+    DeferQueue,
+    DownloadManager,
+    UploadManager,
+)
 from periflow.utils.validate import (
     validate_checkpoint_attributes,
     validate_cloud_storage_type,
@@ -602,7 +612,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
         client = CheckpointClient()
         form_client = CheckpointFormClient()
         group_client = GroupProjectCheckpointClient()
-        raw_ckpt = group_client.create_checkpoint(
+        raw_ckpt_created = group_client.create_checkpoint(
             name=name,
             vendor=StorageType.FAI,
             region="",
@@ -613,90 +623,111 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             dist_config=dist_config,
             attributes=attr,
         )
-        ckpt = V1Checkpoint.model_validate(raw_ckpt)
-        if not ckpt.forms:
+        ckpt_created = V1Checkpoint.model_validate(raw_ckpt_created)
+        if not ckpt_created.forms:
             raise PeriFlowInternalError(
-                f"No attached model forms to the checkpoint '{ckpt.id}'"
+                f"No attached model forms to the checkpoint '{ckpt_created.id}'"
             )
-        ckpt_form_id = ckpt.forms[0].id
+        ckpt_form_id = ckpt_created.forms[0].id
+
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        adjuster = ChunksizeAdjuster()
+        upload_manager = UploadManager(executor=executor, chunk_adjuster=adjuster)
 
         try:
             logger.info("Start uploading objects to create a checkpoint(%s)...", name)
-            spu_local_paths = expand_paths(src_path, FileSizeType.SMALL)
-            mpu_local_paths = expand_paths(src_path, FileSizeType.LARGE)
+            upload_local_src_paths = upload_manager.list_upload_objects(src_path)
+            multipart_upload_local_src_paths = (
+                upload_manager.list_multipart_upload_objects(src_path)
+            )
+
             src_path = src_path if expand else src_path.parent
-            # TODO: Need to support distributed checkpoints for model parallelism.
-            spu_storage_paths = [
+            upload_storage_dst_paths = [
                 attach_storage_path_prefix(
-                    path=str(Path(p).relative_to(src_path)),
+                    path=p.relative_to(src_path),
                     iteration=iteration or 0,
                     mp_rank=0,
                     mp_degree=1,
                     pp_rank=0,
                     pp_degree=1,
                 )
-                for p in spu_local_paths
+                for p in upload_local_src_paths
             ]
-            mpu_storage_paths = [
+            multipart_upload_storage_dst_paths = [
                 attach_storage_path_prefix(
-                    path=str(Path(p).relative_to(src_path)),
+                    path=p.relative_to(src_path),
                     iteration=iteration or 0,
                     mp_rank=0,
                     mp_degree=1,
                     pp_rank=0,
                     pp_degree=1,
                 )
-                for p in mpu_local_paths
+                for p in multipart_upload_local_src_paths
             ]
-            spu_url_dicts = (
-                form_client.get_spu_urls(
-                    obj_id=ckpt_form_id, storage_paths=spu_storage_paths
-                )
-                if len(spu_storage_paths) > 0
-                else []
-            )
-            mpu_url_dicts = (
-                form_client.get_mpu_urls(
-                    obj_id=ckpt_form_id,
-                    local_paths=mpu_local_paths,
-                    storage_paths=mpu_storage_paths,
-                )
-                if len(mpu_storage_paths) > 0
-                else []
-            )
-
-            form_client.upload_files(
-                obj_id=ckpt_form_id,
-                spu_url_dicts=spu_url_dicts,
-                mpu_url_dicts=mpu_url_dicts,
-                source_path=src_path,
-                max_workers=max_workers,
-            )
-
-            files = [
-                get_file_info(url_info["path"], src_path) for url_info in spu_url_dicts
-            ]
-            files.extend(
+            upload_tasks = (
                 [
-                    get_file_info(url_info["path"], src_path)
-                    for url_info in mpu_url_dicts
+                    UploadTask.model_validate(raw_url_info)
+                    for raw_url_info in form_client.get_upload_urls(
+                        obj_id=ckpt_form_id, storage_paths=upload_storage_dst_paths
+                    )
                 ]
+                if len(upload_storage_dst_paths) > 0
+                else []
+            )
+            multipart_upload_tasks = (
+                [
+                    MultipartUploadTask.model_validate(raw_url_info)
+                    for raw_url_info in form_client.get_multipart_upload_urls(
+                        obj_id=ckpt_form_id,
+                        local_paths=multipart_upload_local_src_paths,
+                        storage_paths=multipart_upload_storage_dst_paths,
+                    )
+                ]
+                if len(multipart_upload_storage_dst_paths) > 0
+                else []
+            )
+
+            for upload_task in upload_tasks:
+                upload_manager.upload_file(
+                    upload_task=upload_task, source_path=src_path
+                )
+            for multipart_upload_task in multipart_upload_tasks:
+                upload_manager.multipart_upload_file(
+                    upload_task=multipart_upload_task,
+                    source_path=src_path,
+                    complete_callback=functools.partial(
+                        form_client.complete_multipart_upload, ckpt_form_id
+                    ),
+                    abort_callback=functools.partial(
+                        form_client.abort_multipart_upload, ckpt_form_id
+                    ),
+                )
+
+            files = [get_file_info(task.path, src_path) for task in upload_tasks]
+            files.extend(
+                [get_file_info(task.path, src_path) for task in multipart_upload_tasks]
             )
             form_client.update_checkpoint_files(ckpt_form_id=ckpt_form_id, files=files)
-        except Exception as exc:
-            client.delete_checkpoint(checkpoint_id=ckpt.id)
-            raise exc
 
-        # Activate the checkpoint.
-        raw_ckpt = client.activate_checkpoint(ckpt.id)
-        ckpt = V1Checkpoint.model_validate(raw_ckpt)
-        if ckpt.forms:
-            for file in ckpt.forms[0].files:
-                file.path = strip_storage_path_prefix(file.path)
+            # Activate the checkpoint.
+            client.activate_checkpoint(ckpt_created.id)
+        finally:
+            logger.info("Checking the integrity of the checkpoint. Please wait...")
+            raw_ckpt = client.get_checkpoint(ckpt_created.id)
+            ckpt = V1Checkpoint.model_validate(raw_ckpt)
+            if ckpt.status != CheckpointStatus.ACTIVE:
+                logger.warn("File upload was unsuccessful. Please retry.")
+                client.delete_checkpoint(ckpt.id)
+            executor.shutdown(wait=True)
 
         logger.info(
             "Objects are uploaded and checkpoint(%s) is successfully created!", name
         )
+
+        if ckpt.forms:
+            for file in ckpt.forms[0].files:
+                file.path = strip_storage_path_prefix(file.path)
+
         return ckpt
 
     @staticmethod
@@ -739,11 +770,13 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
         ckpt_form_id = client.get_first_checkpoint_form(id)
         files = form_client.get_checkpoint_download_urls(ckpt_form_id)
 
+        write_queue = DeferQueue()
+        download_manager = DownloadManager(write_queue=write_queue)
         for i, file in enumerate(files):
             logger.info("Downloading files %d/%d...", i + 1, len(files))
-            download_file(
+            download_manager.download_file(
                 url=file["download_url"],
-                out=os.path.join(save_dir, strip_storage_path_prefix(file["path"])),
+                out=Path(save_dir) / strip_storage_path_prefix(file["path"]),
             )
 
     @staticmethod

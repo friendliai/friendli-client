@@ -8,14 +8,8 @@ from string import Template
 from typing import Any, Dict, List
 from uuid import UUID
 
-from periflow.client.base import (
-    Client,
-    GroupRequestMixin,
-    UserRequestMixin,
-    safe_request,
-)
+from periflow.client.base import Client, GroupRequestMixin, UserRequestMixin
 from periflow.enums import GroupRole, ProjectRole
-from periflow.utils.request import paginated_get
 
 
 class UserMFAClient(Client):
@@ -28,9 +22,7 @@ class UserMFAClient(Client):
 
     def initiate_mfa(self, mfa_type: str, mfa_token: str) -> None:
         """Authenticate by MFA token."""
-        safe_request(self.bare_post, err_prefix="Failed to verify MFA token.")(
-            path=f"challenge/{mfa_type}", headers={"x-mfa-token": mfa_token}
-        )
+        self.bare_post(path=f"challenge/{mfa_type}", headers={"x-mfa-token": mfa_token})
 
 
 class UserSignUpClient(Client):
@@ -43,9 +35,7 @@ class UserSignUpClient(Client):
 
     def verify(self, token: str, key: str) -> None:
         """Verify the email account with the token to sign up."""
-        safe_request(self.bare_post, err_prefix="Failed to verify")(
-            path="confirm", json={"email_token": token, "key": key}
-        )
+        self.bare_post(path="confirm", json={"email_token": token, "key": key})
 
 
 class UserClient(Client, UserRequestMixin):
@@ -63,7 +53,7 @@ class UserClient(Client, UserRequestMixin):
 
     def change_password(self, old_password: str, new_password: str) -> None:
         """Change password."""
-        safe_request(self.update, err_prefix="Failed to change password.")(
+        self.update(
             pk=self.user_id,
             path="password",
             json={"old_password": old_password, "new_password": new_password},
@@ -73,9 +63,7 @@ class UserClient(Client, UserRequestMixin):
         self, pf_group_id: UUID, pf_user_id: UUID, privilege_level: GroupRole
     ) -> None:
         """Update user role in the orgnaization."""
-        safe_request(
-            self.partial_update, err_prefix="Failed to update privilege level in group"
-        )(
+        self.partial_update(
             pk=pf_user_id,
             path=f"pf_group/{pf_group_id}/privilege_level",
             json={"privilege_level": privilege_level.value},
@@ -83,43 +71,34 @@ class UserClient(Client, UserRequestMixin):
 
     def get_project_membership(self, pf_project_id: UUID) -> Dict[str, Any]:
         """Get the project membership info of the user."""
-        response = safe_request(
-            self.retrieve, err_prefix="Failed identify member in project"
-        )(
+        data = self.retrieve(
             pk=self.user_id,
             path=f"pf_project/{pf_project_id}",
         )
-        return response.json()
+        return data
 
     def add_to_project(
         self, pf_user_id: UUID, pf_project_id: UUID, access_level: ProjectRole
     ) -> None:
         """Add a new member to a project."""
-        safe_request(self.post, err_prefix="Failed to add user to project")(
+        self.post(
             path=f"{pf_user_id}/pf_project/{pf_project_id}",
             json={"access_level": access_level.value},
         )
 
     def delete_from_org(self, pf_user_id: UUID, pf_org_id: UUID) -> None:
         """Delete a member from the organization."""
-        safe_request(self.delete, err_prefix="Failed to remove user from organization")(
-            pk=pf_user_id, path=f"pf_group/{pf_org_id}"
-        )
+        self.delete(pk=pf_user_id, path=f"pf_group/{pf_org_id}")
 
     def delete_from_project(self, pf_user_id: UUID, pf_project_id: UUID) -> None:
         """Delete a member from the organization."""
-        safe_request(self.delete, err_prefix="Failed to remove user from proejct")(
-            pk=pf_user_id, path=f"pf_project/{pf_project_id}"
-        )
+        self.delete(pk=pf_user_id, path=f"pf_project/{pf_project_id}")
 
     def set_project_privilege(
         self, pf_user_id: UUID, pf_project_id: UUID, access_level: ProjectRole
     ) -> None:
         """Set a project-level role to a user."""
-        safe_request(
-            self.partial_update,
-            err_prefix="Failed to update privilege level in project",
-        )(
+        self.partial_update(
             pk=pf_user_id,
             path=f"pf_project/{pf_project_id}/access_level",
             json={"access_level": access_level.value},
@@ -141,8 +120,8 @@ class UserGroupClient(Client, UserRequestMixin):
 
     def get_group_info(self) -> Dict[str, Any]:
         """Get organization info where user belongs to."""
-        response = safe_request(self.list, err_prefix="Failed to get my group info.")()
-        return response.json()[0]
+        data = self.list(pagination=False)
+        return data[0]
 
 
 class UserGroupProjectClient(Client, UserRequestMixin, GroupRequestMixin):
@@ -165,10 +144,8 @@ class UserGroupProjectClient(Client, UserRequestMixin, GroupRequestMixin):
 
     def list_projects(self) -> List[Dict[str, Any]]:
         """List projects in the organization."""
-        get_response_dict = safe_request(
-            self.list, err_prefix="Failed to list projects."
-        )
-        return paginated_get(get_response_dict)
+        data = self.list(pagination=True)
+        return data
 
 
 class UserAccessKeyClient(Client, UserRequestMixin):
@@ -186,21 +163,14 @@ class UserAccessKeyClient(Client, UserRequestMixin):
 
     def create_access_key(self, name: str) -> Dict[str, Any]:
         """Create a new access key."""
-        response = safe_request(
-            self.post, err_prefix="Failed to create new access key."
-        )(path=f"{self.user_id}/api_key", json={"name": name})
-
-        return response.json()
+        data = self.post(path=f"{self.user_id}/api_key", json={"name": name})
+        return data
 
     def delete_access_key(self, access_key_id: str) -> None:
         """Revoke an access key."""
-        safe_request(self.delete, err_prefix="Failed to delete access key")(
-            pk=None, path=f"api_key/{access_key_id}"
-        )
+        self.delete(pk=None, path=f"api_key/{access_key_id}")
 
     def list_access_keys(self) -> List[Dict[str, Any]]:
         """List access keys."""
-        response = safe_request(
-            self.list, err_prefix="Failed to list available access keys."
-        )(path=f"{self.user_id}/api_key")
-        return response.json()
+        data = self.list(path=f"{self.user_id}/api_key", pagination=False)
+        return data

@@ -7,16 +7,21 @@ from __future__ import annotations
 import math
 import os
 from copy import deepcopy
-from pathlib import Path
 from tempfile import TemporaryDirectory
-from uuid import uuid4
+from typing import Any, Dict
+from uuid import UUID, uuid4
 
 import pytest
 import requests_mock
 
-from periflow.client.checkpoint import CheckpointClient, CheckpointFormClient
+from periflow.client.checkpoint import (
+    CheckpointClient,
+    CheckpointFormClient,
+    GroupProjectCheckpointClient,
+)
+from periflow.enums import CheckpointCategory, StorageType
 from periflow.errors import APIError
-from periflow.utils.fs import S3_MPU_PART_MAX_SIZE, S3_UPLOAD_SIZE_LIMIT
+from periflow.utils.transfer import S3_MULTIPART_CHUNK_SIZE, S3_MULTIPART_THRESHOLD
 
 
 @pytest.fixture
@@ -29,7 +34,14 @@ def checkpoint_form_client() -> CheckpointFormClient:
     return CheckpointFormClient()
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.fixture
+def group_project_checkpoint_client(
+    user_project_group_context,
+) -> GroupProjectCheckpointClient:
+    return GroupProjectCheckpointClient()
+
+
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_get_checkpoint(
     requests_mock: requests_mock.Mocker, checkpoint_client: CheckpointClient
 ):
@@ -61,7 +73,7 @@ def test_checkpoint_client_get_checkpoint(
         assert checkpoint_client.get_checkpoint(checkpoint_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_delete_checkpoint(
     requests_mock: requests_mock.Mocker, checkpoint_client: CheckpointClient
 ):
@@ -84,7 +96,7 @@ def test_checkpoint_client_delete_checkpoint(
         checkpoint_client.delete_checkpoint(checkpoint_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_restore_checkpoint(
     requests_mock: requests_mock.Mocker, checkpoint_client: CheckpointClient
 ):
@@ -107,7 +119,7 @@ def test_checkpoint_client_restore_checkpoint(
         assert checkpoint_client.restore_checkpoint(checkpoint_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_get_checkpoint_download_urls(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
@@ -145,7 +157,7 @@ def test_checkpoint_client_get_checkpoint_download_urls(
         assert checkpoint_form_client.get_checkpoint_download_urls(ckpt_form_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_update_checkpoint_files(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
@@ -178,7 +190,7 @@ def test_checkpoint_client_update_checkpoint_files(
         )
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_upload(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
@@ -194,7 +206,7 @@ def test_checkpoint_client_upload(
 
     requests_mock.post(url, json=resp_body)
     assert (
-        checkpoint_form_client.get_spu_urls(
+        checkpoint_form_client.get_upload_urls(
             obj_id=ckpt_form_id,
             storage_paths=paths,
         )
@@ -202,13 +214,13 @@ def test_checkpoint_client_upload(
     )
     requests_mock.post(url, status_code=404)
     with pytest.raises(APIError):
-        checkpoint_form_client.get_spu_urls(
+        checkpoint_form_client.get_upload_urls(
             obj_id=ckpt_form_id,
             storage_paths=paths,
         )
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_start_multipart_upload(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
@@ -218,7 +230,7 @@ def test_checkpoint_client_start_multipart_upload(
     url = f"{base_url}/model_forms/{ckpt_form_id}/start_mpu/"
     paths = ["pytorch_model.bin"]
     fake_upload_id = "fakeuploadid"
-    file_size = math.ceil(S3_UPLOAD_SIZE_LIMIT * 1.7)
+    file_size = math.ceil(S3_MULTIPART_THRESHOLD * 1.7)
     resp_body = {
         "path": paths[0],
         "upload_id": fake_upload_id,
@@ -227,7 +239,7 @@ def test_checkpoint_client_start_multipart_upload(
                 "upload_url": f"https://s3.download.amazone.com/{paths[0]}-part{part_num}",
                 "part_number": part_num,
             }
-            for part_num in range(math.ceil(file_size / S3_MPU_PART_MAX_SIZE))
+            for part_num in range(math.ceil(file_size / S3_MULTIPART_CHUNK_SIZE))
         ],
     }
 
@@ -237,21 +249,21 @@ def test_checkpoint_client_start_multipart_upload(
             f.write(b"\0")
 
         requests_mock.post(url, json=resp_body)
-        assert checkpoint_form_client.get_mpu_urls(
+        assert checkpoint_form_client.get_multipart_upload_urls(
             obj_id=ckpt_form_id,
             local_paths=[os.path.join(dir, path) for path in paths],
             storage_paths=paths,
         ) == [resp_body]
         requests_mock.post(url, status_code=404)
         with pytest.raises(APIError):
-            checkpoint_form_client.get_mpu_urls(
+            checkpoint_form_client.get_multipart_upload_urls(
                 obj_id=ckpt_form_id,
                 local_paths=[os.path.join(dir, path) for path in paths],
                 storage_paths=paths,
             )
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_complete_multipart_upload(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
@@ -273,18 +285,18 @@ def test_checkpoint_client_complete_multipart_upload(
     ]
 
     requests_mock.post(url, status_code=204)
-    checkpoint_form_client.complete_mpu(
+    checkpoint_form_client.complete_multipart_upload(
         obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
     )
 
     requests_mock.post(url, status_code=404)
     with pytest.raises(APIError):
-        checkpoint_form_client.complete_mpu(
+        checkpoint_form_client.complete_multipart_upload(
             obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id, parts=parts
         )
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_checkpoint_client_abort_multipart_upload(
     requests_mock: requests_mock.Mocker,
     checkpoint_form_client: CheckpointFormClient,
@@ -296,105 +308,201 @@ def test_checkpoint_client_abort_multipart_upload(
     fake_upload_id = "fakeuploadid"
 
     requests_mock.post(url, status_code=204)
-    checkpoint_form_client.abort_mpu(
+    checkpoint_form_client.abort_multipart_upload(
         obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id
     )
 
     requests_mock.post(url, status_code=404)
     with pytest.raises(APIError):
-        checkpoint_form_client.abort_mpu(
+        checkpoint_form_client.abort_multipart_upload(
             obj_id=ckpt_form_id, path=path, upload_id=fake_upload_id
         )
 
 
-def test_actual_s3_upload(
-    requests_mock: requests_mock.Mocker, checkpoint_form_client: CheckpointClient
+@pytest.mark.usefixtures("patch_safe_request")
+def test_group_checkpoint_list_checkpoints(
+    requests_mock: requests_mock.Mocker,
+    group_project_checkpoint_client: GroupProjectCheckpointClient,
 ):
-    ckpt_form_id = uuid4()
-
-    small_file_1_name = "small_1.bin"
-    small_file_2_name = "small_2.bin"
-    large_file_1_name = "large_1.bin"
-    large_file_2_name = "large_2.bin"
-    small_file_1_size = S3_UPLOAD_SIZE_LIMIT // 2
-    small_file_2_size = S3_UPLOAD_SIZE_LIMIT // 4
-    large_file_1_size = math.ceil(S3_UPLOAD_SIZE_LIMIT * 1.1)
-    large_file_2_size = math.ceil(S3_UPLOAD_SIZE_LIMIT * 1.5)
-
-    # Mock S3 upload with presigned URLs.
-    requests_mock.put(f"https://s3.amazon.com/{small_file_1_name}")
-    requests_mock.put(f"https://s3.amazon.com/{small_file_2_name}")
-    # Mock S3 multipart upload with presigned URLs.
-    # HACK: 1 is added because the actual file read by ``CustomCallbackIOWrapper`` does not occur since the request is mocked.
-    large_file_1_total_parts = math.ceil(large_file_1_size / S3_MPU_PART_MAX_SIZE) + 1
-    large_file_2_total_parts = math.ceil(large_file_2_size / S3_MPU_PART_MAX_SIZE) + 1
-    for part_num in range(large_file_1_total_parts):
-        requests_mock.put(
-            f"https://s3.amazon.com/{large_file_1_name}/part{part_num}",
-            headers={"Etag": f"{large_file_1_name}etag-part{part_num}"},
-        )
-    for part_num in range(large_file_2_total_parts):
-        requests_mock.put(
-            f"https://s3.amazon.com/{large_file_2_name}/part{part_num}",
-            headers={"Etag": f"{large_file_2_name}etag-part{part_num}"},
-        )
-    # Mock registry API calls
-    base_url = checkpoint_form_client.url_template.get_base_url()
-    complete_mpu_url = f"{base_url}/model_forms/{ckpt_form_id}/complete_mpu/"
-    requests_mock.post(complete_mpu_url, status_code=204)
-    abort_mpu_url = f"{base_url}/model_forms/{ckpt_form_id}/abort_mpu/"
-    requests_mock.post(abort_mpu_url, status_code=204)
-
-    with TemporaryDirectory() as dir:
-        with open(os.path.join(dir, small_file_1_name), "wb") as f_1, open(
-            os.path.join(dir, small_file_2_name), "wb"
-        ) as f_2, open(os.path.join(dir, large_file_1_name), "wb") as f_3, open(
-            os.path.join(dir, large_file_2_name), "wb"
-        ) as f_4:
-            f_1.seek(small_file_1_size - 1)
-            f_1.write(b"\0")
-            f_2.seek(small_file_2_size - 1)
-            f_2.write(b"\0")
-            f_3.seek(large_file_1_size - 1)
-            f_3.write(b"\0")
-            f_4.seek(large_file_2_size - 1)
-            f_4.write(b"\0")
-
-        checkpoint_form_client.upload_files(
-            obj_id=ckpt_form_id,
-            spu_url_dicts=[
+    def build_response_item(category: str, vendor: str, region: str) -> Dict[str, Any]:
+        return {
+            "id": "22222222-2222-2222-2222-222222222222",
+            "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "ownerships": [
                 {
-                    "path": small_file_1_name,
-                    "upload_url": f"https://s3.amazon.com/{small_file_1_name}",
-                },
-                {
-                    "path": small_file_2_name,
-                    "upload_url": f"https://s3.amazon.com/{small_file_2_name}",
-                },
+                    "organization_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "project_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                }
             ],
-            mpu_url_dicts=[
+            "model_category": category,
+            "job_id": 2147483647,
+            "name": "string",
+            "attributes": {
+                "job_setting_json": {},
+                "data_json": {},
+            },
+            "forms": [
                 {
-                    "path": large_file_1_name,
-                    "upload_id": f"fakeuploadid{large_file_1_name}",
-                    "upload_urls": [
+                    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "form_category": "ORCA",
+                    "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                    "vendor": vendor,
+                    "region": region,
+                    "storage_name": "STORAGE_NAME",
+                    "dist_json": {},
+                    "files": [
                         {
-                            "upload_url": f"https://s3.amazon.com/{large_file_1_name}/part{part_num}",
-                            "part_number": part_num,
+                            "name": "NAME",
+                            "path": "PATH",
+                            "mtime": "2022-04-19T09:03:47.352Z",
+                            "size": 9,
                         }
-                        for part_num in range(large_file_1_total_parts)
                     ],
-                },
-                {
-                    "path": large_file_2_name,
-                    "upload_id": f"fakeuploadid{large_file_2_name}",
-                    "upload_urls": [
-                        {
-                            "upload_url": f"https://s3.amazon.com/{large_file_2_name}/part{part_num}",
-                            "part_number": part_num,
-                        }
-                        for part_num in range(large_file_2_total_parts)
-                    ],
-                },
+                }
             ],
-            source_path=Path(dir),
+            "iteration": 922,
+            "created_at": "2022-04-19T09:03:47.352Z",
+        }
+
+    job_data = {
+        "results": [
+            build_response_item("JOB", "aws", "us-east-2"),
+        ],
+        "next_cursor": None,
+    }
+
+    user_data = {
+        "results": [
+            build_response_item("USER", "aws", "us-east-1"),
+        ],
+        "next_cursor": None,
+    }
+
+    # Success
+    url = group_project_checkpoint_client.url_template.render(
+        **group_project_checkpoint_client.url_kwargs
+    )
+    requests_mock.get(url, json=user_data)
+    assert (
+        group_project_checkpoint_client.list_checkpoints(
+            CheckpointCategory.USER_PROVIDED, 10, deleted=False
+        )
+        == user_data["results"]
+    )
+    requests_mock.get(url, json=job_data)
+    assert (
+        group_project_checkpoint_client.list_checkpoints(
+            CheckpointCategory.JOB_GENERATED, 10, deleted=False
+        )
+        == job_data["results"]
+    )
+
+    # Failed due to HTTP error
+    requests_mock.get(url, status_code=400)
+    with pytest.raises(APIError):
+        group_project_checkpoint_client.list_checkpoints(
+            CheckpointCategory.USER_PROVIDED, 10, deleted=False
+        )
+
+
+@pytest.mark.usefixtures("patch_safe_request")
+def test_group_checkpoint_create_checkpoints(
+    requests_mock: requests_mock.Mocker,
+    group_project_checkpoint_client: GroupProjectCheckpointClient,
+):
+    data = {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "category": "user_provided",
+        "vendor": "aws",
+        "region": "us-east-1",
+        "credential_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "storage_name": "my-ckpt",
+        "iteration": 1000,
+        "files": [
+            {
+                "name": "new_ckpt_1000.pth",
+                "path": "ckpt/new_ckpt_1000.pth",
+                "mtime": "2022-04-20T06:27:37.907Z",
+                "size": 2048,
+            }
+        ],
+    }
+
+    # Success
+    # TODO: change after PFA integration
+    url = group_project_checkpoint_client.url_template.render(
+        **group_project_checkpoint_client.url_kwargs
+    )
+    requests_mock.post(url, json=data)
+    assert (
+        group_project_checkpoint_client.create_checkpoint(
+            name="my-ckpt",
+            vendor=StorageType.S3,
+            region="us-east-1",
+            credential_id=UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+            iteration=1000,
+            storage_name="my-ckpt",
+            files=[
+                {
+                    "name": "new_ckpt_1000.pth",
+                    "path": "ckpt/new_ckpt_1000.pth",
+                    "mtime": "2022-04-20T06:27:37.907Z",
+                    "size": 2048,
+                }
+            ],
+            dist_config={"k": "v"},
+            attributes={
+                "job_setting_json": {"k": "v"},
+                "data_json": {"k": "v"},
+            },
+        )
+        == data
+    )
+    assert requests_mock.request_history[-1].json() == {
+        "job_id": None,
+        "vendor": "s3",
+        "region": "us-east-1",
+        "storage_name": "my-ckpt",
+        "model_category": "USER",
+        "form_category": "ORCA",
+        "name": "my-ckpt",
+        "dist_json": {"k": "v"},
+        "attributes": {
+            "job_setting_json": {"k": "v"},
+            "data_json": {"k": "v"},
+        },
+        "secret_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "secret_type": "credential",
+        "iteration": 1000,
+        "user_id": "22222222-2222-2222-2222-222222222222",  # TODO: change after PFA integration
+        "files": [
+            {
+                "name": "new_ckpt_1000.pth",
+                "path": "ckpt/new_ckpt_1000.pth",
+                "mtime": "2022-04-20T06:27:37.907Z",
+                "size": 2048,
+            }
+        ],
+    }
+
+    # Failed due to HTTP error
+    requests_mock.post(url, status_code=400)
+    with pytest.raises(APIError):
+        group_project_checkpoint_client.create_checkpoint(
+            name="my-ckpt",
+            vendor=StorageType.S3,
+            region="us-east-1",
+            credential_id=UUID("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
+            iteration=1000,
+            storage_name="my-ckpt",
+            files=[
+                {
+                    "name": "new_ckpt_1000.pth",
+                    "path": "ckpt/new_ckpt_1000.pth",
+                    "mtime": "2022-04-20T06:27:37.907Z",
+                    "size": 2048,
+                }
+            ],
+            dist_config={"k": "v"},
+            attributes={"k": "v"},
         )

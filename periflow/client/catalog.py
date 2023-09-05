@@ -13,10 +13,8 @@ from periflow.client.base import (
     GroupRequestMixin,
     ProjectRequestMixin,
     UserRequestMixin,
-    safe_request,
 )
 from periflow.enums import CatalogImportMethod
-from periflow.utils.request import paginated_get
 
 
 class CatalogClient(
@@ -38,28 +36,20 @@ class CatalogClient(
 
     def get_catalog(self, catalog_id: UUID) -> Dict[str, Any]:
         """Get a public checkpoint in catalog."""
-        response = safe_request(
-            self.retrieve,
-            err_prefix="Failed to get info of public checkpoint in catalog",
-        )(pk=catalog_id)
-        return response.json()
+        data = self.retrieve(pk=catalog_id)
+        return data
 
     def list_catalogs(self, name: Optional[str], limit: int) -> List[Dict[str, Any]]:
         """List public checkpoints in catalog."""
-        request_data = {}
+        params = {
+            "sort_by_popularity": "descending",
+            "statuses": "Active",
+        }
         if name is not None:
-            request_data["name"] = name
+            params["name"] = name
 
-        resp_getter = safe_request(
-            self.list, err_prefix="Failed to get public checkpoints in catalog."
-        )
-        return paginated_get(
-            resp_getter,
-            **request_data,
-            limit=limit,
-            sort_by_popularity="descending",
-            statuses="Active",
-        )
+        data = self.list(pagination=True, limit=limit, params=params)
+        return data
 
     def try_out(
         self, catalog_id: UUID, name: str, method: CatalogImportMethod
@@ -82,8 +72,5 @@ class CatalogClient(
             "user_id": str(self.user_id),
             "import_method": method.value,
         }
-        response = safe_request(
-            self.post,
-            err_prefix="Failed to import public checkpoint from catalog to project",
-        )(path=f"{catalog_id}/try_out/", json=request_data)
-        return response.json()
+        data = self.post(path=f"{catalog_id}/try_out/", json=request_data)
+        return data

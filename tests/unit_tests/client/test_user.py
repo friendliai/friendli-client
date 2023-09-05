@@ -59,7 +59,7 @@ def test_user_initiate_mfa(
         user_mfa.initiate_mfa(mfa_type="totp", mfa_token="MFA_TOKEN")
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_change_password(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -78,7 +78,7 @@ def test_user_client_change_password(
         user_client.change_password("1234", "5678")
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_set_group_privilege(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -105,7 +105,7 @@ def test_user_client_set_group_privilege(
         user_client.set_group_privilege(group_id, user_id, GroupRole.OWNER)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_get_project_membership(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -132,7 +132,7 @@ def test_user_client_get_project_membership(
         user_client.get_project_membership(project_id)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_add_to_project(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -161,7 +161,7 @@ def test_user_client_add_to_project(
         user_client.add_to_project(user_id, project_id, ProjectRole.ADMIN)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_delete_from_project(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -190,7 +190,7 @@ def test_user_client_delete_from_project(
         user_client.add_to_project(user_id, project_id, ProjectRole.ADMIN)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_client_set_project_privilege(
     requests_mock: requests_mock.Mocker, user_client: UserClient
 ):
@@ -219,7 +219,7 @@ def test_user_client_set_project_privilege(
         user_client.set_project_privilege(user_id, project_id, ProjectRole.ADMIN)
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_group_client_get_group_info(
     requests_mock: requests_mock.Mocker, user_group_client: UserGroupClient
 ):
@@ -244,7 +244,7 @@ def test_user_group_client_get_group_info(
         user_group_client.get_group_info()
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_access_key_client_create_key(
     requests_mock: requests_mock.Mocker,
     user_access_key_client: UserAccessKeyClient,
@@ -284,7 +284,7 @@ def test_user_access_key_client_create_key(
         user_access_key_client.create_access_key("test")
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_access_key_client_list_key(
     requests_mock: requests_mock.Mocker,
     user_access_key_client: UserAccessKeyClient,
@@ -318,7 +318,7 @@ def test_user_access_key_client_list_key(
         user_access_key_client.list_access_keys()
 
 
-@pytest.mark.usefixtures("patch_auto_token_refresh")
+@pytest.mark.usefixtures("patch_safe_request")
 def test_user_access_key_client_delete_key(
     requests_mock: requests_mock.Mocker,
     user_access_key_client: UserAccessKeyClient,

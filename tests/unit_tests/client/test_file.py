@@ -29,7 +29,7 @@ def group_file_client(
 class TestFileClient:
     """Unit test for `FileClientService`."""
 
-    @pytest.mark.usefixtures("patch_auto_token_refresh")
+    @pytest.mark.usefixtures("patch_safe_request")
     def test_get_misc_file_upload_url(
         self,
         requests_mock: requests_mock.Mocker,
@@ -55,7 +55,7 @@ class TestFileClient:
         with pytest.raises(APIError):
             file_client.get_misc_file_upload_url(misc_file_id=misc_file_id)
 
-    @pytest.mark.usefixtures("patch_auto_token_refresh")
+    @pytest.mark.usefixtures("patch_safe_request")
     def test_get_misc_file_download_url(
         self,
         requests_mock: requests_mock.Mocker,
@@ -83,7 +83,7 @@ class TestFileClient:
         with pytest.raises(APIError):
             file_client.get_misc_file_download_url(misc_file_id=misc_file_id)
 
-    @pytest.mark.usefixtures("patch_auto_token_refresh")
+    @pytest.mark.usefixtures("patch_safe_request")
     def test_make_misc_file_uploaded(
         self,
         requests_mock: requests_mock.Mocker,
@@ -121,7 +121,7 @@ class TestFileClient:
 class TestGroupProjectFileClient:
     """Unit test for `GroupProjectFileClientService`."""
 
-    @pytest.mark.usefixtures("patch_auto_token_refresh")
+    @pytest.mark.usefixtures("patch_safe_request")
     def test_make_create_misc_file(
         self,
         requests_mock: requests_mock.Mocker,

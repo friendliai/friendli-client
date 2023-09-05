@@ -68,7 +68,7 @@ user_panel_formatter = PanelFormatter(
 def whoami():
     """Show my user info."""
     client = UserClient()
-    info = client.get_current_userinfo()
+    info = client.get_current_user_info()
 
     user_panel_formatter.render([info])
 
