@@ -110,6 +110,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             config = {
                 "max_batch_size": 256,
                 "max_token_count": 8146,
+                "max_num_tokens_to_replace": 0,
             }
             deployment = pf.Deployment.create(
                 checkpoint_id="YOUR_CHECKPOINT_ID",
@@ -125,10 +126,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
             ```python
             {
-                "orca_config": {
-                    "max_batch_size": Optioanl[int],
-                    "max_token_count": Optioanl[int],
-                }
+                "max_batch_size": Optioanl[int],
+                "max_token_count": Optioanl[int],
+                "max_num_tokens_to_replace": Optional[int],
             }
             ```
 
@@ -194,6 +194,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
         deploy_configurator = OrcaDeploymentConfigurator(config=config)
         deploy_configurator.validate()
+        config = {"orca_config": config}
 
         if default_request_config is not None:
             drc_configurator = DRCConfigurator(config=default_request_config)

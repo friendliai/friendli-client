@@ -82,6 +82,7 @@ pf.init(
 config = {
     "max_batch_size": 256,
     "max_token_count": 8146,
+    "max_num_tokens_to_replace": 0,
 }
 deployment = pf.Deployment.create(
     checkpoint_id="YOUR_CHECKPOINT_ID",
@@ -100,6 +101,7 @@ The format of `config` should be:
     "orca_config": {
         "max_batch_size": Optioanl[int],
         "max_token_count": Optioanl[int],
+        "max_num_tokens_to_replace": Optional[int],
     }
 }
 ```
