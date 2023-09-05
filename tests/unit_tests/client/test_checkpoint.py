@@ -7,7 +7,6 @@ from __future__ import annotations
 import math
 import os
 from copy import deepcopy
-from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
 from uuid import UUID, uuid4
