@@ -44,20 +44,20 @@ panel_formatter = PanelFormatter(
     fields=[
         "id",
         "name",
-        "tags",
         "summary",
         "description",
         "use_count",
         "created_at",
+        "tags",
     ],
     headers=[
         "ID",
         "Name",
-        "Tags",
         "Summary",
         "Description",
         "# Uses",
         "Created At",
+        "Tags",
     ],
 )
 json_formatter = JSONFormatter(name="Attributes")
@@ -71,7 +71,7 @@ def list(
         None,
         "--name",
         "-n",
-        help="The name of publich checkpoint to search.",
+        help="The name of public checkpoint to search.",
     ),
     limit: int = typer.Option(
         20,
