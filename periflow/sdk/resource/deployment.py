@@ -32,8 +32,8 @@ from periflow.enums import (
     CloudType,
     DeploymentSecurityLevel,
     DeploymentType,
+    GpuType,
     ServiceTier,
-    VMType,
 )
 from periflow.errors import (
     AuthenticationError,
@@ -48,7 +48,7 @@ from periflow.schema.resource.v1.deployment import V1Deployment
 from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
 from periflow.utils.fs import download_file, upload_file
-from periflow.utils.maps import cloud_vm_map, vm_num_gpu_map
+from periflow.utils.maps import cloud_gpu_map, gpu_num_map
 from periflow.utils.validate import validate_enums
 
 
@@ -61,7 +61,8 @@ class Deployment(ResourceAPI[V1Deployment, str]):
         name: str,
         cloud: CloudType,
         region: str,
-        vm_type: VMType,
+        gpu_type: GpuType,
+        num_gpus: int,
         config: Dict[str, Any],
         deployment_type: DeploymentType = DeploymentType.PROD,
         description: Optional[str] = None,
@@ -78,6 +79,8 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             name (str): The name of deployment.
             cloud (CloudType): Type of cloud provider.
             region (str): Cloud region to create a deployment.
+            gpu_type (GpuType): Type of GPU.
+            num_gpus (int): The number of GPUs.
             vm_type (VMType): Type of VM.
             config (Dict[str, Any]): Deployment configuration.
             deployment_type (DeploymentType, optional): Type of deployment. Defaults to DeploymentType.PROD.
@@ -110,13 +113,15 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             config = {
                 "max_batch_size": 256,
                 "max_token_count": 8146,
+                "max_num_tokens_to_replace": 0,
             }
             deployment = pf.Deployment.create(
                 checkpoint_id="YOUR_CHECKPOINT_ID",
                 name="my-deployment",
                 cloud="gcp",
                 region="asia-northeast3",
-                vm_type="a2-highgpu-1g",
+                gpu_type="a100",
+                num_gpus=1,
                 config=config,
             )
             ```
@@ -125,10 +130,9 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
             ```python
             {
-                "orca_config": {
-                    "max_batch_size": Optioanl[int],
-                    "max_token_count": Optioanl[int],
-                }
+                "max_batch_size": Optioanl[int],
+                "max_token_count": Optioanl[int],
+                "max_num_tokens_to_replace": Optional[int],
             }
             ```
 
@@ -157,7 +161,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
         """
         # pylint: disable=too-many-statements
         cloud = validate_enums(cloud, CloudType)
-        vm_type = validate_enums(vm_type, VMType)
+        gpu_type = validate_enums(gpu_type, GpuType)
         deployment_type = validate_enums(deployment_type, DeploymentType)
         security_level = validate_enums(security_level, DeploymentSecurityLevel)
 
@@ -187,13 +191,19 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 f"Should be min_replicas('{min_replicas}') <= max_replicas('{max_replicas}')."
             )
 
-        if vm_type not in cloud_vm_map[cloud]:
+        if gpu_type not in cloud_gpu_map[cloud]:
             raise InvalidConfigError(
-                f"VM type {vm_type.value} is not supported in cloud {cloud.value}."
+                f"GPU type {gpu_type.value} is not supported in cloud {cloud.value}."
+            )
+
+        if num_gpus not in gpu_num_map[gpu_type]:
+            raise InvalidConfigError(
+                f"Num gpus {num_gpus} is not supported for GPU {gpu_type.value}."
             )
 
         deploy_configurator = OrcaDeploymentConfigurator(config=config)
         deploy_configurator.validate()
+        config = {"orca_config": config}
 
         if default_request_config is not None:
             drc_configurator = DRCConfigurator(config=default_request_config)
@@ -240,7 +250,6 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                 file_client.make_misc_file_uploaded(misc_file_id=file_id)
                 config["orca_config"]["default_request_config_id"] = file_id
 
-        num_gpus = vm_num_gpu_map[vm_type]
         config["orca_config"]["num_devices"] = num_gpus
 
         config["scaler_config"] = {}
@@ -252,7 +261,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             "model_id": str(checkpoint_id),
             "deployment_type": deployment_type.value,
             "name": name,
-            "vm": {"name": vm_type.value},
+            "vm": {"gpu_type": gpu_type.value},
             "cloud": cloud.value,
             "region": region,
             "total_gpus": num_gpus,

@@ -8,7 +8,7 @@ from typing import Dict, Type
 
 from pydantic import BaseModel
 
-from periflow.enums import CloudType, CredType, VMType
+from periflow.enums import CloudType, CredType, GpuType, VMType
 from periflow.schema.resource.v1.credential import (
     V1AzureBlobCredential,
     V1GCSCredential,
@@ -46,6 +46,20 @@ cloud_vm_map: Dict[CloudType, list[VMType]] = {
         VMType.A2_ULTRAGPU_4G,
         VMType.A2_ULTRAGPU_8G,
     ],
+}
+
+
+cloud_gpu_map: Dict[CloudType, list[GpuType]] = {
+    CloudType.AWS: [GpuType.A10G],
+    CloudType.AZURE: [GpuType.A100_80G],
+    CloudType.GCP: [GpuType.A100],
+}
+
+
+gpu_num_map: Dict[GpuType, list[int]] = {
+    GpuType.A10G: [1],
+    GpuType.A100_80G: [1, 2, 4, 8],
+    GpuType.A100: [1],
 }
 
 
