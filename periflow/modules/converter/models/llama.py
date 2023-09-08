@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, cast
+from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import torch
@@ -19,6 +19,7 @@ from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     convert_to_gpt_j_params,
     get_tensor_from_state_dict,
+    nontype_partial,
 )
 
 
@@ -123,65 +124,110 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
         return "llama"
 
     @property
-    def decoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in LLaMA."""
-        return {
-            "ln_1/gamma:0": (
+    def decoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in LLaMA."""
+        convert_dict = {
+            "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".input_layernorm.weight"],
+                per_layer_postfixes=[".input_layernorm.weight"],
             ),
-            "attn/c_attn/weight:0": (
+            "attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [
+                per_layer_postfixes=[
                     ".self_attn.q_proj.weight",
                     ".self_attn.k_proj.weight",
                     ".self_attn.v_proj.weight",
                 ],
             ),
-            "attn/c_proj/weight:0": (
+            "attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".self_attn.o_proj.weight"],
+                per_layer_postfixes=[".self_attn.o_proj.weight"],
             ),
-            "ln_2/gamma:0": (
+            "ln_2/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".post_attention_layernorm.weight"],
+                per_layer_postfixes=[".post_attention_layernorm.weight"],
             ),
-            "mlp/c_gate/weight:0": (
+            "mlp/c_gate/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".mlp.gate_proj.weight"],
+                per_layer_postfixes=[".mlp.gate_proj.weight"],
             ),
-            "mlp/c_fc/weight:0": (
+            "mlp/c_fc/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".mlp.up_proj.weight"],
+                per_layer_postfixes=[".mlp.up_proj.weight"],
             ),
-            "mlp/c_proj/weight:0": (
+            "mlp/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".mlp.down_proj.weight"],
+                per_layer_postfixes=[".mlp.down_proj.weight"],
             ),
         }
 
+        if self.quantize:
+            for param_name in self.quantized_param_names:
+                del convert_dict[param_name]
+
+        return convert_dict
+
     @property
-    def non_transformer_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for non-transformer layers in LLaMA."""
+    def quantized_param_names(self) -> List[str]:
+        """The quantized parameters' names in LLaMA."""
+        return super().quantized_param_names + [
+            "mlp/c_gate/weight:0",
+        ]
+
+    @property
+    def quantized_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for quantized layers in LLaMA."""
+        convert_dict = super().quantized_convert_dict
+        convert_dict.update(
+            {
+                "mlp/c_gate/in_scale:0": nontype_partial(
+                    self.quantized_linear_weight_convert,
+                    per_layer_postfixes=[".ff_gate.in_scale"],
+                ),
+                "mlp/c_gate/out_scale:0": nontype_partial(
+                    self.quantized_linear_weight_convert,
+                    per_layer_postfixes=[".ff_gate.out_scale"],
+                ),
+                "mlp/c_gate/weight_scale:0": nontype_partial(
+                    self.quantized_linear_weight_convert,
+                    per_layer_postfixes=[".ff_gate.weight_scale"],
+                ),
+                "mlp/c_gate/int8_weight:0": nontype_partial(
+                    self.quantized_linear_weight_convert,
+                    per_layer_postfixes=[".ff_gate.int8_weight"],
+                ),
+            }
+        )
+        return convert_dict
+
+    @property
+    def non_transformer_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for non-transformer blocks in LLaMA."""
         return {
-            "wte/weight:0": (
+            "wte/weight:0": nontype_partial(
                 self.token_embed_weight_convert,
-                ["model.embed_tokens.weight"],
+                per_layer_postfixes=["model.embed_tokens.weight"],
             ),
             DECODER_PREFIX
-            + "/ln_f/gamma:0": (
+            + "/ln_f/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                ["model.norm.weight"],
+                per_layer_postfixes=["model.norm.weight"],
             ),
-            "head_fc/weight:0": (
+            "head_fc/weight:0": nontype_partial(
                 self.head_weight_convert,
-                ["lm_head.weight"],
+                per_layer_postfixes=["lm_head.weight"],
             ),
         }
 
     @property
     def decoder_layer_prefix(self) -> str:
-        """The layer name prefix used before LLaMA's transformer layer number."""
+        """The layer name prefix used before LLaMA's transformer block number."""
         return "model.layers."
 
     @property

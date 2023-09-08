@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, cast
+from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import torch
@@ -17,6 +17,7 @@ from periflow.modules.converter.interface import DECODER_PREFIX
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
+    nontype_partial,
 )
 
 
@@ -141,99 +142,109 @@ class OPTForCausalLMConverter(DecoderOnlyConverter):
         return "opt"
 
     @property
-    def decoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in OPT."""
-        return {
-            "ln_1/gamma:0": (
+    def decoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in OPT."""
+        convert_dict = {
+            "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".self_attn_layer_norm.weight"],
+                per_layer_postfixes=[".self_attn_layer_norm.weight"],
             ),
-            "ln_1/beta:0": (
+            "ln_1/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".self_attn_layer_norm.bias"],
+                per_layer_postfixes=[".self_attn_layer_norm.bias"],
             ),
-            "attn/c_attn/weight:0": (
-                self.qkv_weight_convert,
-                [
-                    ".self_attn.q_proj.weight",
-                    ".self_attn.k_proj.weight",
-                    ".self_attn.v_proj.weight",
-                ],
-            ),
-            "attn/c_attn/bias:0": (
+            "attn/c_attn/bias:0": nontype_partial(
                 self.qkv_bias_convert,
-                [
+                per_layer_postfixes=[
                     ".self_attn.q_proj.bias",
                     ".self_attn.k_proj.bias",
                     ".self_attn.v_proj.bias",
                 ],
             ),
-            "attn/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".self_attn.out_proj.weight"],
-            ),
-            "attn/c_proj/bias:0": (
+            "attn/c_proj/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".self_attn.out_proj.bias"],
+                per_layer_postfixes=[".self_attn.out_proj.bias"],
             ),
-            "ln_2/gamma:0": (
+            "ln_2/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".final_layer_norm.weight"],
+                per_layer_postfixes=[".final_layer_norm.weight"],
             ),
-            "ln_2/beta:0": (
+            "ln_2/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".final_layer_norm.bias"],
+                per_layer_postfixes=[".final_layer_norm.bias"],
             ),
-            "mlp/c_fc/weight:0": (
-                self.linear_weight_convert,
-                [".fc1.weight"],
-            ),
-            "mlp/c_fc/bias:0": (
+            "mlp/c_fc/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".fc1.bias"],
+                per_layer_postfixes=[".fc1.bias"],
             ),
-            "mlp/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".fc2.weight"],
-            ),
-            "mlp/c_proj/bias:0": (
+            "mlp/c_proj/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".fc2.bias"],
+                per_layer_postfixes=[".fc2.bias"],
+            ),
+            "mlp/c_proj/weight:0": nontype_partial(
+                self.linear_weight_convert,
+                per_layer_postfixes=[".fc2.weight"],
+            ),
+            "mlp/c_fc/weight:0": nontype_partial(
+                self.linear_weight_convert,
+                per_layer_postfixes=[".fc1.weight"],
+            ),
+            "attn/c_proj/weight:0": nontype_partial(
+                self.linear_weight_convert,
+                per_layer_postfixes=[".self_attn.out_proj.weight"],
+            ),
+            "attn/c_attn/weight:0": nontype_partial(
+                self.qkv_weight_convert,
+                per_layer_postfixes=[
+                    ".self_attn.q_proj.weight",
+                    ".self_attn.k_proj.weight",
+                    ".self_attn.v_proj.weight",
+                ],
             ),
         }
 
+        if self.quantize:
+            for param_name in self.quantized_param_names:
+                del convert_dict[param_name]
+
+        return convert_dict
+
     @property
-    def non_transformer_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for non-transformer layers in OPT."""
+    def non_transformer_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for non-transformer blocks in OPT."""
         return {
-            "wte/weight:0": (
+            "wte/weight:0": nontype_partial(
                 self.token_embed_weight_convert,
-                ["model.decoder.embed_tokens.weight"],
+                per_layer_postfixes=["model.decoder.embed_tokens.weight"],
             ),
             DECODER_PREFIX
-            + "/wpe/weight:0": (
+            + "/wpe/weight:0": nontype_partial(
                 self.pos_embed_weight_convert,
-                ["model.decoder.embed_positions.weight"],
+                per_layer_postfixes=["model.decoder.embed_positions.weight"],
             ),
             DECODER_PREFIX
-            + "/ln_f/gamma:0": (
+            + "/ln_f/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                ["model.decoder.final_layer_norm.weight"],
+                per_layer_postfixes=["model.decoder.final_layer_norm.weight"],
             ),
             DECODER_PREFIX
-            + "/ln_f/beta:0": (
+            + "/ln_f/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                ["model.decoder.final_layer_norm.bias"],
+                per_layer_postfixes=["model.decoder.final_layer_norm.bias"],
             ),
-            "head_fc/weight:0": (
+            "head_fc/weight:0": nontype_partial(
                 self.head_weight_convert,
-                ["lm_head.weight"],
+                per_layer_postfixes=["lm_head.weight"],
             ),
         }
 
     @property
     def decoder_layer_prefix(self) -> str:
-        """The layer name prefix used before OPT's transformer layer number."""
+        """The layer name prefix used before OPT's transformer block number."""
         return "model.decoder.layers."
 
     @property
@@ -260,3 +271,13 @@ class OPTForCausalLMConverter(DecoderOnlyConverter):
     def decoder_head_size(self) -> int:
         """The head size of OPT."""
         return self.decoder_hidden_size // self.decoder_num_attention_heads
+
+    @property
+    def quantized_layer_prefix(self) -> str:
+        """The layer name prefix used before OPT's transformer block number."""
+        return self.decoder_layer_prefix
+
+    @property
+    def quantized_layer_num(self) -> int:
+        """Return the number of transformer blocks in the encoder."""
+        return self.decoder_layer_num

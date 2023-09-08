@@ -13,6 +13,7 @@ from typing import List, Optional
 from uuid import UUID
 
 import typer
+import yaml
 
 from periflow.enums import (
     CatalogImportMethod,
@@ -720,10 +721,20 @@ def convert(
         "--output-attr-filename",
         help="Name of the checkpoint attribute file.",
     ),
+    quantize: bool = typer.Option(
+        False,
+        "--quantize",
+        help="Quantize the hf model before conversion",
+    ),
+    quant_config_file: Optional[typer.FileText] = typer.Option(
+        None,
+        "--quant-config-file",
+        help="Path to the quantization configuration file.",
+    ),
 ):
     """Convert huggingface's model checkpoint to PeriFlow format.
 
-    When a checkpoint is in the Hugging Face format, it cannot be directly served;
+    When a checkpoint is in the Hugging Face format, it cannot be directly served.
     rather, it requires conversion to the PeriFlow format for serving. The conversion
     process involves copying the original checkpoint and transforming it into a
     checkpoint in the PeriFlow format (*.h5).
@@ -731,6 +742,30 @@ def convert(
     :::caution
     The `pf checkpoint convert` is available only when the package is installed with
     `pip install periflow-client[mllib]`.
+    :::
+
+    If you want to quantize the model, arguments `--quantize`
+    and `--quant-config-file` should be provided. The quantization settings are
+    described in a configuration YAML file. and the path of that file is passed to
+    `--quant-config-file`. The following is an example YAML file:
+
+    ```yaml
+    # default quantization configuration
+    quant_mode: smoothquant
+    quant_args:
+        data_path_or_name: lambada
+        data_format: json
+        data_split : train
+        num_samples: 512
+        max_length: 512
+        device: cuda:0
+        seed: 42
+        migration_strength: 0.5
+    ```
+    :::tip
+    If you set `--quantize` but not provide `--quant-config-file`,
+    the default configiration is used. If you want to use other option,
+    Please check PeriFlow documents.
     :::
 
     """
@@ -746,6 +781,26 @@ def convert(
             secho_error_and_exit(f"'{output_dir}' exists, but its not a directory.")
         os.mkdir(output_dir)
 
+    quant_config = {}
+    if quantize:
+        if quant_config_file:
+            try:
+                quant_config = yaml.safe_load(quant_config_file.read())
+            except yaml.YAMLError as err:
+                secho_error_and_exit(f"Failed to load smoothquant config file... {err}")
+        else:
+            quant_config["quant_mode"] = "smoothquant"
+            quant_config["quant_args"] = {
+                "data_path_or_name": "lambada",
+                "data_format": "json",
+                "data_split": "train",
+                "num_samples": 512,
+                "max_length": 512,
+                "device": "cuda",
+                "seed": 42,
+                "migration_strength": 0.5,
+            }
+
     model_output_path = os.path.join(output_dir, output_model_file_name)
     tokenizer_output_dir = output_dir
     attr_output_path = os.path.join(output_dir, output_attr_file_name)
@@ -759,8 +814,10 @@ def convert(
             attr_output_path=attr_output_path,
             cache_dir=cache_dir,
             dry_run=dry_run,
+            quantize=quantize,
+            quant_config=quant_config,
         )
-    except (NotFoundError, CheckpointConversionError) as exc:
+    except (NotFoundError, CheckpointConversionError, InvalidConfigError) as exc:
         secho_error_and_exit(str(exc))
 
     msg = (

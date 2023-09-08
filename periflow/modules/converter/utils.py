@@ -5,19 +5,36 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional
+from functools import partial
+from typing import Any, Dict, Optional, Type
 
 import numpy as np
 import torch
-import transformers  # type: ignore[import]
+from transformers import AutoTokenizer, PretrainedConfig  # type: ignore[import]
 
 from periflow.enums import CheckpointDataType
 from periflow.errors import (
     CheckpointConversionError,
     NotFoundError,
+    NotSupportedQuantModeError,
+    QuantizationError,
     TokenizerNotFoundError,
 )
 from periflow.logging import logger
+from periflow.modules.quantizer.base import AbstractQuantizer, SmoothQuantQuantizer
+from periflow.modules.quantizer.configurator import QuantConfigurator
+from periflow.modules.quantizer.maps import (
+    model_arch_smoothquant_hook_map,
+    quant_configurator_map,
+)
+
+
+def nontype_partial(cls, *args, **kwargs):
+    """Partial function with type hint."""
+    # NOTE: [mypy/issue] (https://github.com/python/mypy/issues/1484)
+    # In Python type system, partial function does not preserve type hint.
+    # This function is a workaround for this issue.
+    return partial(cls, *args, **kwargs)
 
 
 def convert_to_gpt_j_params(param: torch.Tensor, rotary_dim: int) -> torch.Tensor:
@@ -105,20 +122,25 @@ def convert_tensor_to_np_array(
 
     if data_type is CheckpointDataType.BF16:
         return (
-            param.detach().to(dtype).view(dtype=torch.float16).numpy().view(np.uint16)
+            param.cpu()
+            .detach()
+            .to(dtype)
+            .view(dtype=torch.float16)
+            .numpy()
+            .view(np.uint16)
         )
 
-    return param.detach().to(dtype).numpy()
+    return param.cpu().detach().to(dtype).numpy()
 
 
 def get_tokenizer(
     model_name_or_path: str,
     *,
     cache_dir: Optional[str] = None,
-) -> transformers.AutoTokenizer:
+) -> AutoTokenizer:
     """Try to get tokenizer of a pretrained model."""
     try:
-        tokenizer = transformers.AutoTokenizer.from_pretrained(
+        tokenizer = AutoTokenizer.from_pretrained(
             model_name_or_path,
             cache_dir=cache_dir,
             trust_remote_code=True,
@@ -167,3 +189,54 @@ def save_tokenizer(
             "This model has the PeriFlow-compatible tokenizer implementation, but "
             "'tokenizer.json' file is not found."
         )
+
+
+def get_quant_configurator(config: Dict[str, Any]) -> QuantConfigurator:
+    """Get quant configurator."""
+    try:
+        quant_mode = config["quant_mode"]
+    except KeyError as err:
+        raise QuantizationError(
+            f"quant_mode is not specified in the config. {str(err)}"
+        ) from err
+
+    if quant_mode in quant_configurator_map:
+        return quant_configurator_map[quant_mode](config=config)
+
+    raise NotSupportedQuantModeError(
+        invalid_option=quant_mode,
+        valid_options=list(quant_configurator_map.keys()),
+    )
+
+
+def get_quanthook_map(quant_mode: str) -> Dict[str, Any]:
+    """Get quantizer map."""
+    if quant_mode == "smoothquant":
+        return model_arch_smoothquant_hook_map
+    raise NotSupportedQuantModeError(
+        invalid_option=quant_mode,
+        valid_options=list(quant_configurator_map.keys()),
+    )
+
+
+def get_quantizer_class(quant_mode: str) -> Type[AbstractQuantizer]:
+    """Get quantizer class."""
+    if quant_mode == "smoothquant":
+        return SmoothQuantQuantizer
+    raise NotSupportedQuantModeError(
+        invalid_option=quant_mode,
+        valid_options=list(quant_configurator_map.keys()),
+    )
+
+
+def get_quantizer(
+    model_arch: str,
+    model_config: PretrainedConfig,
+    quant_config: Dict[str, Any],
+) -> AbstractQuantizer:
+    """Get quantizer for specific model architecture with quant mode and args."""
+    quant_mode = quant_config["quant_mode"]
+    quant_args = quant_config["quant_args"]
+    quanthook_map = get_quanthook_map(quant_mode)
+    quantizer = get_quantizer_class(quant_mode)
+    return quantizer(quanthook_map[model_arch](model_config), quant_args)

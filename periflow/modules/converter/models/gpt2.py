@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, cast
+from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import torch
@@ -17,6 +17,7 @@ from periflow.modules.converter.interface import DECODER_PREFIX
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
+    nontype_partial,
 )
 
 
@@ -84,22 +85,28 @@ class GPT2LMHeadModelConverter(DecoderOnlyConverter):
         return "gpt"
 
     @property
-    def non_transformer_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for non-transformer layers in GPT2."""
+    def non_transformer_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for non-transformer blocks in GPT2."""
         return {
-            "wte/weight:0": (
+            "wte/weight:0": nontype_partial(
                 self.token_embed_weight_convert,
-                ["transformer.wte.weight"],
+                per_layer_postfixes=["transformer.wte.weight"],
             ),
             DECODER_PREFIX
-            + "/wpe/weight:0": (
+            + "/wpe/weight:0": nontype_partial(
                 self.pos_embed_weight_convert,
-                ["transformer.wpe.weight"],
+                per_layer_postfixes=["transformer.wpe.weight"],
             ),
             DECODER_PREFIX
-            + "/ln_f/gamma:0": (self.ln_weight_convert, ["transformer.ln_f.weight"]),
+            + "/ln_f/gamma:0": nontype_partial(
+                self.ln_weight_convert, per_layer_postfixes=["transformer.ln_f.weight"]
+            ),
             DECODER_PREFIX
-            + "/ln_f/beta:0": (self.ln_bias_convert, ["transformer.ln_f.bias"]),
+            + "/ln_f/beta:0": nontype_partial(
+                self.ln_bias_convert, per_layer_postfixes=["transformer.ln_f.bias"]
+            ),
         }
 
     def linear_weight_convert(
@@ -114,62 +121,70 @@ class GPT2LMHeadModelConverter(DecoderOnlyConverter):
         return convert_tensor_to_np_array(param=param, data_type=self.data_type)
 
     @property
-    def decoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in GPT2."""
-        return {
-            "ln_1/gamma:0": (
+    def decoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in GPT2."""
+        convert_dict = {
+            "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".ln_1.weight"],
+                per_layer_postfixes=[".ln_1.weight"],
             ),
-            "ln_1/beta:0": (
+            "ln_1/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".ln_1.bias"],
+                per_layer_postfixes=[".ln_1.bias"],
             ),
-            "attn/c_attn/weight:0": (
-                self.linear_weight_convert,
-                [".attn.c_attn.weight"],
-            ),
-            "attn/c_attn/bias:0": (
+            "attn/c_attn/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".attn.c_attn.bias"],
+                per_layer_postfixes=[".attn.c_attn.bias"],
             ),
-            "attn/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".attn.c_proj.weight"],
-            ),
-            "attn/c_proj/bias:0": (
+            "attn/c_proj/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".attn.c_proj.bias"],
+                per_layer_postfixes=[".attn.c_proj.bias"],
             ),
-            "ln_2/gamma:0": (
+            "ln_2/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".ln_2.weight"],
+                per_layer_postfixes=[".ln_2.weight"],
             ),
-            "ln_2/beta:0": (
+            "ln_2/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".ln_2.bias"],
+                per_layer_postfixes=[".ln_2.bias"],
             ),
-            "mlp/c_fc/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.c_fc.weight"],
-            ),
-            "mlp/c_fc/bias:0": (
+            "mlp/c_fc/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".mlp.c_fc.bias"],
+                per_layer_postfixes=[".mlp.c_fc.bias"],
             ),
-            "mlp/c_proj/weight:0": (
-                self.linear_weight_convert,
-                [".mlp.c_proj.weight"],
-            ),
-            "mlp/c_proj/bias:0": (
+            "mlp/c_proj/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".mlp.c_proj.bias"],
+                per_layer_postfixes=[".mlp.c_proj.bias"],
+            ),
+            "attn/c_attn/weight:0": nontype_partial(
+                self.linear_weight_convert,
+                per_layer_postfixes=[".attn.c_attn.weight"],
+            ),
+            "attn/c_proj/weight:0": nontype_partial(
+                self.linear_weight_convert,
+                per_layer_postfixes=[".attn.c_proj.weight"],
+            ),
+            "mlp/c_fc/weight:0": nontype_partial(
+                self.linear_weight_convert,
+                per_layer_postfixes=[".mlp.c_fc.weight"],
+            ),
+            "mlp/c_proj/weight:0": nontype_partial(
+                self.linear_weight_convert,
+                per_layer_postfixes=[".mlp.c_proj.weight"],
             ),
         }
 
+        if self.quantize:
+            for param_name in self.quantized_param_names:
+                del convert_dict[param_name]
+
+        return convert_dict
+
     @property
     def decoder_layer_prefix(self) -> str:
-        """The layer name prefix used before GPT2's transformer layer number."""
+        """The layer name prefix used before GPT2's transformer block number."""
         return "transformer.h."
 
     @property
