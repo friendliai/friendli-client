@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "periflow-client"
-version = "0.1.7"
+version = "0.1.8"
 description = "Client of PeriFlow, the fastest generative AI serving available."
 license = "Apache-2.0"
 authors = ["PeriFlow teams <eng@friendli.ai>"]
@@ -141,6 +141,7 @@ generated-members = [
 
 [tool.pylint.check]
 ignored-classes = "Depends"
+ignore-patterns = ".+_pb2.py"
 
 [tool.pylint.design]
 max-args = 7

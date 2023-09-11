@@ -1,0 +1,75 @@
+# Tokenization
+
+<a href="https://github.com/friendliai/periflow-client/tree/main/periflow/sdk/api/tokenization.py">
+    <img src="https://img.shields.io/badge/View%20source%20on%20GitHub-181717?style=for-the-badge&logo=Github" />
+</a>
+
+# _class_ `Tokenization()`
+
+> Bases: BaseAPI
+
+PeriFlow tokenization API.
+
+## Methods
+
+### _def_ `create`
+
+```python
+create(
+    prompt: str
+) -> List[int]
+```
+
+Create a tokenization result.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `prompt` | `str` | Input prompt in text. | - | ❌ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `List[int]` | A list of token IDs. |
+
+#### Raises
+
+| Type | Description |
+|------|-------------|
+| `APIError` | Raised when the input has invalid format. |
+
+### _async def_ `acreate`
+
+```python
+acreate(
+    prompt: str
+) -> List[int]
+```
+
+Create a tokenization result asynchronously.
+
+#### Arguments
+
+| Name | Type | Description | Default | Optional |
+|------|------|-------------|---------|----------|
+| `prompt` | `str` | Input prompt in text. | - | ❌ |
+
+#### Returns
+
+| Type | Description |
+|------|-------------|
+| `List[int]` | A list of token IDs. |
+
+#### Raises
+
+| Type | Description |
+|------|-------------|
+| `APIError` | Raised when the input has invalid format. |
+
+#### Description
+
+:::info
+You must open API session with `api_session()` before `acreate()`.
+:::

@@ -8,7 +8,8 @@
 
 > Bases: ServingAPI[V1Completion, 'V1CompletionStream', 'V1AsyncCompletionStream', V1CompletionOptions]
 
-PeriFlow Completion API.
+PeriFlow completion API.
+
 ## Methods
 
 ### _def_ `create`
@@ -34,6 +35,7 @@ Creates a completion.
 | Type | Description |
 |------|-------------|
 | `Union[V1Completion, CompletionStream]` | If `stream` is `True`, a `CompletionStream` object that iterates the results per token is returned. Otherwise, a `V1CompletionResult` object is returned. |
+
 #### Raises
 
 | Type | Description |
@@ -191,7 +193,7 @@ acreate(
 ) -> Union[V1AsyncCompletionStream, V1Completion]
 ```
 
-Creates a completion.
+Creates a completion asynchronously.
 
 #### Arguments
 
@@ -205,6 +207,7 @@ Creates a completion.
 | Type | Description |
 |------|-------------|
 | `Union[V1Completion, AsyncCompletionStream]` | If `stream` is `True`, a `AsyncCompletionStream` object that iterates the results per token is returned. Otherwise, a `V1CompletionResult` object is returned. |
+
 #### Raises
 
 | Type | Description |
@@ -212,11 +215,14 @@ Creates a completion.
 | `APIError` | Raised when the HTTP API request to the deployment fails. |
 | `SessionClosedError` | Raised when the client session is not opened with `api_session()`. |
 
-#### Examples
+#### Description
 
 :::info
 You must open API session with `api_session()` before `acreate()`.
 :::
+
+#### Examples
+
 Basic usage:
 
 ```python
@@ -268,6 +274,7 @@ async with api.api_session():
 > Bases: GenerationStream[V1CompletionLine, V1Completion]
 
 Completion stream.
+
 ## Methods
 
 ### _def_ `wait`
@@ -283,6 +290,7 @@ Waits for the generation to complete.
 | Type | Description |
 |------|-------------|
 | `Optional[V1Completion]` | The full generation result. |
+
 #### Raises
 
 | Type | Description |
@@ -294,6 +302,7 @@ Waits for the generation to complete.
 > Bases: AsyncGenerationStream[V1CompletionLine, V1Completion]
 
 Asynchronous completion stream.
+
 ## Methods
 
 ### _async def_ `wait`
@@ -309,6 +318,7 @@ Waits for the generation to complete.
 | Type | Description |
 |------|-------------|
 | `Optional[V1Completion]` | The full generation result. |
+
 #### Raises
 
 | Type | Description |

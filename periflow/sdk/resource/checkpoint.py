@@ -728,9 +728,6 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
             for file in ckpt.forms[0].files:
                 file.path = strip_storage_path_prefix(file.path)
 
-        logger.info(
-            "Objects are uploaded and checkpoint(%s) is successfully created!", name
-        )
         return ckpt
 
     @staticmethod

@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""PeriFlow Completion API (v1)."""
+"""PeriFlow Completion API."""
 
 # pylint: disable=line-too-long, no-name-in-module
 
@@ -33,7 +33,7 @@ class Completion(
         V1CompletionOptions,
     ]
 ):
-    """PeriFlow Completion API."""
+    """PeriFlow completion API."""
 
     @property
     def _api_path(self) -> str:
@@ -243,7 +243,11 @@ class Completion(
     async def acreate(
         self, options: V1CompletionOptions, *, stream: bool = False
     ) -> Union[V1AsyncCompletionStream, V1Completion]:
-        """Creates a completion.
+        """Creates a completion asynchronously.
+
+        :::info
+        You must open API session with `api_session()` before `acreate()`.
+        :::
 
         Args:
             options (V1CompletionOptions): Options for the completion.
@@ -257,9 +261,6 @@ class Completion(
             Union[V1Completion, AsyncCompletionStream]: If `stream` is `True`, a `AsyncCompletionStream` object that iterates the results per token is returned. Otherwise, a `V1CompletionResult` object is returned.
 
         Examples:
-            :::info
-            You must open API session with `api_session()` before `acreate()`.
-            :::
             Basic usage:
 
             ```python
