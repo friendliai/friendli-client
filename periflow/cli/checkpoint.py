@@ -735,7 +735,7 @@ def convert(
     """Convert huggingface's model checkpoint to PeriFlow format.
 
     When a checkpoint is in the Hugging Face format, it cannot be directly served.
-    rather, it requires conversion to the PeriFlow format for serving. The conversion
+    It requires conversion to the PeriFlow format for serving. The conversion
     process involves copying the original checkpoint and transforming it into a
     checkpoint in the PeriFlow format (*.h5).
 
@@ -763,9 +763,9 @@ def convert(
         migration_strength: 0.5
     ```
     :::tip
-    If you set `--quantize` but not provide `--quant-config-file`,
-    the default configiration is used. If you want to use other option,
-    Please check PeriFlow documents.
+    If you set `--quantize` but not provide `--quant-config-file`, the default
+    configiration is used. If you want to use other option, please check PeriFlow
+    documentation.
     :::
 
     """

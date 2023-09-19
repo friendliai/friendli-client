@@ -10,7 +10,7 @@ pf checkpoint convert [OPTIONS]
 
 Convert huggingface's model checkpoint to PeriFlow format.
 
-When a checkpoint is in the Hugging Face format, it cannot be directly served;
+When a checkpoint is in the Hugging Face format, it cannot be directly served.
 rather, it requires conversion to the PeriFlow format for serving. The conversion
 process involves copying the original checkpoint and transforming it into a
 checkpoint in the PeriFlow format (*.h5).
@@ -18,6 +18,31 @@ checkpoint in the PeriFlow format (*.h5).
 :::caution
 The `pf checkpoint convert` is available only when the package is installed with
 `pip install periflow-client[mllib]`.
+:::
+
+If you want to quantize the model, arguments `--quantize`
+and `--quant-config-file` should be provided. The quantization settings are
+described in a configuration YAML file. and the path of that file is passed to
+`--quant-config-file`. The following is an example YAML file:
+
+```yaml
+# default quantization configuration
+quant_mode: smoothquant
+quant_args:
+    data_path_or_name: lambada
+    data_format: json
+    data_split : train
+    num_samples: 512
+    max_length: 512
+    device: cuda:0
+    seed: 42
+    migration_strength: 0.5
+```
+
+:::tip
+If you set `--quantize` but not provide `--quant-config-file`,
+the default configiration is used. If you want to use other option,
+Please check PeriFlow documents.
 :::
 
 ## Options
@@ -31,3 +56,5 @@ The `pf checkpoint convert` is available only when the package is installed with
 | `--dry-run` | BOOLEAN | Only check conversion avaliability. | False | ❌ |
 | `--output-model-filename` | TEXT | Name of the converted checkpoint file. | model.h5 | ❌ |
 | `--output-attr-filename` | TEXT | Name of the checkpoint attribute file. | attr.yaml | ❌ |
+| `--quantize` | BOOLEAN | Quantize the hf model before conversion | False | ❌ |
+| `--quant-config-file` | FILENAME | Path to the quantization configuration file. | None | ❌ |
