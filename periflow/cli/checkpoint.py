@@ -35,7 +35,11 @@ from periflow.formatter import (
     TableFormatter,
     TreeFormatter,
 )
-from periflow.modules.quantizer.schema import QuantConfig, SmoothQuantConfig
+from periflow.modules.quantizer.schema import (
+    OneOfQuantConfig,
+    QuantConfig,
+    SmoothQuantConfig,
+)
 from periflow.sdk.resource.catalog import Catalog as CatalogAPI
 from periflow.sdk.resource.checkpoint import Checkpoint as CheckpointAPI
 from periflow.utils.decorator import check_api
@@ -799,6 +803,7 @@ def convert(
             secho_error_and_exit(f"'{output_dir}' exists, but its not a directory.")
         os.mkdir(output_dir)
 
+    quant_config: Optional[OneOfQuantConfig] = None
     if quantize:
         if quant_config_file:
             try:
