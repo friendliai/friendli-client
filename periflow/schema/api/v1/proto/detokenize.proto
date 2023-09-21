@@ -1,0 +1,9 @@
+/*
+ * Copyright (c) 2023-present, FriendliAI Inc. All rights reserved.
+ */
+
+syntax = "proto3";
+
+message V1DetokenizeRequest {
+    repeated int32 tokens = 2;
+}

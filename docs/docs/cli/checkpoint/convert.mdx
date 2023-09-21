@@ -10,14 +10,55 @@ pf checkpoint convert [OPTIONS]
 
 Convert huggingface's model checkpoint to PeriFlow format.
 
-When a checkpoint is in the Hugging Face format, it cannot be directly served;
-rather, it requires conversion to the PeriFlow format for serving. The conversion
+When a checkpoint is in the Hugging Face format, it cannot be directly served.
+It requires conversion to the PeriFlow format for serving. The conversion
 process involves copying the original checkpoint and transforming it into a
 checkpoint in the PeriFlow format (*.h5).
 
 :::caution
 The `pf checkpoint convert` is available only when the package is installed with
 `pip install periflow-client[mllib]`.
+:::
+
+### Apply quantization
+
+If you want to quantize the model along with the conversion, `--quantize` option
+should be provided. You can customize the quantization configuration by describing
+it in a YAML file and providing the path to the file to `--quant-config-file`
+option. When `--quantize` option is used without providing `--quant-config-file`,
+the following configuration is used by default.
+
+```yaml
+# Default quantization configuration
+mode: smoothquant
+device: cuda:0
+seed: 42
+calibration_dataset:
+    path_or_name: lambada
+    format: json
+    split: validation
+    lookup_column_name: text
+    num_samples: 512
+    max_length: 512
+smoothquant_args:
+    migration_strength: 0.5
+```
+
+- **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
+- **`device`**: Device to run the quantization process. Defaults to "cuda:0".
+- **`seed`**: Random seed. Defaults to 42.
+- **`calibration_dataset`**
+    - **`path_or_name`**: Path or name of the dataset. Datasets from either the Hugging Face Datasets Hub or local file system can be used. Defaults to "lambada".
+    - **`format`**: Format of datasets. Defaults to "json".
+    - **`split`**: Which split of the data to load. Defaults to "validation".
+    - **`lookup_column_name`**: The name of a column in the dataset to be used as calibration inputs. Defaults to "text".
+    - **`num_samples`**: The number of dataset samples to use for calibration. Note that the dataset will be shuffled before sampling. Defaults to 512.
+    - **`max_length`**: The maximum length of a calibration input sequence. Defauts to 512.
+- **`smoothquant_args`** (Fill in this field only for "smoothquant" mode)
+    - **`migration_strength`**: A hyper-parameter that controls the degree of difficulty migration from activation to weights. Defaults to 0.5.
+
+:::info
+Currently, [SmoothQuant](https://arxiv.org/abs/2211.10438) is the only supported quantization scheme.
 :::
 
 ## Options
@@ -31,3 +72,5 @@ The `pf checkpoint convert` is available only when the package is installed with
 | `--dry-run` | BOOLEAN | Only check conversion avaliability. | False | ❌ |
 | `--output-model-filename` | TEXT | Name of the converted checkpoint file. | model.h5 | ❌ |
 | `--output-attr-filename` | TEXT | Name of the checkpoint attribute file. | attr.yaml | ❌ |
+| `--quantize` | BOOLEAN | Quantize the model before conversion | False | ❌ |
+| `--quant-config-file` | FILENAME | Path to the quantization configuration file. | None | ❌ |

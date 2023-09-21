@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-# pylint: disable=redefined-builtin, too-many-locals, too-many-arguments
+# pylint: disable=redefined-builtin, too-many-locals, too-many-arguments, line-too-long
 
 """PeriFlow Checkpoint CLI."""
 
@@ -9,10 +9,11 @@ from __future__ import annotations
 import os
 import random
 import string
-from typing import List, Optional
+from typing import List, Optional, cast
 from uuid import UUID
 
 import typer
+import yaml
 
 from periflow.enums import (
     CatalogImportMethod,
@@ -33,6 +34,11 @@ from periflow.formatter import (
     PanelFormatter,
     TableFormatter,
     TreeFormatter,
+)
+from periflow.modules.quantizer.schema import (
+    OneOfQuantConfig,
+    QuantConfig,
+    SmoothQuantConfig,
 )
 from periflow.sdk.resource.catalog import Catalog as CatalogAPI
 from periflow.sdk.resource.checkpoint import Checkpoint as CheckpointAPI
@@ -720,17 +726,68 @@ def convert(
         "--output-attr-filename",
         help="Name of the checkpoint attribute file.",
     ),
+    quantize: bool = typer.Option(
+        False,
+        "--quantize",
+        help="Quantize the model before conversion",
+    ),
+    quant_config_file: Optional[typer.FileText] = typer.Option(
+        None,
+        "--quant-config-file",
+        help="Path to the quantization configuration file.",
+    ),
 ):
     """Convert huggingface's model checkpoint to PeriFlow format.
 
-    When a checkpoint is in the Hugging Face format, it cannot be directly served;
-    rather, it requires conversion to the PeriFlow format for serving. The conversion
+    When a checkpoint is in the Hugging Face format, it cannot be directly served.
+    It requires conversion to the PeriFlow format for serving. The conversion
     process involves copying the original checkpoint and transforming it into a
     checkpoint in the PeriFlow format (*.h5).
 
     :::caution
     The `pf checkpoint convert` is available only when the package is installed with
     `pip install periflow-client[mllib]`.
+    :::
+
+    ### Apply quantization
+
+    If you want to quantize the model along with the conversion, `--quantize` option
+    should be provided. You can customize the quantization configuration by describing
+    it in a YAML file and providing the path to the file to `--quant-config-file`
+    option. When `--quantize` option is used without providing `--quant-config-file`,
+    the following configuration is used by default.
+
+    ```yaml
+    # Default quantization configuration
+    mode: smoothquant
+    device: cuda:0
+    seed: 42
+    calibration_dataset:
+        path_or_name: lambada
+        format: json
+        split: validation
+        lookup_column_name: text
+        num_samples: 512
+        max_length: 512
+    smoothquant_args:
+        migration_strength: 0.5
+    ```
+
+    - **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
+    - **`device`**: Device to run the quantization process. Defaults to "cuda:0".
+    - **`seed`**: Random seed. Defaults to 42.
+    - **`calibration_dataset`**
+        - **`path_or_name`**: Path or name of the dataset. Datasets from either the Hugging Face Datasets Hub or local file system can be used. Defaults to "lambada".
+        - **`format`**: Format of datasets. Defaults to "json".
+        - **`split`**: Which split of the data to load. Defaults to "validation".
+        - **`lookup_column_name`**: The name of a column in the dataset to be used as calibration inputs. Defaults to "text".
+        - **`num_samples`**: The number of dataset samples to use for calibration. Note that the dataset will be shuffled before sampling. Defaults to 512.
+        - **`max_length`**: The maximum length of a calibration input sequence. Defauts to 512.
+    - **`smoothquant_args`** (Fill in this field only for "smoothquant" mode)
+        - **`migration_strength`**: A hyper-parameter that controls the degree of difficulty migration from activation to weights. Defaults to 0.5.
+
+    :::info
+    Currently, [SmoothQuant](https://arxiv.org/abs/2211.10438) is the only supported quantization scheme.
     :::
 
     """
@@ -746,6 +803,19 @@ def convert(
             secho_error_and_exit(f"'{output_dir}' exists, but its not a directory.")
         os.mkdir(output_dir)
 
+    quant_config: Optional[OneOfQuantConfig] = None
+    if quantize:
+        if quant_config_file:
+            try:
+                quant_config_dict = cast(dict, yaml.safe_load(quant_config_file.read()))
+            except yaml.YAMLError as err:
+                secho_error_and_exit(f"Failed to load smoothquant config file... {err}")
+            quant_config = QuantConfig.model_validate(
+                {"config": quant_config_dict}
+            ).config
+        else:
+            quant_config = SmoothQuantConfig()
+
     model_output_path = os.path.join(output_dir, output_model_file_name)
     tokenizer_output_dir = output_dir
     attr_output_path = os.path.join(output_dir, output_attr_file_name)
@@ -759,8 +829,10 @@ def convert(
             attr_output_path=attr_output_path,
             cache_dir=cache_dir,
             dry_run=dry_run,
+            quantize=quantize,
+            quant_config=quant_config,
         )
-    except (NotFoundError, CheckpointConversionError) as exc:
+    except (NotFoundError, CheckpointConversionError, InvalidConfigError) as exc:
         secho_error_and_exit(str(exc))
 
     msg = (

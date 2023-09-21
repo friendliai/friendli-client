@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, cast
+from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import torch
@@ -18,6 +18,7 @@ from periflow.modules.converter.interface import DECODER_PREFIX, ENCODER_PREFIX
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
+    nontype_partial,
 )
 
 
@@ -122,179 +123,189 @@ class T5Converter(EncoderDecoderConverter):
         return "t5"
 
     @property
-    def encoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in T5's encoder."""
+    def encoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in T5's encoder."""
         convert_dict = {
-            "ln_1/gamma:0": (
+            "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".layer.0.layer_norm.weight"],
+                per_layer_postfixes=[".layer.0.layer_norm.weight"],
             ),
-            "ln_2/gamma:0": (
+            "ln_2/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".layer.1.layer_norm.weight"],
+                per_layer_postfixes=[".layer.1.layer_norm.weight"],
             ),
-            "attn/c_attn/weight:0": (
+            "attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [
+                per_layer_postfixes=[
                     ".layer.0.SelfAttention.q.weight",
                     ".layer.0.SelfAttention.k.weight",
                     ".layer.0.SelfAttention.v.weight",
                 ],
             ),
-            "attn/c_proj/weight:0": (
+            "attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".layer.0.SelfAttention.o.weight"],
+                per_layer_postfixes=[".layer.0.SelfAttention.o.weight"],
             ),
         }
         if cast(T5Config, self.config).is_gated_act:
             convert_dict.update(
                 {
-                    "mlp/c_gate/weight:0": (
+                    "mlp/c_gate/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.1.DenseReluDense.wi_0.weight"],
+                        per_layer_postfixes=[".layer.1.DenseReluDense.wi_0.weight"],
                     ),
-                    "mlp/c_fc/weight:0": (
+                    "mlp/c_fc/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.1.DenseReluDense.wi_1.weight"],
+                        per_layer_postfixes=[".layer.1.DenseReluDense.wi_1.weight"],
                     ),
-                    "mlp/c_proj/weight:0": (
+                    "mlp/c_proj/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.1.DenseReluDense.wo.weight"],
+                        per_layer_postfixes=[".layer.1.DenseReluDense.wo.weight"],
                     ),
                 }
             )
         else:
             convert_dict.update(
                 {
-                    "mlp/c_fc/weight:0": (
+                    "mlp/c_fc/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.1.DenseReluDense.wi.weight"],
+                        per_layer_postfixes=[".layer.1.DenseReluDense.wi.weight"],
                     ),
-                    "mlp/c_proj/weight:0": (
+                    "mlp/c_proj/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.1.DenseReluDense.wo.weight"],
+                        per_layer_postfixes=[".layer.1.DenseReluDense.wo.weight"],
                     ),
                 }
             )
         return convert_dict
 
     @property
-    def decoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in T5's decoder."""
+    def decoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in T5's decoder."""
         convert_dict = {
-            "ln_1/gamma:0": (
+            "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".layer.0.layer_norm.weight"],
+                per_layer_postfixes=[".layer.0.layer_norm.weight"],
             ),
-            "ln_2/gamma:0": (
+            "ln_2/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".layer.1.layer_norm.weight"],
+                per_layer_postfixes=[".layer.1.layer_norm.weight"],
             ),
-            "ln_3/gamma:0": (
+            "ln_3/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".layer.2.layer_norm.weight"],
+                per_layer_postfixes=[".layer.2.layer_norm.weight"],
             ),
-            "attn/c_attn/weight:0": (
+            "attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [
+                per_layer_postfixes=[
                     ".layer.0.SelfAttention.q.weight",
                     ".layer.0.SelfAttention.k.weight",
                     ".layer.0.SelfAttention.v.weight",
                 ],
             ),
-            "attn/c_proj/weight:0": (
+            "attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".layer.0.SelfAttention.o.weight"],
+                per_layer_postfixes=[".layer.0.SelfAttention.o.weight"],
             ),
-            "cross_attn/c_attn/weight:0": (
+            "cross_attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [
+                per_layer_postfixes=[
                     ".layer.1.EncDecAttention.q.weight",
                     ".layer.1.EncDecAttention.k.weight",
                     ".layer.1.EncDecAttention.v.weight",
                 ],
             ),
-            "cross_attn/c_proj/weight:0": (
+            "cross_attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".layer.1.EncDecAttention.o.weight"],
+                per_layer_postfixes=[".layer.1.EncDecAttention.o.weight"],
             ),
         }
         if cast(T5Config, self.config).is_gated_act:
             convert_dict.update(
                 {
-                    "mlp/c_gate/weight:0": (
+                    "mlp/c_gate/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.2.DenseReluDense.wi_0.weight"],
+                        per_layer_postfixes=[".layer.2.DenseReluDense.wi_0.weight"],
                     ),
-                    "mlp/c_fc/weight:0": (
+                    "mlp/c_fc/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.2.DenseReluDense.wi_1.weight"],
+                        per_layer_postfixes=[".layer.2.DenseReluDense.wi_1.weight"],
                     ),
-                    "mlp/c_proj/weight:0": (
+                    "mlp/c_proj/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.2.DenseReluDense.wo.weight"],
+                        per_layer_postfixes=[".layer.2.DenseReluDense.wo.weight"],
                     ),
                 }
             )
         else:
             convert_dict.update(
                 {
-                    "mlp/c_fc/weight:0": (
+                    "mlp/c_fc/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.2.DenseReluDense.wi.weight"],
+                        per_layer_postfixes=[".layer.2.DenseReluDense.wi.weight"],
                     ),
-                    "mlp/c_proj/weight:0": (
+                    "mlp/c_proj/weight:0": nontype_partial(
                         self.linear_weight_convert,
-                        [".layer.2.DenseReluDense.wo.weight"],
+                        per_layer_postfixes=[".layer.2.DenseReluDense.wo.weight"],
                     ),
                 }
             )
         return convert_dict
 
     @property
-    def non_transformer_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for non-transformer layers in T5."""
+    def non_transformer_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for non-transformer blocks in T5."""
         convert_dict = {}
-        convert_dict["wte/weight:0"] = (
+        convert_dict["wte/weight:0"] = nontype_partial(
             self.token_embed_weight_convert,
-            ["shared.weight"],
+            per_layer_postfixes=["shared.weight"],
         )
         if not cast(T5Config, self.config).tie_word_embeddings:
-            convert_dict["head_fc/weight:0"] = (
+            convert_dict["head_fc/weight:0"] = nontype_partial(
                 self.head_weight_convert,
-                ["lm_head.weight"],
+                per_layer_postfixes=["lm_head.weight"],
             )
-        convert_dict[ENCODER_PREFIX + "/wpe/weight:0"] = (
+        convert_dict[ENCODER_PREFIX + "/wpe/weight:0"] = nontype_partial(
             self.pos_embed_weight_convert,
-            ["encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"],
+            per_layer_postfixes=[
+                "encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"
+            ],
         )
-        convert_dict[DECODER_PREFIX + "/wpe/weight:0"] = (
+        convert_dict[DECODER_PREFIX + "/wpe/weight:0"] = nontype_partial(
             self.pos_embed_weight_convert,
-            ["decoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"],
+            per_layer_postfixes=[
+                "decoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"
+            ],
         )
-        convert_dict[ENCODER_PREFIX + "/ln_f/gamma:0"] = (
+        convert_dict[ENCODER_PREFIX + "/ln_f/gamma:0"] = nontype_partial(
             self.ln_weight_convert,
-            ["encoder.final_layer_norm.weight"],
+            per_layer_postfixes=["encoder.final_layer_norm.weight"],
         )
-        convert_dict[DECODER_PREFIX + "/ln_f/gamma:0"] = (
+        convert_dict[DECODER_PREFIX + "/ln_f/gamma:0"] = nontype_partial(
             self._decoder_final_ln_weight_convert,
-            ["decoder.final_layer_norm.weight"],
+            per_layer_postfixes=["decoder.final_layer_norm.weight"],
         )
         return convert_dict
 
     @property
     def encoder_layer_prefix(self) -> str:
-        """The layer name prefix used before T5 encoder's transformer layer number."""
+        """The layer name prefix used before T5 encoder's transformer block number."""
         return "encoder.block."
 
     @property
     def decoder_layer_prefix(self) -> str:
-        """The layer name prefix used before T5 decoder's transformer layer number."""
+        """The layer name prefix used before T5 decoder's transformer block number."""
         return "decoder.block."
 
     @property
     def encoder_layer_num(self) -> int:
-        """The number of transformer layers in T5 encoder."""
+        """The number of transformer blocks in T5 encoder."""
         return cast(T5Config, self.config).num_layers
 
     @property
@@ -314,7 +325,7 @@ class T5Converter(EncoderDecoderConverter):
 
     @property
     def decoder_layer_num(self) -> int:
-        """The number of transformer layers in T5 decoder."""
+        """The number of transformer blocks in T5 decoder."""
         return cast(T5Config, self.config).num_decoder_layers
 
     @property

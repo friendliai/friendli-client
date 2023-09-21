@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""PeriFlow Completion API (v1)."""
+"""PeriFlow Completion API."""
 
 # pylint: disable=line-too-long, no-name-in-module
 
@@ -33,7 +33,7 @@ class Completion(
         V1CompletionOptions,
     ]
 ):
-    """PeriFlow Completion API."""
+    """PeriFlow completion API."""
 
     @property
     def _api_path(self) -> str:
@@ -243,7 +243,7 @@ class Completion(
     async def acreate(
         self, options: V1CompletionOptions, *, stream: bool = False
     ) -> Union[V1AsyncCompletionStream, V1Completion]:
-        """Creates a completion.
+        """Creates a completion asynchronously.
 
         Args:
             options (V1CompletionOptions): Options for the completion.

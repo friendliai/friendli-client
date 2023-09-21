@@ -4,14 +4,17 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Union
+from typing import Any, Callable, Dict, List, Union
 
+import numpy as np
+import torch
 from transformers import PretrainedConfig  # type: ignore[import]
 
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
 from periflow.modules.converter.base import DecoderOnlyConverter
 from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.utils import nontype_partial
 
 
 def safe_config_get(config: Union[Dict[str, Any], PretrainedConfig], key: str) -> Any:
@@ -96,47 +99,56 @@ class MPTForCausalLMConverter(DecoderOnlyConverter):
             )
 
     @property
-    def decoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in MPT."""
-        return {
-            "ln_1/gamma:0": (
+    def decoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in MPT."""
+        convert_dict = {
+            "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".norm_1.weight"],
+                per_layer_postfixes=[".norm_1.weight"],
             ),
-            "attn/c_attn/weight:0": (
+            "ln_2/gamma:0": nontype_partial(
+                self.ln_weight_convert,
+                per_layer_postfixes=[".norm_2.weight"],
+            ),
+            "attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [".attn.Wqkv.weight"],
+                per_layer_postfixes=[".attn.Wqkv.weight"],
             ),
-            "attn/c_proj/weight:0": (
+            "attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".attn.out_proj.weight"],
+                per_layer_postfixes=[".attn.out_proj.weight"],
             ),
-            "ln_2/gamma:0": (
-                self.ln_weight_convert,
-                [".norm_2.weight"],
-            ),
-            "mlp/c_fc/weight:0": (
+            "mlp/c_fc/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".ffn.up_proj.weight"],
+                per_layer_postfixes=[".ffn.up_proj.weight"],
             ),
-            "mlp/c_proj/weight:0": (
+            "mlp/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".ffn.down_proj.weight"],
+                per_layer_postfixes=[".ffn.down_proj.weight"],
             ),
         }
 
+        if self.quantize:
+            for param_name in self.quantized_param_names:
+                del convert_dict[param_name]
+        return convert_dict
+
     @property
-    def non_transformer_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for non-transformer layers in MPT."""
+    def non_transformer_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for non-transformer blocks in MPT."""
         return {
-            "wte/weight:0": (
+            "wte/weight:0": nontype_partial(
                 self.token_embed_weight_convert,
-                ["transformer.wte.weight"],
+                per_layer_postfixes=["transformer.wte.weight"],
             ),
             DECODER_PREFIX
-            + "/ln_f/gamma:0": (
+            + "/ln_f/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                ["transformer.norm_f.weight"],
+                per_layer_postfixes=["transformer.norm_f.weight"],
             ),
         }
 
@@ -171,7 +183,7 @@ class MPTForCausalLMConverter(DecoderOnlyConverter):
 
     @property
     def decoder_layer_prefix(self) -> str:
-        """The layer name prefix used before the MPT's transformer layer number."""
+        """The layer name prefix used before the MPT's transformer block number."""
         return "transformer.blocks."
 
     @property

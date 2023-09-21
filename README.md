@@ -89,8 +89,8 @@ deployment = pf.Deployment.create(
     name="my-deployment",
     cloud="gcp",
     region="asia-northeast3",
-    vm_type="a2-highgpu-1g",
-    ...
+    gpu_type="a100",
+    num_gpus=1,
 )
 ```
 
@@ -135,7 +135,8 @@ pf deployment create \
   --name my-deployment \
   --cloud gcp \
   --region asia-northeast3 \
-  --vm-type a2-highgpu-1g \
+  --gpu-type a100 \
+  --num-gpus 1 \
   --config-file config.yaml
 ```
 

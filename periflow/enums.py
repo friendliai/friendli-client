@@ -176,3 +176,19 @@ class FileSizeType(str, Enum):
 
     LARGE = "LARGE"
     SMALL = "SMALL"
+
+
+class QuantMode(str, Enum):
+    """Supported quantization modes."""
+
+    SMOOTH_QUANT = "smoothquant"
+    NONE = "none"  # HACK: Remove this after another scheme added.
+
+
+class QuantDatasetFormat(str, Enum):
+    """Supported file format for calibration datasets for quantization."""
+
+    JSON = "json"
+    CSV = "csv"
+    PARQUET = "parquet"
+    TXT = "txt"

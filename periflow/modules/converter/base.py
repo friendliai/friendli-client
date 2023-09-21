@@ -20,6 +20,7 @@ from periflow.modules.converter.interface import (
     ConversionInterface,
     DecoderConversionInterface,
     EncoderConversionInterface,
+    QuantConversionInterface,
 )
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
@@ -46,6 +47,7 @@ class AbstractConverter(ABC):
             When set to None, `config` is used for configuring generation.
         output_path (str): Output path for the Periflow checkpoint.
         data_type (CheckpointDataType): Data type for the Periflow checkpoint.
+        quantize (bool): Whether to quantize the Periflow checkpoint.
 
     """
 
@@ -55,13 +57,14 @@ class AbstractConverter(ABC):
         generation_config: Optional[GenerationConfig],
         output_path: str,
         data_type: CheckpointDataType,
+        quantize: bool = False,
     ) -> None:
         """Initialize converter."""
         self.config = config
-
         self.generation_config = generation_config
         self.output_path = output_path
         self.data_type = data_type
+        self.quantize = quantize
 
     @property
     @abstractmethod
@@ -314,7 +317,10 @@ class AbstractConverter(ABC):
 
 
 class DecoderOnlyConverter(
-    AbstractConverter, ConversionInterface, DecoderConversionInterface
+    AbstractConverter,
+    ConversionInterface,
+    DecoderConversionInterface,
+    QuantConversionInterface,
 ):
     """Converter for Decoder-Only models."""
 
@@ -331,10 +337,17 @@ class DecoderOnlyConverter(
         total_layers = len(self.decoder_convert_dict) * self.decoder_layer_num + len(
             self.non_transformer_convert_dict
         )
+        if self.quantize:
+            total_layers += len(self.quantized_convert_dict) * self.decoder_layer_num
+
         with h5py.File(self.output_path, "w") as out_f, tqdm(
             total=total_layers, desc="Converting", unit="tensor"
         ) as pbar:
             self.convert_decoder_layers(state_dict=state_dict, out_f=out_f, pbar=pbar)
+            if self.quantize:
+                self.convert_quantized_layers(
+                    state_dict=state_dict, out_f=out_f, pbar=pbar
+                )
             self.convert_non_transformer_layers(
                 state_dict=state_dict, out_f=out_f, pbar=pbar
             )
@@ -345,6 +358,7 @@ class EncoderDecoderConverter(
     ConversionInterface,
     EncoderConversionInterface,
     DecoderConversionInterface,
+    QuantConversionInterface,
 ):
     """Converter for Encoder-Decoder models."""
 
@@ -371,6 +385,10 @@ class EncoderDecoderConverter(
             self.convert_non_transformer_layers(
                 state_dict=state_dict, out_f=out_f, pbar=pbar
             )
+            if self.quantize:
+                self.convert_quantized_layers(
+                    state_dict=state_dict, out_f=out_f, pbar=pbar
+                )
 
     def get_decoder_start_token_id(self) -> Optional[int]:
         """Get ID of decoder start token."""

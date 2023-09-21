@@ -4,8 +4,6 @@
 
 syntax = "proto3";
 
-package orca;
-
 message V1CompletionsRequest {
     message TokenSequence {
         repeated int32 tokens = 1;
@@ -57,14 +55,4 @@ message V1CompletionsRequest {
     repeated int32 forced_output_tokens = 51;
 
     repeated int32 eos_token = 46;
-}
-
-
-message V1TokenizeRequest {
-    optional string prompt = 2;
-}
-
-
-message V1DetokenizeRequest {
-    repeated int32 tokens = 2;
 }

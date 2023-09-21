@@ -37,28 +37,30 @@ def format_license_header(
 
     header_with_space = header + (space + 1) * "\n"
 
+    file_exts = ["**/*.py", "**/*.pyi"]
     for path in paths:
-        for file in Path(path).rglob("**/*.py"):
-            with open(file, "r", encoding="utf-8") as prev_file:
-                content = prev_file.read()
+        for pattern in file_exts:
+            for file in Path(path).rglob(pattern):
+                with open(file, "r", encoding="utf-8") as prev_file:
+                    content = prev_file.read()
 
-            if content.startswith(header_with_space):
-                continue
+                if content.startswith(header_with_space):
+                    continue
 
-            content = content.replace(header, "").strip()
-            assert header not in content
+                content = content.replace(header, "").strip()
+                assert header not in content
 
-            if not content:  # empty file
-                content = header + "\n"
-            elif check_only:
-                typer.secho(
-                    f"Invalid license header found in {file}!", fg=typer.colors.RED
-                )
-            else:
-                content = header_with_space + content
+                if not content:  # empty file
+                    content = header + "\n"
+                elif check_only:
+                    typer.secho(
+                        f"Invalid license header found in {file}!", fg=typer.colors.RED
+                    )
+                else:
+                    content = header_with_space + content
 
-            with open(file, "w", encoding="utf-8") as new_file:
-                new_file.write(content)
+                with open(file, "w", encoding="utf-8") as new_file:
+                    new_file.write(content)
 
 
 if __name__ == "__main__":

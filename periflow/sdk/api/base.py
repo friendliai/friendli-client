@@ -79,10 +79,8 @@ _GenerationStream = TypeVar("_GenerationStream", bound=GenerationStream)
 _AsyncGenerationStream = TypeVar("_AsyncGenerationStream", bound=AsyncGenerationStream)
 
 
-class ServingAPI(
-    ABC, Generic[_Generation, _GenerationStream, _AsyncGenerationStream, _Options]
-):
-    """Serving API interface."""
+class BaseAPI(ABC):
+    """Base API interface."""
 
     def __init__(
         self,
@@ -90,7 +88,7 @@ class ServingAPI(
         endpoint: Optional[str] = None,
         deployment_security_level: Optional[DeploymentSecurityLevel] = None,
     ) -> None:
-        """Initializes ServingAPI."""
+        """Initializes BaseAPI."""
         if deployment_id is None and endpoint is None:
             raise InvalidConfigError(
                 "One of 'deployment_id' and 'endpoint' should be provided."
@@ -133,7 +131,30 @@ class ServingAPI(
     @property
     @abstractmethod
     def _api_path(self) -> str:
-        """Serving API URL path."""
+        """API URL path."""
+
+    @asynccontextmanager
+    async def api_session(self) -> AsyncIterator[None]:
+        """Creates a new API session."""
+        if self._session is not None:
+            logger.warn("API session is already opened.")
+            return
+
+        timeout = aiohttp.ClientTimeout(total=DEFAULT_REQ_TIMEOUT)
+        async with aiohttp.ClientSession(
+            headers=self._get_headers(), timeout=timeout
+        ) as session:
+            self._session = session
+            try:
+                yield
+            finally:
+                self._session = None
+
+
+class ServingAPI(
+    BaseAPI, Generic[_Generation, _GenerationStream, _AsyncGenerationStream, _Options]
+):
+    """Serving API interface."""
 
     @overload
     @abstractmethod
@@ -170,20 +191,3 @@ class ServingAPI(
         self, options: _Options, *, stream: bool = False
     ) -> Union[_AsyncGenerationStream, _Generation]:
         """Async API to create a new serving result."""
-
-    @asynccontextmanager
-    async def api_session(self) -> AsyncIterator[None]:
-        """Creates a new API session."""
-        if self._session is not None:
-            logger.warn("API session is already opened.")
-            return
-
-        timeout = aiohttp.ClientTimeout(total=DEFAULT_REQ_TIMEOUT)
-        async with aiohttp.ClientSession(
-            headers=self._get_headers(), timeout=timeout
-        ) as session:
-            self._session = session
-            try:
-                yield
-            finally:
-                self._session = None
