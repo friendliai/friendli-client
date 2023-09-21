@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-# pylint: disable=redefined-builtin, too-many-locals, too-many-arguments
+# pylint: disable=redefined-builtin, too-many-locals, too-many-arguments, line-too-long
 
 """PeriFlow Checkpoint CLI."""
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 import random
 import string
-from typing import List, Optional
+from typing import List, Optional, cast
 from uuid import UUID
 
 import typer
@@ -35,6 +35,7 @@ from periflow.formatter import (
     TableFormatter,
     TreeFormatter,
 )
+from periflow.modules.quantizer.schema import QuantConfig, SmoothQuantConfig
 from periflow.sdk.resource.catalog import Catalog as CatalogAPI
 from periflow.sdk.resource.checkpoint import Checkpoint as CheckpointAPI
 from periflow.utils.decorator import check_api
@@ -724,7 +725,7 @@ def convert(
     quantize: bool = typer.Option(
         False,
         "--quantize",
-        help="Quantize the hf model before conversion",
+        help="Quantize the model before conversion",
     ),
     quant_config_file: Optional[typer.FileText] = typer.Option(
         None,
@@ -744,28 +745,45 @@ def convert(
     `pip install periflow-client[mllib]`.
     :::
 
-    If you want to quantize the model, arguments `--quantize`
-    and `--quant-config-file` should be provided. The quantization settings are
-    described in a configuration YAML file. and the path of that file is passed to
-    `--quant-config-file`. The following is an example YAML file:
+    ### Apply quantization
+
+    If you want to quantize the model along with the conversion, `--quantize` option
+    should be provided. You can customize the quantization configuration by describing
+    it in a YAML file and providing the path to the file to `--quant-config-file`
+    option. When `--quantize` option is used without providing `--quant-config-file`,
+    the following configuration is used by default.
 
     ```yaml
-    # default quantization configuration
-    quant_mode: smoothquant
-    quant_args:
-        data_path_or_name: lambada
-        data_format: json
-        data_split : train
+    # Default quantization configuration
+    mode: smoothquant
+    device: cuda:0
+    seed: 42
+    calibration_dataset:
+        path_or_name: lambada
+        format: json
+        split: train
+        lookup_column_name: text
         num_samples: 512
         max_length: 512
-        device: cuda:0
-        seed: 42
+    smoothquant_args:
         migration_strength: 0.5
     ```
-    :::tip
-    If you set `--quantize` but not provide `--quant-config-file`, the default
-    configiration is used. If you want to use other option, please check PeriFlow
-    documentation.
+
+    - **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
+    - **`device`**: Device to run the quantization process. Defaults to "cuda:0".
+    - **`seed`**: Random seed. Defaults to 42.
+    - **`calibration_dataset`**
+        - **`path_or_name`**: Path or name of the dataset. Datasets from either the Hugging Face Datasets Hub or local file system can be used. Defaults to "lambada".
+        - **`format`**: Format of datasets. Defaults to "json".
+        - **`split`**: Which split of the data to load. Defaults to "validation".
+        - **`lookup_column_name`**: The name of a column in the dataset to be used as calibration inputs. Defaults to "text".
+        - **`num_samples`**: The number of dataset samples to use for calibration. Note that the dataset will be shuffled before sampling. Defaults to 512.
+        - **`max_length`**: The maximum length of a calibration input sequence. Defauts to 512.
+    - **`smoothquant_args`** (Fill in this field only for "smoothquant" mode)
+        - **`migration_strength`**: A hyper-parameter that controls the degree of difficulty migration from activation to weights. Defaults to 0.5.
+
+    :::info
+    Currently, [SmoothQuant](https://arxiv.org/abs/2211.10438) is the only supported quantization scheme.
     :::
 
     """
@@ -781,25 +799,17 @@ def convert(
             secho_error_and_exit(f"'{output_dir}' exists, but its not a directory.")
         os.mkdir(output_dir)
 
-    quant_config = {}
     if quantize:
         if quant_config_file:
             try:
-                quant_config = yaml.safe_load(quant_config_file.read())
+                quant_config_dict = cast(dict, yaml.safe_load(quant_config_file.read()))
             except yaml.YAMLError as err:
                 secho_error_and_exit(f"Failed to load smoothquant config file... {err}")
+            quant_config = QuantConfig.model_validate(
+                {"config": quant_config_dict}
+            ).config
         else:
-            quant_config["quant_mode"] = "smoothquant"
-            quant_config["quant_args"] = {
-                "data_path_or_name": "lambada",
-                "data_format": "json",
-                "data_split": "train",
-                "num_samples": 512,
-                "max_length": 512,
-                "device": "cuda",
-                "seed": 42,
-                "migration_strength": 0.5,
-            }
+            quant_config = SmoothQuantConfig()
 
     model_output_path = os.path.join(output_dir, output_model_file_name)
     tokenizer_output_dir = output_dir

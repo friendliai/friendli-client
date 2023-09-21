@@ -12,21 +12,17 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer, PretrainedConfig  # type: ignore[import]
 
-from periflow.enums import CheckpointDataType
+from periflow.enums import CheckpointDataType, QuantMode
 from periflow.errors import (
     CheckpointConversionError,
     NotFoundError,
     NotSupportedQuantModeError,
-    QuantizationError,
     TokenizerNotFoundError,
 )
 from periflow.logging import logger
 from periflow.modules.quantizer.base import AbstractQuantizer, SmoothQuantQuantizer
-from periflow.modules.quantizer.configurator import QuantConfigurator
-from periflow.modules.quantizer.maps import (
-    model_arch_smoothquant_hook_map,
-    quant_configurator_map,
-)
+from periflow.modules.quantizer.maps import model_arch_smoothquant_hook_map
+from periflow.modules.quantizer.schema import OneOfQuantConfig
 
 
 def nontype_partial(cls, *args, **kwargs):
@@ -191,52 +187,33 @@ def save_tokenizer(
         )
 
 
-def get_quant_configurator(config: Dict[str, Any]) -> QuantConfigurator:
-    """Get quant configurator."""
-    try:
-        quant_mode = config["quant_mode"]
-    except KeyError as err:
-        raise QuantizationError(
-            f"quant_mode is not specified in the config. {str(err)}"
-        ) from err
-
-    if quant_mode in quant_configurator_map:
-        return quant_configurator_map[quant_mode](config=config)
-
-    raise NotSupportedQuantModeError(
-        invalid_option=quant_mode,
-        valid_options=list(quant_configurator_map.keys()),
-    )
-
-
-def get_quanthook_map(quant_mode: str) -> Dict[str, Any]:
+def get_quanthook_map(quant_mode: QuantMode) -> Dict[str, Any]:
     """Get quantizer map."""
-    if quant_mode == "smoothquant":
+    if quant_mode == QuantMode.SMOOTH_QUANT:
         return model_arch_smoothquant_hook_map
     raise NotSupportedQuantModeError(
         invalid_option=quant_mode,
-        valid_options=list(quant_configurator_map.keys()),
+        valid_options=[e.value for e in QuantMode],
     )
 
 
-def get_quantizer_class(quant_mode: str) -> Type[AbstractQuantizer]:
+def get_quantizer_class(quant_mode: QuantMode) -> Type[AbstractQuantizer]:
     """Get quantizer class."""
-    if quant_mode == "smoothquant":
+    if quant_mode == QuantMode.SMOOTH_QUANT:
         return SmoothQuantQuantizer
     raise NotSupportedQuantModeError(
         invalid_option=quant_mode,
-        valid_options=list(quant_configurator_map.keys()),
+        valid_options=[e.value for e in QuantMode],
     )
 
 
 def get_quantizer(
     model_arch: str,
     model_config: PretrainedConfig,
-    quant_config: Dict[str, Any],
+    quant_config: OneOfQuantConfig,
 ) -> AbstractQuantizer:
     """Get quantizer for specific model architecture with quant mode and args."""
-    quant_mode = quant_config["quant_mode"]
-    quant_args = quant_config["quant_args"]
+    quant_mode = quant_config.mode
     quanthook_map = get_quanthook_map(quant_mode)
     quantizer = get_quantizer_class(quant_mode)
-    return quantizer(quanthook_map[model_arch](model_config), quant_args)
+    return quantizer(quanthook_map[model_arch](model_config), quant_config)

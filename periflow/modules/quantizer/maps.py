@@ -4,13 +4,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, Type
+from typing import Dict
 
 from periflow.modules.quantizer.base import SmoothQuantHook
-from periflow.modules.quantizer.configurator import (
-    QuantConfigurator,
-    SmoothQuantConfigurator,
-)
 from periflow.modules.quantizer.models.bloom import SmoothQuantBloomHook
 from periflow.modules.quantizer.models.codegen import SmoothQuantCodeGenHook
 from periflow.modules.quantizer.models.falcon import SmoothQuantFalconHook
@@ -21,9 +17,6 @@ from periflow.modules.quantizer.models.llama import SmoothQuantLlamaHook
 from periflow.modules.quantizer.models.mpt import SmoothQuantMPTHook
 from periflow.modules.quantizer.models.opt import SmoothQuantOPTHook
 
-quant_configurator_map: Dict[str, Type[QuantConfigurator]] = {
-    "smoothquant": SmoothQuantConfigurator,
-}
 model_arch_smoothquant_hook_map: Dict[str, type[SmoothQuantHook]] = {
     "OPTForCausalLM": SmoothQuantOPTHook,
     "MPTForCausalLM": SmoothQuantMPTHook,

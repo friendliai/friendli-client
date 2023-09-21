@@ -11,7 +11,7 @@ pf checkpoint convert [OPTIONS]
 Convert huggingface's model checkpoint to PeriFlow format.
 
 When a checkpoint is in the Hugging Face format, it cannot be directly served.
-rather, it requires conversion to the PeriFlow format for serving. The conversion
+It requires conversion to the PeriFlow format for serving. The conversion
 process involves copying the original checkpoint and transforming it into a
 checkpoint in the PeriFlow format (*.h5).
 
@@ -20,29 +20,45 @@ The `pf checkpoint convert` is available only when the package is installed with
 `pip install periflow-client[mllib]`.
 :::
 
-If you want to quantize the model, arguments `--quantize`
-and `--quant-config-file` should be provided. The quantization settings are
-described in a configuration YAML file. and the path of that file is passed to
-`--quant-config-file`. The following is an example YAML file:
+### Apply quantization
+
+If you want to quantize the model along with the conversion, `--quantize` option
+should be provided. You can customize the quantization configuration by describing
+it in a YAML file and providing the path to the file to `--quant-config-file`
+option. When `--quantize` option is used without providing `--quant-config-file`,
+the following configuration is used by default.
 
 ```yaml
-# default quantization configuration
-quant_mode: smoothquant
-quant_args:
-    data_path_or_name: lambada
-    data_format: json
-    data_split : train
+# Default quantization configuration
+mode: smoothquant
+device: cuda:0
+seed: 42
+calibration_dataset:
+    path_or_name: lambada
+    format: json
+    split: train
+    lookup_column_name: text
     num_samples: 512
     max_length: 512
-    device: cuda:0
-    seed: 42
+smoothquant_args:
     migration_strength: 0.5
 ```
 
-:::tip
-If you set `--quantize` but not provide `--quant-config-file`,
-the default configiration is used. If you want to use other option,
-Please check PeriFlow documents.
+- **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
+- **`device`**: Device to run the quantization process. Defaults to "cuda:0".
+- **`seed`**: Random seed. Defaults to 42.
+- **`calibration_dataset`**
+    - **`path_or_name`**: Path or name of the dataset. Datasets from either the Hugging Face Datasets Hub or local file system can be used. Defaults to "lambada".
+    - **`format`**: Format of datasets. Defaults to "json".
+    - **`split`**: Which split of the data to load. Defaults to "validation".
+    - **`lookup_column_name`**: The name of a column in the dataset to be used as calibration inputs. Defaults to "text".
+    - **`num_samples`**: The number of dataset samples to use for calibration. Note that the dataset will be shuffled before sampling. Defaults to 512.
+    - **`max_length`**: The maximum length of a calibration input sequence. Defauts to 512.
+- **`smoothquant_args`** (Fill in this field only for "smoothquant" mode)
+    - **`migration_strength`**: A hyper-parameter that controls the degree of difficulty migration from activation to weights. Defaults to 0.5.
+
+:::info
+Currently, [SmoothQuant](https://arxiv.org/abs/2211.10438) is the only supported quantization scheme.
 :::
 
 ## Options
@@ -56,5 +72,5 @@ Please check PeriFlow documents.
 | `--dry-run` | BOOLEAN | Only check conversion avaliability. | False | ❌ |
 | `--output-model-filename` | TEXT | Name of the converted checkpoint file. | model.h5 | ❌ |
 | `--output-attr-filename` | TEXT | Name of the checkpoint attribute file. | attr.yaml | ❌ |
-| `--quantize` | BOOLEAN | Quantize the hf model before conversion | False | ❌ |
+| `--quantize` | BOOLEAN | Quantize the model before conversion | False | ❌ |
 | `--quant-config-file` | FILENAME | Path to the quantization configuration file. | None | ❌ |

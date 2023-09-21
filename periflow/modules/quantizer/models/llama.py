@@ -53,7 +53,7 @@ class SmoothQuantLlamaHook(SmoothQuantHook):
         if config.num_key_value_heads is None:
             self.num_kv_attention_heads = self.num_attention_heads
         else:
-            self.num_kv_attention_heads = config.num_attention_heads
+            self.num_kv_attention_heads = config.num_key_value_heads
         self.hidden_size = config.hidden_size
         self.head_size = self.hidden_size // self.num_attention_heads
         self.rotary_dim = self.head_size

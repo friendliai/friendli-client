@@ -10,15 +10,16 @@ from itertools import islice
 from typing import Any, Dict, Iterator, List, Tuple, Type, TypeVar, cast
 
 import torch
-from datasets import load_dataset  # type: ignore[import]
+from datasets import Dataset, load_dataset  # type: ignore[import]
 from tqdm import tqdm
 from transformers import PreTrainedTokenizer  # type: ignore[import]
 
-from periflow.errors import CheckpointQuantizationError
+from periflow.errors import CheckpointQuantizationError, InvalidConfigError
 from periflow.logging import logger
 from periflow.modules.quantizer.schema import (
     Int8QuantResult,
     ModuleName,
+    OneOfQuantConfig,
     TFInt8QuantResults,
 )
 
@@ -72,10 +73,9 @@ def get_torch_data_type(data_type: str):
 T = TypeVar("T")
 
 
-def batched(iterable: Iterator[T], n: int) -> Iterator[List[T]]:
+def batched(it: Iterator[T], n: int) -> Iterator[List[T]]:
     """Batch an iterator into lists of size n."""
     # batched('ABCDEFG', 3) --> ABC DEF G
-    it = iter(iterable)
     while True:
         batch = list(islice(it, n))
         if not batch:
@@ -113,18 +113,16 @@ def build_statistics():
 @torch.no_grad()
 def collect_max_stats(
     model: torch.nn.Module,
-    inputs: Iterator[torch.Tensor],
+    dataset: Dataset,
     target_classes: Tuple[Type[torch.nn.Module], ...],
-    max_batch_size: int = 1,
     tqdm_desc: str = "Collecting stats for Smoothing Model",
 ) -> Tuple[Dict[ModuleName, torch.Tensor], Dict[ModuleName, torch.Tensor]]:
     """Collects the maximum values of input and output activations of a specific model.
 
     Args:
-        model: The model for which we want to collect the max statistics.
-        inputs: An iterator of torch.Tensors representing the inputs to the model.
-        target_classes: A tuple of types of torch.nn.Module representing the target classes.
-        max_batch_size: An int representing the maximum batch size for input data. Default is 1.
+        model (torch.nn.Module): The model for which we want to collect the max statistics.
+        dataset (Dataset): Dataset that contains input tensors.
+        target_classes (Tuple[Type[torch.nn.Module], ...]): A tuple of the target classes.
 
     Returns:
         A tuple of two dictionaries: (max_input_stats, max_output_stats), where:
@@ -153,12 +151,9 @@ def collect_max_stats(
     for name, module in name_mods:
         removables.append(module.register_forward_hook(create_hook(name)))
     try:
-        for batched_inputs in tqdm(  # type: ignore[assignment]
-            batched(inputs, max_batch_size),
-            desc=tqdm_desc,
-        ):
-            batched_input = torch.concat(list(batched_inputs))
-            model(batched_input.to(device))
+        for input_dict in tqdm(dataset, desc=tqdm_desc):
+            inputs = torch.tensor(input_dict["input_ids"])
+            model(inputs.to(device))
     finally:
         for removable in removables:
             removable.remove()
@@ -203,47 +198,74 @@ def get_int8_quant_scales(
     )
 
 
-def get_smoothquant_calibration_dataset(
-    data_path: str, data_format: str, data_split: str, seed: int, num_samples: int
-):
-    """Get SmoothQuant calibration dataset."""
+def get_encoded_dataset(
+    config: OneOfQuantConfig, tokenizer: PreTrainedTokenizer
+) -> Dataset:
+    """Get a dataset with encoded samples for SmoothQuant calibration."""
+    data_cfg = config.calibration_dataset
+    data_path = data_cfg.path_or_name
+    data_split = data_cfg.split
+
+    def preprocess(example) -> Dict[str, torch.Tensor]:
+        truncate_length = data_cfg.max_length * 4
+        while True:
+            input_ids = tokenizer(
+                example[data_cfg.lookup_column_name][:truncate_length],
+                return_tensors="pt",
+                max_length=data_cfg.max_length * 2,
+                truncation=True,
+                padding=False,
+            ).input_ids
+
+            if input_ids.size(1) >= data_cfg.max_length * 2 or truncate_length >= len(
+                example[data_cfg.lookup_column_name]
+            ):
+                input_ids = input_ids[:, : data_cfg.max_length]
+                break
+
+            truncate_length *= 2
+        return {"input_ids": input_ids}
+
     try:
         if os.path.exists(data_path):
-            dataset = load_dataset(data_format, data_files=data_path, split=data_split)
+            dataset = load_dataset(
+                data_cfg.format,
+                data_files=data_path,
+                split=data_split,
+            )
         else:
-            dataset = load_dataset(data_path, split="validation")
+            data_name_parts = data_path.split(":")
+            if len(data_name_parts) == 1:
+                dataset = load_dataset(data_path, split=data_split)
+            elif len(data_name_parts) == 2:
+                data_name, subset_name = data_name_parts
+                dataset = load_dataset(data_name, subset_name, split=data_split)
+            else:
+                raise InvalidConfigError(
+                    "Dataset name is in invalid format. "
+                    "(valid format: '<dataset_name>' or '<dataset_name>:<subset_name>')"
+                )
     except ValueError as err:
         raise CheckpointQuantizationError(f"load_dataset failed. {str(err)}") from err
+
+    if not isinstance(dataset, Dataset):
+        raise InvalidConfigError(
+            "This dataset format is not supported for the calibration."
+        )
+    dataset = (
+        dataset.shuffle(config.seed)
+        .select(range(data_cfg.num_samples))
+        .select_columns([data_cfg.lookup_column_name])
+        .map(function=preprocess)
+    )
+
     logger.info(
         "Smoothquant Calibration dataset(%s), data_split(%s) is successfully loaded!",
         data_path,
         data_split,
     )
-    samples = [data["text"] for data in islice(dataset.shuffle(seed), num_samples)]
-    return samples
 
-
-def iter_encoded_samples(
-    config: Dict[str, Any], tokenizer: PreTrainedTokenizer
-) -> Iterator[torch.Tensor]:
-    """Get encoded samples for SmoothQuant calibration."""
-    samples = get_smoothquant_calibration_dataset(
-        data_path=config["data_path_or_name"],
-        data_format=config["data_format"],
-        data_split=config["data_split"],
-        seed=config["seed"],
-        num_samples=config["num_samples"],
-    )
-    encoded_samples = (
-        tokenizer(
-            x,
-            return_tensors="pt",
-            max_length=config["max_length"],
-            truncation=True,
-        ).input_ids
-        for x in samples
-    )
-    return encoded_samples
+    return dataset
 
 
 def get_quantized_state_dict(

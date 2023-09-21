@@ -5,9 +5,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Literal, Optional, Union
 
 import torch
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated
+
+from periflow.enums import QuantDatasetFormat, QuantMode
 
 ModuleName = str
 
@@ -60,3 +64,56 @@ class TFInt8QuantResults:
     attn_fc: Int8QuantResult
     ff1: Int8QuantResult
     ff2: Int8QuantResult
+
+
+class CalibrationDatasetConfig(BaseModel):
+    """Calibration dataset config."""
+
+    path_or_name: str = "lambada"
+    format: QuantDatasetFormat = QuantDatasetFormat.JSON
+    split: str = "validation"
+    lookup_column_name: str = "text"
+    num_samples: int = 512
+    max_length: int = 512
+
+
+class CommonQuantConfig(BaseModel):
+    """Common quantization config."""
+
+    mode: QuantMode
+    device: str = "cuda:0"
+    seed: int = 42
+    calibration_dataset: CalibrationDatasetConfig = Field(
+        default_factory=CalibrationDatasetConfig
+    )
+
+
+class SmoothQuantArgs(BaseModel):
+    """SmoothQuant args."""
+
+    migration_strength: float = 0.5
+
+
+class SmoothQuantConfig(CommonQuantConfig):
+    """SmoothQuant config."""
+
+    mode: Literal[QuantMode.SMOOTH_QUANT] = QuantMode.SMOOTH_QUANT
+    smoothquant_args: SmoothQuantArgs = Field(default_factory=SmoothQuantArgs)
+
+
+# Added for utilizing discriminated union.
+class MockConfig(CommonQuantConfig):
+    """HACK: Will be removed after adding another quantization scheme."""
+
+    mode: Literal[QuantMode.NONE] = QuantMode.NONE
+
+
+OneOfQuantConfig = Annotated[
+    Union[SmoothQuantConfig, MockConfig], Field(discriminator="mode")
+]
+
+
+class QuantConfig(BaseModel):
+    """Quantization config."""
+
+    config: OneOfQuantConfig

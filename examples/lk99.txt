@@ -1,0 +1,85 @@
+Laboratories worldwide are working to replicate a material that Korean scientists claimed to be a room-temperature superconductor. But so far, international researchers have yet to observe signs of superconductivity in LK-99 produced in their laboratories.
+
+Scientists said the profound public attention on the new material shows the great interest in superconductors under ambient conditions for their wide applications, but also the importance of verifying scientific discoveries.
+
+Superconducting materials, sometimes demonstrated to be levitating over magnets, have zero electric resistance and expel magnetic fields. They have been achieved at extremely low temperatures and are in use for magnetic levitation trains and MRI medical imaging machines.
+
+A room-temperature superconducting material, if realized, would be a game changer that could open the door to electricity transmission without energy loss, maglev transport that is easier to build and computer chips that are faster and more energy-efficient.
+
+On July 22, a preprint article titled, "The First Room-Temperature Ambient-Pressure Superconductor," was posted on arXiv, an online repository for preprint research. It was authored by Lee Suk-bae, CEO of Quantum Energy Research Centre in Seoul, Kim Ji-hoon, research and development director of the center, and Kwon Young-wan, a professor at the graduate school of converging science and technology of Korea University. Another preprint on LK-99 was also posted before peer review on the same platform on the day.
+
+The two articles, made public before undergoing verification processes, prompted scientists at home and abroad, including mainland China, Czechia, India, Taiwan and the United States, to start trying to replicate the Korean team's experiments.
+
+Among them is Wang Limin, a professor at the department of physics of the National Taiwan University, who said his lab synthesized two LK-99 samples following the process and materials listed in the preprints from Korea.
+
+On Saturday, he hosted a live stream on YouTube from his lab, showing his team retrieving samples from a furnace, running them under testing devices and analyzing results as they came out.
+
+He said the material did not show the two key characteristics of a superconductor ― zero resistance and complete diamagnetism, meaning the quality of being repelled by a magnet.
+
+"The samples are conductive at room temperature and carry the characteristics of a semiconductor (a substance that conducts electricity under certain conditions). It is also antimagnetic to a low degree but it is not because of superconductivity," he told The Korea Times after the experiment.
+
+He said adjustments are needed in the production process, including in time and temperature, to accurately verify the results of the Korean team.
+
+"If room temperature superconductivity comes true, it will lead to a new industrial revolution," he said.
+
+"Although we have not been able to verify the results yet, the work of the Korean team provides a new future direction for the search for high-temperature superconductors. We will continue to research these materials."
+
+Also in Taiwan, Chung Chunghou, a distinguished professor at the department of electrophysics of the National Yang Ming Chiao Tung University, said his experiment partner is testing the reproduced samples of LK-99.
+
+"We are not facing any specific challenges. It just takes time," Chung said.
+
+"I think it is important not to prematurely embrace excessive optimism toward this material. Thorough and meticulous verification by the scientific community is key," he said.
+
+In India, Veerpal Singh Awana, chief scientist at the Council of Scientific and Industrial Research-National Physical Laboratory, said his lab "followed the same heat treatment and found that our LK-99 is not superconducting."
+
+Awana said the sample produced by his lab has higher impurities than the Korean one, although both samples contain certain impurities.
+
+He said that the team will continue to produce more samples and expect more results to become available in weeks.
+
+He added that he had a conversation with two of the Korean authors of the preprints, including lead researcher Lee Suk-bae and Kim Hyun-tak, a research professor of physics at the College of William & Mary in the US who is also affiliated with the ICT Basic Research Lab of the Electronics and Telecommunications Research Institute in Daejeon.
+
+"They are very cooperative and I am hopeful to replicate the LK-99 superconductivity. The coming week will be crucial to put LK-99 superconductivity one way or the other," he said.
+
+He said the Korean team's preprint articles "have sparked a quantum race" for scientists around the world.
+
+"I personally welcome such efforts and yet very much hopeful that this is going to be a real superconductor. LK-99, the room temperature superconductor. I wish this becomes a truth sooner than later," he said.
+
+In mainland China, Wen Haihu, the director of the center for superconducting physics and materials of Nanjing University, said the sample synthesized by his lab did not show superconductivity.
+
+The professor said his team observed that when a magnet is placed close to it, the material would become erect.
+
+"They call it 'magnetic levitation'. We think it could be weak diamagnetic or weak ferromagnetism," Wen said, referring to a phenomenon that gives materials such as iron, cobalt and nickel their magnetic properties.
+
+He said overall, there are no particular difficulties in the replication process, although purifying the required materials is not easy.
+
+"The sample was very uneven, with good conductivity in some areas and poor conductivity in others."
+
+He also said that he wrote to the Korean team on July 28 to request their samples, but did not hear back.
+
+"If room temperature superconductivity is realized, it will be revolutionary," he said. "It is necessary for any key scientific discovery to be replicated by other scientists, especially this discovery of such importance."
+
+He said more people are made aware of the potential of the material and more efforts might be put into studying it, but results must be carefully verified before public announcement.
+
+Locally, the Korean Society of Superconductivity and Cryogenics also set up a verification committee last week.
+
+Tuson Park, the director of the center for quantum materials and superconductivity at Sungkyunkwan University in Korea, said, "We are participating in the committee and will do our best to replicate LK-99 results."
+
+In the US, researchers at the Argonne National Laboratory are also working to replicate the results and will release more information once definitive results are available, according to its spokesperson.
+
+Meanwhile, in Europe, researchers at the department of condensed matter physics of Charles University in the Czech capital, Prague, are also posting regular updates on X, formerly known as Twitter, on their efforts to synthesize LK-99.
+
+On Tuesday, the team said they had taken a compound required for the synthesis out from the furnace and would perform a quality check before moving to the next steps.
+
+It came after they made "a humbling admission" on Sunday that they had mixed ingredients in the wrong ratio. "Such hiccups are part of the scientific journey but rarely reported."
+
+"Patience is key in science!" they said on Saturday. "While we know you're eager for new results … rushing can compromise the process. Quality science takes time!"
+
+Holly Chik is a science reporter with the South China Morning Post. She is currently based in Seoul, reporting for both The Korea Times and the South China Morning Post under an exchange program.
+
+---
+
+Now answer questions as the following example:
+
+Q) What is superconductivity?
+A) Superconductivity is a set of physical properties observed in certain materials where electrical resistance vanishes and magnetic fields are expelled from the material. Any material exhibiting these properties is a superconductor.
+

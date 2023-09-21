@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import List, Optional, cast
 
 import yaml
 
@@ -16,6 +16,7 @@ from periflow.errors import (
     TokenizerNotFoundError,
 )
 from periflow.logging import logger
+from periflow.modules.quantizer.schema import OneOfQuantConfig
 from periflow.utils.validate import validate_convert_imports
 
 validate_convert_imports()
@@ -27,12 +28,14 @@ from periflow.modules.converter.maps import (  # pylint: disable=ungrouped-impor
     model_arch_converter_map,
 )
 from periflow.modules.converter.utils import (
-    get_quant_configurator,
     get_quantizer,
     get_tokenizer,
     save_tokenizer,
 )
-from periflow.modules.quantizer.utils import get_quantized_state_dict
+from periflow.modules.quantizer.utils import (
+    get_encoded_dataset,
+    get_quantized_state_dict,
+)
 
 # pylint: enable=import-outside-toplevel, wrong-import-position, wrong-import-order
 
@@ -103,7 +106,7 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
     cache_dir: Optional[str] = None,
     dry_run: bool = False,
     quantize: bool = False,
-    quant_config: Optional[Dict[str, Any]] = None,
+    quant_config: Optional[OneOfQuantConfig] = None,
 ) -> None:
     """Convert HuggingFace model checkpoint to PeriFlow format.
 
@@ -118,7 +121,7 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         cache_dir (Optional[str], optional): Path for downloading checkpoint. Defaults to None.
         dry_run (bool, optional): Check only if checkpoint is convertable. Defaults to False.
         quantize (bool, optional): Enable quantization. Defaults to False.
-        quant_config (Optional[Dict[str, Any]], optional): Quantization configuration.
+        quant_config (Optional[OneOfQuantConfig], optional): Quantization configuration.
             Defaults to None.
 
     Raises:
@@ -134,8 +137,6 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
     model_arch = get_model_arch(model_config)
 
     if quantize and quant_config:
-        quant_configurator = get_quant_configurator(config=quant_config)
-        quant_configurator.validate()
         quantizer = get_quantizer(model_arch, model_config, quant_config)
         quantizer.check_config()
 
@@ -173,8 +174,10 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
                 "Start SmoothQuant quantization for Hugging Face checkpoint...",
             )
             tokenizer = get_tokenizer(model_name_or_path, cache_dir=cache_dir)
-            quantizer.pre_quantize(model, tokenizer, data_type)
-            quant_result_iter = quantizer.quantize(model, tokenizer, data_type)
+            assert quant_config is not None
+            dataset = get_encoded_dataset(quant_config, tokenizer)
+            quantizer.pre_quantize(model, dataset, data_type)
+            quant_result_iter = quantizer.quantize(model, dataset, data_type)
             state_dict = model.state_dict()
             state_dict.update(get_quantized_state_dict(quant_result_iter))
         else:

@@ -6,23 +6,23 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterator, List, Tuple, Type, cast
+from typing import Dict, Iterator, List, Tuple, Type, cast
 
 import datasets  # type: ignore[import]
 import torch
-from transformers import (  # type: ignore[import]
-    PretrainedConfig,
-    PreTrainedTokenizerBase,
-)
+from transformers import PretrainedConfig  # type: ignore[import]
 
 from periflow.enums import (
-    CheckpointDataType,  # TODO: move this to periflow/modules/converter/enums.py
+    QuantDatasetFormat,  # TODO: move this to periflow/modules/converter/enums.py
 )
+from periflow.enums import CheckpointDataType
 from periflow.errors import CheckpointQuantizationError
 from periflow.modules.quantizer.schema import (
     Int8QuantInput,
     Int8QuantResult,
     ModuleName,
+    OneOfQuantConfig,
+    SmoothQuantConfig,
     TFInt8QuantInputs,
     TFInt8QuantResults,
 )
@@ -30,7 +30,6 @@ from periflow.modules.quantizer.utils import (
     collect_max_stats,
     get_int8_quant_scales,
     get_torch_data_type,
-    iter_encoded_samples,
 )
 
 
@@ -126,26 +125,47 @@ class SmoothQuantHook(AbstractQuantHook):
 class AbstractQuantizer(ABC):
     """Abstract Quantizer for a specific model architecture."""
 
-    def __init__(self, hook: AbstractQuantHook, config: Dict[str, Any]):
+    def __init__(self, hook: AbstractQuantHook, config: OneOfQuantConfig):
         """Initialize the Quantizer.
 
         Args:
             hook (AbstractQuantHook): Quantization Hook for a specific model architecture
-            config (Dict[str, Any]): Quantization configuration.
+            config (OneOfQuantconfig): Quantization configuration.
 
         """
         self.hook = hook
-        self.config = config
+        self.quant_config = config
 
-    @abstractmethod
     def check_config(self) -> None:
         """Check if the quantization config is valid."""
+        calibration_dataset_config = self.quant_config.calibration_dataset
+        data_path_or_name = calibration_dataset_config.path_or_name
+        if not os.path.exists(data_path_or_name):
+            data_name = data_path_or_name.split(":")[0]
+            if data_name not in datasets.list_datasets():
+                raise CheckpointQuantizationError(
+                    f"Invalid dataset: {data_name}. "
+                    "You can use datasets published at https://huggingface.co/datasets "
+                    "or a local dataset."
+                )
+        else:
+            if calibration_dataset_config.format not in QuantDatasetFormat:
+                raise CheckpointQuantizationError(
+                    f"Invalid data_format : {calibration_dataset_config.format}."
+                    "You can use one of the following data formats: json, csv, parquet, or txt."
+                )
+        try:
+            torch.device(self.quant_config.device)
+        except ValueError as err:
+            raise CheckpointQuantizationError(
+                f"Invalid device{self.quant_config.device}. {str(err)}"
+            ) from err
 
     @abstractmethod
     def pre_quantize(
         self,
         model: torch.nn.Module,
-        tokenizer: PreTrainedTokenizerBase,
+        dataset: datasets.Dataset,
         data_type: CheckpointDataType,
     ) -> None:
         """Pre-procedure that should be called before quantize() is called."""
@@ -154,7 +174,7 @@ class AbstractQuantizer(ABC):
     def quantize(
         self,
         model: torch.nn.Module,
-        tokenizer: PreTrainedTokenizerBase,
+        dataset: datasets.Dataset,
         data_type: CheckpointDataType,
     ) -> Iterator[TFInt8QuantResults]:
         """Setting Quantizer from config and Quantize model."""
@@ -165,38 +185,12 @@ class SmoothQuantQuantizer(AbstractQuantizer):
 
     def check_config(self) -> None:
         """Check if the SmoothQuant quantization config is valid."""
-        data_path_or_name = self.config["data_path_or_name"]
-        if not os.path.exists(data_path_or_name):
-            if data_path_or_name not in datasets.list_datasets():
-                raise CheckpointQuantizationError(
-                    f"Invalid dataset : {data_path_or_name}. "
-                    "You can use one of the following datasets:"
-                    "https://huggingface.co/datasets or a local dataset."
-                )
-        else:
-            if self.config["data_format"] not in ["json", "csv", "parquet", "txt"]:
-                raise CheckpointQuantizationError(
-                    f"Invalid data_format : {self.config['data_format']}."
-                    "You can use one of the following data formats: json, csv, parquet, or txt."
-                )
-            if self.config["data_split"] not in ["train", "validation", "test"]:
-                raise CheckpointQuantizationError(
-                    f"Invalid data_split : {self.config['data_split']}."
-                    "You can use one of the following data splits: train, validation, or test."
-                )
-        try:
-            torch.device(self.config["device"])
-        except ValueError as err:
+        quant_config = cast(SmoothQuantConfig, self.quant_config)
+        smoothquant_args = quant_config.smoothquant_args
+        super().check_config()
+        if 0 > smoothquant_args.migration_strength > 1:
             raise CheckpointQuantizationError(
-                f"Invalid device{self.config['device']}. {str(err)}"
-            ) from err
-
-        if (
-            self.config["migration_strength"] < 0
-            or self.config["migration_strength"] > 1
-        ):
-            raise CheckpointQuantizationError(
-                f"Invalid migration_strength : {self.config['migration_strength']}."
+                f"Invalid migration_strength: {smoothquant_args.migration_strength}."
                 "You can use a value between 0 and 1."
             )
 
@@ -312,45 +306,44 @@ class SmoothQuantQuantizer(AbstractQuantizer):
     def smooth(
         self,
         model: torch.nn.Module,
-        tokenizer: PreTrainedTokenizerBase,
+        dataset: datasets.Dataset,
         data_type: CheckpointDataType,
     ) -> None:
         """Smooths the models before Quantization."""
-        encoded_sample_iter = iter_encoded_samples(self.config, tokenizer)
-        model.to(dtype=get_torch_data_type(data_type), device=self.config["device"])
+        quant_config = cast(SmoothQuantConfig, self.quant_config)
+        model.to(dtype=get_torch_data_type(data_type), device=quant_config.device)  # type: ignore
         model.eval()
         max_input_stats, _ = collect_max_stats(
             model,
-            encoded_sample_iter,
+            dataset,
             cast(SmoothQuantHook, self.hook).get_linear_layer_types(),
         )
         model = cast(SmoothQuantHook, self.hook).pre_smooth(model)
         self.smooth_inplace(
             model,
             max_input_stats,
-            migration_strength=self.config["migration_strength"],
+            migration_strength=quant_config.smoothquant_args.migration_strength,
         )
 
     def pre_quantize(
         self,
         model: torch.nn.Module,
-        tokenizer: PreTrainedTokenizerBase,
+        dataset: datasets.Dataset,
         data_type: CheckpointDataType,
     ) -> None:
         """Pre-procedure for SmoothQuant that should be called before quantize() is called."""
-        self.smooth(model, tokenizer, data_type)
+        self.smooth(model, dataset, data_type)
 
     def quantize(
         self,
         model: torch.nn.Module,
-        tokenizer: PreTrainedTokenizerBase,
+        dataset: datasets.Dataset,
         data_type: CheckpointDataType,
     ) -> Iterator[TFInt8QuantResults]:
         """Quantize model with SmoothQuant."""
-        encoded_samples = iter_encoded_samples(self.config, tokenizer)
         max_input_stats, max_output_stats = collect_max_stats(
             model,
-            encoded_samples,
+            dataset,
             cast(SmoothQuantHook, self.hook).get_linear_layer_types(),
             tqdm_desc="Collecting stats for Static Quantization.",
         )
