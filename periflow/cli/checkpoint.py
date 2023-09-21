@@ -765,7 +765,7 @@ def convert(
     calibration_dataset:
         path_or_name: lambada
         format: json
-        split: train
+        split: validation
         lookup_column_name: text
         num_samples: 512
         max_length: 512
