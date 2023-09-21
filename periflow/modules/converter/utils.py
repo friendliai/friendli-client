@@ -136,7 +136,7 @@ def get_tokenizer(
 ) -> AutoTokenizer:
     """Try to get tokenizer of a pretrained model."""
     try:
-        tokenizer = transformers.AutoTokenizer.from_pretrained(
+        tokenizer = AutoTokenizer.from_pretrained(
             model_name_or_path,
             cache_dir=cache_dir,
             trust_remote_code=True,
