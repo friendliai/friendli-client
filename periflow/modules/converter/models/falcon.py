@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, cast
+from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import torch
@@ -18,6 +18,7 @@ from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     convert_to_gpt_j_params,
     get_tensor_from_state_dict,
+    nontype_partial,
 )
 
 
@@ -72,6 +73,7 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
         per_layer_postfixes: List[str],
     ) -> np.ndarray:
         """qkv_weight_convert for Falcon's attention layer."""
+        assert len(per_layer_postfixes) == 1
         qkv_weight = get_tensor_from_state_dict(
             state_dict, layer + per_layer_postfixes[0]
         )
@@ -154,89 +156,99 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
         return "falcon-7b"
 
     @property
-    def decoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in Falcon."""
+    def decoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in Falcon."""
         convert_dict = {
-            "attn/c_attn/weight:0": (
+            "attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [".self_attention.query_key_value.weight"],
+                per_layer_postfixes=[".self_attention.query_key_value.weight"],
             ),
-            "attn/c_proj/weight:0": (
+            "attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".self_attention.dense.weight"],
+                per_layer_postfixes=[".self_attention.dense.weight"],
             ),
-            "mlp/c_fc/weight:0": (
+            "mlp/c_fc/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".mlp.dense_h_to_4h.weight"],
+                per_layer_postfixes=[".mlp.dense_h_to_4h.weight"],
             ),
-            "mlp/c_proj/weight:0": (
+            "mlp/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".mlp.dense_4h_to_h.weight"],
+                per_layer_postfixes=[".mlp.dense_4h_to_h.weight"],
             ),
         }
+
         if cast(FalconConfig, self.config).new_decoder_architecture:
             convert_dict.update(
                 {
-                    "ln_1/gamma:0": (
+                    "ln_1/gamma:0": nontype_partial(
                         self.ln_weight_convert,
-                        [".ln_attn.weight"],
+                        per_layer_postfixes=[".ln_attn.weight"],
                     ),
-                    "ln_1/beta:0": (
+                    "ln_1/beta:0": nontype_partial(
                         self.ln_bias_convert,
-                        [".ln_attn.bias"],
+                        per_layer_postfixes=[".ln_attn.bias"],
                     ),
-                    "ln_2/gamma:0": (
+                    "ln_2/gamma:0": nontype_partial(
                         self.ln_weight_convert,
-                        [".ln_mlp.weight"],
+                        per_layer_postfixes=[".ln_mlp.weight"],
                     ),
-                    "ln_2/beta:0": (
+                    "ln_2/beta:0": nontype_partial(
                         self.ln_bias_convert,
-                        [".ln_mlp.bias"],
+                        per_layer_postfixes=[".ln_mlp.bias"],
                     ),
                 }
             )
         else:
             convert_dict.update(
                 {
-                    "ln_1/gamma:0": (
+                    "ln_1/gamma:0": nontype_partial(
                         self.ln_weight_convert,
-                        [".input_layernorm.weight"],
+                        per_layer_postfixes=[".input_layernorm.weight"],
                     ),
-                    "ln_1/beta:0": (
+                    "ln_1/beta:0": nontype_partial(
                         self.ln_bias_convert,
-                        [".input_layernorm.bias"],
+                        per_layer_postfixes=[".input_layernorm.bias"],
                     ),
                 }
             )
+
+        if self.quantize:
+            for param_name in self.quantized_param_names:
+                del convert_dict[param_name]
+
         return convert_dict
 
     @property
-    def non_transformer_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for non-transformer layers in Falcon."""
+    def non_transformer_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for non-transformer blocks in Falcon."""
         return {
-            "wte/weight:0": (
+            "wte/weight:0": nontype_partial(
                 self.token_embed_weight_convert,
-                ["transformer.word_embeddings.weight"],
+                per_layer_postfixes=["transformer.word_embeddings.weight"],
             ),
             DECODER_PREFIX
-            + "/ln_f/gamma:0": (
+            + "/ln_f/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                ["transformer.ln_f.weight"],
+                per_layer_postfixes=["transformer.ln_f.weight"],
             ),
             DECODER_PREFIX
-            + "/ln_f/beta:0": (
+            + "/ln_f/beta:0": nontype_partial(
                 self.ln_weight_convert,
-                ["transformer.ln_f.bias"],
+                per_layer_postfixes=["transformer.ln_f.bias"],
             ),
-            "head_fc/weight:0": (
+            "head_fc/weight:0": nontype_partial(
                 self.head_weight_convert,
-                ["lm_head.weight"],
+                per_layer_postfixes=["lm_head.weight"],
             ),
         }
 
     @property
     def decoder_layer_prefix(self) -> str:
-        """The layer name prefix used before the Falcon's transformer layer number."""
+        """The layer name prefix used before the Falcon's transformer block number."""
         return "transformer.h."
 
     @property

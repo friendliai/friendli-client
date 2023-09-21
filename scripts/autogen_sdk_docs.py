@@ -109,7 +109,7 @@ class ClassDef(NodeDef):
 """.lstrip()
 
         res += self.docstring or ""
-        res += "\n"
+        res += "\n\n"
 
         if self.methods:
             res += "## Methods\n\n"
@@ -162,7 +162,7 @@ def generate_raises_mdx(raises: List[DocstringRaises]) -> str:
 
 | Type | Description |
 |------|-------------|
-""".lstrip()
+"""
 
     for r in raises:
         res += f"""

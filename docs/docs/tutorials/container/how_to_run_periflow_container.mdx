@@ -194,7 +194,7 @@ This is an example how to launch [GPT2-XL model](https://huggingface.co/gpt2-xl)
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type gpt\
     --num-layers 48 --num-heads 25 --head-size 64 \
     --max-length 1024 --vocab-size 50257 --eos-token 50256 \
@@ -211,7 +211,7 @@ This is an example how to launch [Meta Llama-2-70b-hf model](https://huggingface
 $ docker run --gpus=4 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type llama --num-devices 4 \
     --num-layers 80 --num-heads 64 --num-kv-heads 8 --head-size 128 \
     --rotary-dim 128 --ff-intermediate-size 28672 \
@@ -229,7 +229,7 @@ This is an example how to launch [MosaicML MPT-7B-instruct model](https://www.mo
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type mpt \
     --num-layers 32 --num-heads 32 --head-size 128 \
     --max-length 2048 --vocab-size 50432 --eos-token 0 \
@@ -246,7 +246,7 @@ This is an example how to launch [TII UAE Falcon-7B-Instruct model](https://hugg
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type falcon-7b \
     --num-layers 32 --num-heads 71 --num-kv-heads 1 --head-size 64 \
     --rotary-dim 64
@@ -265,7 +265,7 @@ This is an example how to launch [BigSicence BLOOMZ-7B1 model](https://huggingfa
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type bloom \
     --num-layers 30 --num-heads 32 --head-size 128 \
     --max-length 2048 --vocab-size 250880 --eos-token 2 \
@@ -283,7 +283,7 @@ This is an example how to launch [EleutherAI GPT-J-6B model](https://huggingface
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type gpt-j \
     --num-layers 28 --num-heads 16 --head-size 256 \
     --rotary-dim 64
@@ -302,7 +302,7 @@ This is an example how to launch [Databricks Dolly-V2-12B model](https://hugging
 $ docker run --gpus=2 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type gpt-neox --num-devices 2 \
     --num-layers 36 --num-heads 40 --head-size 128 \
     --rotary-dim 32
@@ -321,7 +321,7 @@ This is an example how to launch [Facebook OPT-13B model](https://huggingface.co
 $ docker run --gpus=2 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type opt --num-devices 2 \
     --num-layers 40 --num-heads 40 --head-size 128 \
     --max-length 2048 --vocab-size 50272 --eos-token 2 \
@@ -339,7 +339,7 @@ This is an example how to launch [T5-Base model](https://huggingface.co/t5-base)
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type t5 \
     --num-encoder-layers 12 --num-decoder-layers 12 --num-heads 12 --head-size 64 \
     --hidden-size 768 --ff-intermediate-size 3072 --max-input-length 128 --max-output-length 128 \
@@ -359,7 +359,7 @@ This is an example how to launch [Google Flan-T5-Xl model](https://huggingface.c
 $ docker run --gpus=2 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type t5-v1_1 --num-devices 2 \
     --num-encoder-layers 24 --num-decoder-layers 24 --num-heads 32 --head-size 64 \
     --hidden-size 2048 --ff-intermediate-size 5120 --max-input-length 512 --max-output-length 512 \
@@ -379,7 +379,7 @@ This is an example how to launch [Facebook BlenderBot-3B model](https://huggingf
 $ docker run --gpus=1 -v $LOCAL_CKPT_PATH:/model \
   --network=host $PERIFLOW_CONTAINER_IMAGE /bin/bash -c \
   "/root/launcher \
-    --web-server-port 6000 --tokoenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
+    --web-server-port 6000 --tokenizer-file-path /model/tokenizer.json --ckpt-path /model/model.h5 \
     --ignore-nan-error --dtype fp16 --model-type blenderbot \
     --num-encoder-layers 2 --num-decoder-layers 24 --num-heads 32 --head-size 80 \
     --hidden-size 2560 --ff-intermediate-size 10240 --max-input-length 128 --max-output-length 128 \
@@ -407,8 +407,8 @@ For information on all parameters that can be used in an inference request, plea
 
 $ curl -X POST $SERVER_IP:$WEB_SERVER_PORT/v1/completions \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Python is a popular", "min_tokens": 20, "max_tokens": 30, \
-       "top_k": 32, "top_p": 0.8, "n": 3, "no_repeat_ngram": 3, \
+  -d '{"prompt": "Python is a popular", "min_tokens": 20, "max_tokens": 30,
+       "top_k": 32, "top_p": 0.8, "n": 3, "no_repeat_ngram": 3,
        "ngram_repetition_penalty": 1.75}'
 ```
 

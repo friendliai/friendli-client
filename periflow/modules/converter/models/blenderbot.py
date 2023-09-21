@@ -5,7 +5,8 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, cast
+from functools import partial
+from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import torch
@@ -21,6 +22,7 @@ from periflow.modules.converter.interface import DECODER_PREFIX, ENCODER_PREFIX
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
+    nontype_partial,
 )
 
 
@@ -122,200 +124,221 @@ class BlenderbotConverter(EncoderDecoderConverter):
         return "blenderbot"
 
     @property
-    def non_transformer_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for non-transformer layers in Blenderbot."""
+    def non_transformer_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for non-transformer blocks in Blenderbot."""
         return {
-            "wte/weight:0": (self.token_embed_weight_convert, ["model.shared.weight"]),
-            "head_fc/weight:0": (self.head_weight_convert, ["model.shared.weight"]),
+            "wte/weight:0": nontype_partial(
+                self.token_embed_weight_convert,
+                per_layer_prefixes=["model.shared.weight"],
+            ),
+            "head_fc/weight:0": nontype_partial(
+                self.head_weight_convert, per_layer_prefixes=["model.shared.weight"]
+            ),
             ENCODER_PREFIX
-            + "/wpe/weight:0": (
+            + "/wpe/weight:0": nontype_partial(
                 self.pos_embed_weight_convert,
-                ["model.encoder.embed_positions.weight"],
+                per_layer_prefixes=["model.encoder.embed_positions.weight"],
             ),
             DECODER_PREFIX
-            + "/wpe/weight:0": (
+            + "/wpe/weight:0": nontype_partial(
                 self.pos_embed_weight_convert,
-                ["model.decoder.embed_positions.weight"],
+                per_layer_prefixes=["model.decoder.embed_positions.weight"],
             ),
             ENCODER_PREFIX
-            + "/ln_f/gamma:0": (
+            + "/ln_f/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                ["model.encoder.layer_norm.weight"],
+                per_layer_prefixes=["model.encoder.layer_norm.weight"],
             ),
             ENCODER_PREFIX
-            + "/ln_f/beta:0": (self.ln_bias_convert, ["model.encoder.layer_norm.bias"]),
-            DECODER_PREFIX
-            + "/ln_f/gamma:0": (
-                self.ln_weight_convert,
-                ["model.decoder.layer_norm.weight"],
+            + "/ln_f/beta:0": nontype_partial(
+                self.ln_bias_convert,
+                per_layer_prefixes=["model.encoder.layer_norm.bias"],
             ),
             DECODER_PREFIX
-            + "/ln_f/beta:0": (self.ln_bias_convert, ["model.decoder.layer_norm.bias"]),
+            + "/ln_f/gamma:0": nontype_partial(
+                self.ln_weight_convert,
+                per_layer_prefixes=["model.decoder.layer_norm.weight"],
+            ),
+            DECODER_PREFIX
+            + "/ln_f/beta:0": nontype_partial(
+                self.ln_bias_convert,
+                per_layer_prefixes=["model.decoder.layer_norm.bias"],
+            ),
         }
 
     @property
-    def encoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in Blenderbot's encoder."""
+    def encoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in Blenderbot's encoder."""
         return {
-            "ln_1/gamma:0": (
+            "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".self_attn_layer_norm.weight"],
+                per_layer_prefixes=[".self_attn_layer_norm.weight"],
             ),
-            "ln_1/beta:0": (
+            "ln_1/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".self_attn_layer_norm.bias"],
+                per_layer_prefixes=[".self_attn_layer_norm.bias"],
             ),
-            "attn/c_attn/weight:0": (
+            "attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [
+                per_layer_prefixes=[
                     ".self_attn.q_proj.weight",
                     ".self_attn.k_proj.weight",
                     ".self_attn.v_proj.weight",
                 ],
             ),
-            "attn/c_attn/bias:0": (
+            "attn/c_attn/bias:0": nontype_partial(
                 self.qkv_bias_convert,
-                [
+                per_layer_prefixes=[
                     ".self_attn.q_proj.bias",
                     ".self_attn.k_proj.bias",
                     ".self_attn.v_proj.bias",
                 ],
             ),
-            "attn/c_proj/weight:0": (
+            "attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".self_attn.out_proj.weight"],
+                per_layer_prefixes=[".self_attn.out_proj.weight"],
             ),
-            "attn/c_proj/bias:0": (
+            "attn/c_proj/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".self_attn.out_proj.bias"],
+                per_layer_prefixes=[".self_attn.out_proj.bias"],
             ),
-            "ln_2/gamma:0": (
+            "ln_2/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".final_layer_norm.weight"],
+                per_layer_prefixes=[".final_layer_norm.weight"],
             ),
-            "ln_2/beta:0": (
+            "ln_2/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".final_layer_norm.bias"],
+                per_layer_prefixes=[".final_layer_norm.bias"],
             ),
-            "mlp/c_fc/weight:0": (self.linear_weight_convert, [".fc1.weight"]),
-            "mlp/c_fc/bias:0": (
-                self.linear_bias_convert,
-                [".fc1.bias"],
+            "mlp/c_fc/weight:0": nontype_partial(
+                self.linear_weight_convert, per_layer_prefixes=[".fc1.weight"]
             ),
-            "mlp/c_proj/weight:0": (self.linear_weight_convert, [".fc2.weight"]),
-            "mlp/c_proj/bias:0": (
+            "mlp/c_fc/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".fc2.bias"],
+                per_layer_prefixes=[".fc1.bias"],
+            ),
+            "mlp/c_proj/weight:0": nontype_partial(
+                self.linear_weight_convert, per_layer_prefixes=[".fc2.weight"]
+            ),
+            "mlp/c_proj/bias:0": nontype_partial(
+                self.linear_bias_convert,
+                per_layer_prefixes=[".fc2.bias"],
             ),
         }
 
     @property
-    def decoder_convert_dict(self) -> Dict[str, Any]:
-        """The convert_dict for transformer layers in Blenderbot's decoder."""
+    def decoder_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for transformer blocks in Blenderbot's decoder."""
         return {
-            "ln_1/gamma:0": (
+            "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".self_attn_layer_norm.weight"],
+                per_layer_prefixes=[".self_attn_layer_norm.weight"],
             ),
-            "ln_1/beta:0": (
+            "ln_1/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".self_attn_layer_norm.bias"],
+                per_layer_prefixes=[".self_attn_layer_norm.bias"],
             ),
-            "attn/c_attn/weight:0": (
+            "attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [
+                per_layer_prefixes=[
                     ".self_attn.q_proj.weight",
                     ".self_attn.k_proj.weight",
                     ".self_attn.v_proj.weight",
                 ],
             ),
-            "attn/c_attn/bias:0": (
+            "attn/c_attn/bias:0": nontype_partial(
                 self.qkv_bias_convert,
-                [
+                per_layer_prefixes=[
                     ".self_attn.q_proj.bias",
                     ".self_attn.k_proj.bias",
                     ".self_attn.v_proj.bias",
                 ],
             ),
-            "attn/c_proj/weight:0": (
+            "attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".self_attn.out_proj.weight"],
+                per_layer_prefixes=[".self_attn.out_proj.weight"],
             ),
-            "attn/c_proj/bias:0": (
+            "attn/c_proj/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".self_attn.out_proj.bias"],
+                per_layer_prefixes=[".self_attn.out_proj.bias"],
             ),
-            "ln_2/gamma:0": (
+            "ln_2/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".encoder_attn_layer_norm.weight"],
+                per_layer_prefixes=[".encoder_attn_layer_norm.weight"],
             ),
-            "ln_2/beta:0": (
+            "ln_2/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".encoder_attn_layer_norm.bias"],
+                per_layer_prefixes=[".encoder_attn_layer_norm.bias"],
             ),
-            "ln_3/gamma:0": (
+            "ln_3/gamma:0": nontype_partial(
                 self.ln_weight_convert,
-                [".final_layer_norm.weight"],
+                per_layer_prefixes=[".final_layer_norm.weight"],
             ),
-            "ln_3/beta:0": (
+            "ln_3/beta:0": nontype_partial(
                 self.ln_bias_convert,
-                [".final_layer_norm.bias"],
+                per_layer_prefixes=[".final_layer_norm.bias"],
             ),
-            "cross_attn/c_attn/weight:0": (
+            "cross_attn/c_attn/weight:0": nontype_partial(
                 self.qkv_weight_convert,
-                [
+                per_layer_prefixes=[
                     ".encoder_attn.q_proj.weight",
                     ".encoder_attn.k_proj.weight",
                     ".encoder_attn.v_proj.weight",
                 ],
             ),
-            "cross_attn/c_attn/bias:0": (
+            "cross_attn/c_attn/bias:0": nontype_partial(
                 self.qkv_bias_convert,
-                [
+                per_layer_prefixes=[
                     ".encoder_attn.q_proj.bias",
                     ".encoder_attn.k_proj.bias",
                     ".encoder_attn.v_proj.bias",
                 ],
             ),
-            "cross_attn/c_proj/weight:0": (
+            "cross_attn/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".encoder_attn.out_proj.weight"],
+                per_layer_prefixes=[".encoder_attn.out_proj.weight"],
             ),
-            "cross_attn/c_proj/bias:0": (
+            "cross_attn/c_proj/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".encoder_attn.out_proj.bias"],
+                per_layer_prefixes=[".encoder_attn.out_proj.bias"],
             ),
-            "mlp/c_fc/weight:0": (
+            "mlp/c_fc/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".fc1.weight"],
+                per_layer_prefixes=[".fc1.weight"],
             ),
-            "mlp/c_fc/bias:0": (
+            "mlp/c_fc/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".fc1.bias"],
+                per_layer_prefixes=[".fc1.bias"],
             ),
-            "mlp/c_proj/weight:0": (
+            "mlp/c_proj/weight:0": nontype_partial(
                 self.linear_weight_convert,
-                [".fc2.weight"],
+                per_layer_prefixes=[".fc2.weight"],
             ),
-            "mlp/c_proj/bias:0": (
+            "mlp/c_proj/bias:0": nontype_partial(
                 self.linear_bias_convert,
-                [".fc2.bias"],
+                per_layer_prefixes=[".fc2.bias"],
             ),
         }
 
     @property
     def encoder_layer_prefix(self) -> str:
-        """The layer name prefix used before Blenderbot encoder's transformer layer number."""
+        """The layer name prefix used before Blenderbot encoder's transformer block number."""
         return "model.encoder.layers."
 
     @property
     def decoder_layer_prefix(self) -> str:
-        """The layer name prefix used before Blenderbot decoder's transformer layer number."""
+        """The layer name prefix used before Blenderbot decoder's transformer block number."""
         return "model.decoder.layers."
 
     @property
     def encoder_layer_num(self) -> int:
-        """The number of transformer layers in Blenderbot encoder."""
+        """The number of transformer blocks in Blenderbot encoder."""
         return cast(BlenderbotConfig, self.config).encoder_layers
 
     @property
@@ -335,7 +358,7 @@ class BlenderbotConverter(EncoderDecoderConverter):
 
     @property
     def decoder_layer_num(self) -> int:
-        """The number of transformer layers in Blenderbot decoder."""
+        """The number of transformer blocks in Blenderbot decoder."""
         return cast(BlenderbotConfig, self.config).decoder_layers
 
     @property

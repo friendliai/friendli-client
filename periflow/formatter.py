@@ -31,7 +31,7 @@ def get_value(data: Dict[str, Any], keys: str) -> str:
         key (str): Dot(.)-separated nested keys in data to access the value.
 
     Returns:
-        T: The retrieved data.
+        str: The retrieved data.
 
     """
     value: Any = data

@@ -9,6 +9,7 @@
 > Bases: ResourceAPI[V1Checkpoint, UUID]
 
 Checkpoint resource API.
+
 ## Methods
 
 ### _def_ `create`
@@ -46,6 +47,7 @@ Creates a checkpoint by linking the existing cloud storage (e.g., AWS S3, GCS, A
 | Type | Description |
 |------|-------------|
 | `V1Checkpoint` | Created checkpoint object. |
+
 #### Raises
 
 | Type | Description |
@@ -354,6 +356,7 @@ Creates a new checkpoint by uploading files in the local file system.
 | Type | Description |
 |------|-------------|
 | `V1Checkpoint` | Created checkpoint object. |
+
 #### Raises
 
 | Type | Description |
@@ -522,6 +525,7 @@ Downloads a checkpoint to the local machine.
 |------|------|-------------|---------|----------|
 | `id` | `UUID` | ID of checkpoint to donwload. | - | ❌ |
 | `save_dir` | `Optional[str]` | Local direcotry path to save the checkpoint files. Defaults to None. | `None` | ✅ |
+
 #### Raises
 
 | Type | Description |
@@ -568,6 +572,7 @@ Restores a soft-deleted checkpoint.
 | Type | Description |
 |------|-------------|
 | `Dict[str, Any]` | The restored checkpoint info. |
+
 #### Raises
 
 | Type | Description |

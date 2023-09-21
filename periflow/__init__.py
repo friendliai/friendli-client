@@ -10,6 +10,8 @@ from periflow.di.injector import set_default_modules
 from periflow.di.modules import default_modules
 from periflow.schema.api.v1.completion import V1CompletionOptions
 from periflow.sdk.api.completion import Completion
+from periflow.sdk.api.detokenization import Detokenization
+from periflow.sdk.api.tokenization import Tokenization
 from periflow.sdk.init import init
 from periflow.sdk.resource.checkpoint import Checkpoint
 from periflow.sdk.resource.credential import Credential
@@ -30,5 +32,7 @@ __all__ = [
     "Credential",
     "Deployment",
     "Completion",
+    "Detokenization",
+    "Tokenization",
     "V1CompletionOptions",
 ]

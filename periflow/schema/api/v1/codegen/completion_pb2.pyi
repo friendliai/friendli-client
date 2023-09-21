@@ -178,15 +178,3 @@ class V1CompletionsRequest(_message.Message):
         forced_output_tokens: _Optional[_Iterable[int]] = ...,
         eos_token: _Optional[_Iterable[int]] = ...,
     ) -> None: ...
-
-class V1TokenizeRequest(_message.Message):
-    __slots__ = ["prompt"]
-    PROMPT_FIELD_NUMBER: _ClassVar[int]
-    prompt: str
-    def __init__(self, prompt: _Optional[str] = ...) -> None: ...
-
-class V1DetokenizeRequest(_message.Message):
-    __slots__ = ["tokens"]
-    TOKENS_FIELD_NUMBER: _ClassVar[int]
-    tokens: _containers.RepeatedScalarFieldContainer[int]
-    def __init__(self, tokens: _Optional[_Iterable[int]] = ...) -> None: ...
