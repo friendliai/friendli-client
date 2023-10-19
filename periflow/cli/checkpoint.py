@@ -774,20 +774,20 @@ def convert(
     Another example of quantization configuration using AWQ:
 
     ```yaml
-    mode: awq 
-    device: cuda:0 
-    seed: 42 
-    percentile: 100 
-    calibration_dataset: 
-        path_or_name: lambada 
-        format: json 
-        split: validation 
-        lookup_column_name: text 
-        num_samples: 128 
-        max_length: 512 
-    awq_args: 
-        quant_bit: 4 
-        quant_group_size: 64 
+    mode: awq
+    device: cuda:0
+    seed: 42
+    percentile: 100
+    calibration_dataset:
+        path_or_name: lambada
+        format: json
+        split: validation
+        lookup_column_name: text
+        num_samples: 128
+        max_length: 512
+    awq_args:
+        quant_bit: 4
+        quant_group_size: 64
     ```
 
     - **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
