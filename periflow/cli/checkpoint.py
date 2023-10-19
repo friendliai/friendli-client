@@ -771,6 +771,25 @@ def convert(
         ff2_smoothing: False
     ```
 
+    Another example of quantization configuration using AWQ:
+
+    ```yaml
+    mode: awq 
+    device: cuda:0 
+    seed: 42 
+    percentile: 100 
+    calibration_dataset: 
+        path_or_name: lambada 
+        format: json 
+        split: validation 
+        lookup_column_name: text 
+        num_samples: 128 
+        max_length: 512 
+    awq_args: 
+        quant_bit: 4 
+        quant_group_size: 64 
+    ```
+
     - **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
     - **`device`**: Device to run the quantization process. Defaults to "cuda:0".
     - **`seed`**: Random seed. Defaults to 42.
@@ -786,6 +805,9 @@ def convert(
         - **`migration_strength`**: A hyper-parameter that controls the degree of difficulty migration from activation to weights. Defaults to 0.5.
         - **`attn_fc_smoothing`**: Whether to apply smoothing to the linear layer after attention. Defaults to False.
         - **`ff2_smoothing`**: Whether to apply smoothing to the second linear layer in the mlp. Defaults to False.
+    - **`awq_args`** (Fill in this field only for "awq" mode)
+        - **`quant_bit`** : Bit width of integers to represent weights. Possible values are `4` or `8`. Defaults to 4.
+        - **`quant_group_size`**: Group size of quantized matrices. 64 is the only supported value at this time. Defaults to 64.
 
     :::tip
     If you set `percentile` in qunat-config-file into 100,
@@ -793,7 +815,7 @@ def convert(
     :::
 
     :::info
-    Currently, [SmoothQuant](https://arxiv.org/abs/2211.10438) is the only supported quantization scheme.
+    Currently, [SmoothQuant](https://arxiv.org/abs/2211.10438) and [AWQ](https://arxiv.org/abs/2306.00978) are the supported quantization schemes.
     :::
 
     """
