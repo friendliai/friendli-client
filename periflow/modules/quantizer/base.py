@@ -9,16 +9,14 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Type
 
 import datasets  # type: ignore[import]
-import h5py  # type: ignore[import]
 import numpy as np
 import torch
-from tqdm.auto import tqdm
 
 from periflow.enums import (
     QuantDatasetFormat,  # TODO: move this to periflow/modules/converter/enums.py
 )
 from periflow.errors import NotSupportedQuantConfigError
-from periflow.modules.converter.base import DECODER_PREFIX, OneOfConverter
+from periflow.modules.converter.base import OneOfConverter
 from periflow.modules.converter.interface import ModelConversionInterface
 from periflow.modules.quantizer.schema.config import CommonQuantConfig
 from periflow.modules.quantizer.schema.data import TFQuantInputs, TFQuantResults
@@ -72,7 +70,6 @@ class AbstractQuantHook(ABC):
         """Return the convert_dict for modified layers."""
 
     @property
-    @abstractmethod
     def quantized_layer_prefix(self) -> str:
         """Returns the prefix of the transformer block name."""
         return self.converter.decoder_layer_prefix
@@ -192,6 +189,7 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
         self,
         model: torch.nn.Module,
         output_path: str,
+        state_dict: Dict[str, torch.Tensor],
         convert_dict: Dict[
             str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
         ],
@@ -201,30 +199,17 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
         Args:
             model (torch.nn.Module): Huggingface model.
             output_path (str): Path to save the converted model.
+            state_dict (Dict[str, torch.Tensor]):
+                Dictionary of mapping of tensor name to tensor
             convert_dict (Dict[Callable[[Dict[str, torch.Tensor], str], np.ndarray]]):
                 Dictionary of mapping converted params name to conversion functions.
 
         """
         self.pre_quantize(model)
         quant_result_iter = self.quantize(model)
-        state_dict = model.state_dict()
-        state_dict.update(self.get_quantized_state_dict(model, quant_result_iter))
+        state_dict = {
+            **state_dict,
+            **self.get_quantized_state_dict(model, quant_result_iter),
+        }
 
-        total_layers = len(
-            convert_dict["decoder"]
-        ) * self.converter.decoder_layer_num + len(convert_dict["non-transformer"])
-        with h5py.File(output_path, "w") as out_f, tqdm(
-            total=total_layers, desc="Converting", unit="tensor"
-        ) as pbar:
-            self.converter.convert_decoder_layers(
-                state_dict=state_dict,
-                convert_dict=convert_dict["decoder"],
-                out_f=out_f.create_group(DECODER_PREFIX),
-                pbar=pbar,
-            )
-            self.converter.convert_non_transformer_layers(
-                state_dict=state_dict,
-                convert_dict=convert_dict["non-transformer"],
-                out_f=out_f,
-                pbar=pbar,
-            )
+        self.converter.convert(model, output_path, state_dict, convert_dict)

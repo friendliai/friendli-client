@@ -39,6 +39,7 @@ class ModelConversionInterface(ABC):
         self,
         model: torch.nn.Module,
         output_path: str,
+        state_dict: Dict[str, torch.Tensor],
         convert_dict: Dict[
             str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
         ],
@@ -48,6 +49,8 @@ class ModelConversionInterface(ABC):
         Args:
             model (torch.nn.Module): Huggingface model.
             output_path (str): Path to save the converted checkpoint.
+            state_dict (Dict[str, torch.Tensor]):
+                Dictionary of mapping of tensor name to tensor
             convert_dict (Dict[Callable[[Dict[str, torch.Tensor], str], np.ndarray]]):
                 Dictionary of mapping converted params name to conversion functions.
 

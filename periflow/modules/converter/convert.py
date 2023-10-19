@@ -105,7 +105,7 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         )
 
         convert_dict = converter.get_convert_dict()
-        converter.convert(model, model_output_path, convert_dict)
+        converter.convert(model, model_output_path, model.state_dict(), convert_dict)
 
         logger.info(
             "Hugging Face checkpoint(%s) is successfully converted to Periflow format!",

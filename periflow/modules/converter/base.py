@@ -326,12 +326,12 @@ class DecoderOnlyConverter(
         self,
         model: torch.nn.Module,
         output_path: str,
+        state_dict: Dict[str, torch.Tensor],
         convert_dict: Dict[
             str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
         ],
     ) -> None:
         """Convert Decoder-Only model's all layer to PeriFlow format."""
-        state_dict = model.state_dict()
         total_layers = len(convert_dict["decoder"]) * self.decoder_layer_num + len(
             convert_dict["non-transformer"]
         )
@@ -341,7 +341,7 @@ class DecoderOnlyConverter(
             self.convert_decoder_layers(
                 state_dict=state_dict,
                 convert_dict=convert_dict["decoder"],
-                out_f=out_f,
+                out_f=out_f.create_group(DECODER_PREFIX),
                 pbar=pbar,
             )
             self.convert_non_transformer_layers(
@@ -383,12 +383,12 @@ class EncoderDecoderConverter(
         self,
         model: torch.nn.Module,
         output_path: str,
+        state_dict: Dict[str, torch.Tensor],
         convert_dict: Dict[
             str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
         ],
     ) -> None:
         """Convert Encoder-Decoder model's all layer to PeriFlow format."""
-        state_dict = model.state_dict()
         total_layers = (
             len(self.encoder_convert_dict) * self.encoder_layer_num
             + len(self.decoder_convert_dict) * self.decoder_layer_num
@@ -400,13 +400,13 @@ class EncoderDecoderConverter(
             self.convert_decoder_layers(
                 state_dict=state_dict,
                 convert_dict=convert_dict["decoder"],
-                out_f=out_f.create_group[DECODER_PREFIX],
+                out_f=out_f.create_group(DECODER_PREFIX),
                 pbar=pbar,
             )
             self.convert_encoder_layers(
                 state_dict=state_dict,
                 convert_dict=convert_dict["encoder"],
-                out_f=out_f.create_group[ENCODER_PREFIX],
+                out_f=out_f.create_group(ENCODER_PREFIX),
                 pbar=pbar,
             )
             self.convert_non_transformer_layers(
