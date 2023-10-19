@@ -12,8 +12,11 @@ from transformers import GPT2Config  # type: ignore[import]
 
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
-from periflow.modules.converter.base import SUPPORTED_GELU_FAMILY, DecoderOnlyConverter
-from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.base import (
+    DECODER_PREFIX,
+    SUPPORTED_GELU_FAMILY,
+    DecoderOnlyConverter,
+)
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
@@ -125,7 +128,7 @@ class GPT2LMHeadModelConverter(DecoderOnlyConverter):
         self,
     ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
         """The convert_dict for transformer blocks in GPT2."""
-        convert_dict = {
+        return {
             "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
                 per_layer_postfixes=[".ln_1.weight"],
@@ -175,12 +178,6 @@ class GPT2LMHeadModelConverter(DecoderOnlyConverter):
                 per_layer_postfixes=[".mlp.c_proj.weight"],
             ),
         }
-
-        if self.quantize:
-            for param_name in self.quantized_param_names:
-                del convert_dict[param_name]
-
-        return convert_dict
 
     @property
     def decoder_layer_prefix(self) -> str:

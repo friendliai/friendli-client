@@ -245,6 +245,10 @@ class Completion(
     ) -> Union[V1AsyncCompletionStream, V1Completion]:
         """Creates a completion asynchronously.
 
+        :::info
+        You must open API session with `api_session()` before `acreate()`.
+        :::
+
         Args:
             options (V1CompletionOptions): Options for the completion.
             stream (bool, optional): When set True, enables streaming mode. Defaults to False.
@@ -257,9 +261,6 @@ class Completion(
             Union[V1Completion, AsyncCompletionStream]: If `stream` is `True`, a `AsyncCompletionStream` object that iterates the results per token is returned. Otherwise, a `V1CompletionResult` object is returned.
 
         Examples:
-            :::info
-            You must open API session with `api_session()` before `acreate()`.
-            :::
             Basic usage:
 
             ```python

@@ -1304,17 +1304,6 @@ trio = ["trio (>=0.14,<0.23)"]
 wmi = ["wmi (>=1.5.1,<2.0.0)"]
 
 [[package]]
-name = "docstring-parser"
-version = "0.15"
-description = "Parse Python docstrings in reST, Google and Numpydoc format"
-optional = false
-python-versions = ">=3.6,<4.0"
-files = [
-    {file = "docstring_parser-0.15-py3-none-any.whl", hash = "sha256:d1679b86250d269d06a99670924d6bce45adc00b08069dae8c47d98e89b667a9"},
-    {file = "docstring_parser-0.15.tar.gz", hash = "sha256:48ddc093e8b1865899956fcc03b03e66bb7240c310fac5af81814580c55bf682"},
-]
-
-[[package]]
 name = "einops"
 version = "0.6.1"
 description = "A new flavour of deep learning operations"
@@ -3833,4 +3822,4 @@ mllib = ["accelerate", "datasets", "einops", "h5py", "transformers"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "e83f809d38114c841a375a7946de301d99f0db3e05b7f5e6332e972be8d57f2b"
+content-hash = "6de3917bea1fc35f7f0a1a5d8fa034b3b7a2a65e8f001faff2bf69eab4fcfeb1"

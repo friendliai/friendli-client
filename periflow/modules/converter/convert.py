@@ -4,96 +4,30 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import List, Optional, cast
+from typing import Optional
 
 import yaml
 
 from periflow.enums import CheckpointDataType
-from periflow.errors import (
-    NotFoundError,
-    NotSupportedCheckpointError,
-    TokenizerNotFoundError,
-)
+from periflow.errors import TokenizerNotFoundError
 from periflow.logging import logger
-from periflow.modules.quantizer.schema import OneOfQuantConfig
 from periflow.utils.validate import validate_convert_imports
 
 validate_convert_imports()
-# pylint: disable=import-outside-toplevel, wrong-import-position, wrong-import-order
+# pylint: disable=import-outside-toplevel, wrong-import-position, wrong-import-order, ungrouped-imports
 import torch  # type: ignore[import]
-import transformers  # type: ignore[import]
 
-from periflow.modules.converter.maps import (  # pylint: disable=ungrouped-imports
-    model_arch_converter_map,
-)
+from periflow.modules.converter.maps import get_hf_converter_factory
 from periflow.modules.converter.utils import (
-    get_quantizer,
-    get_tokenizer,
+    get_model_arch,
+    get_model_generation_config,
+    get_model_pretrained_config,
     save_tokenizer,
 )
-from periflow.modules.quantizer.utils import (
-    get_encoded_dataset,
-    get_quantized_state_dict,
-)
+from periflow.modules.quantizer.maps import get_quantized_converter
+from periflow.modules.quantizer.schema.config import OneOfQuantConfig
 
-# pylint: enable=import-outside-toplevel, wrong-import-position, wrong-import-order
-
-
-def get_model_generation_config(
-    model_name_or_path: str, cache_dir: Optional[str] = None
-) -> Optional[transformers.GenerationConfig]:
-    """Get HuggingFace model generation config."""
-    try:
-        generation_config = transformers.GenerationConfig.from_pretrained(
-            model_name_or_path, cache_dir=cache_dir, trust_remote_code=True
-        )
-    except (OSError, TypeError):
-        generation_config = None
-
-    return generation_config
-
-
-def get_model_pretrained_config(
-    model_name_or_path: str, model_output_path: str, cache_dir: Optional[str] = None
-) -> transformers.PretrainedConfig:
-    """Get HuggingFace model configs."""
-    try:
-        config = transformers.AutoConfig.from_pretrained(
-            model_name_or_path, cache_dir=cache_dir, trust_remote_code=True
-        )
-    except OSError as exc:  # from transformers.AutoConfig.from_pretrained()
-        config_dir = Path(model_name_or_path)
-        model_output_dir = Path(model_output_path).parent
-        if config_dir.exists() and model_output_dir.absolute() == config_dir.absolute():
-            raise NotFoundError(
-                f"'output_dir' ({model_output_dir.as_posix()}) and "
-                f"'model_name_or_path' ({model_name_or_path}) are the same. "
-                "In such a case, checkpoints should be prepared in 'output_dir'."
-            ) from exc
-        raise NotFoundError(str(exc)) from exc
-
-    return config
-
-
-def get_model_arch(config: transformers.PretrainedConfig) -> str:
-    """Get HuggingFace model architecture from config."""
-    model_arch_list = cast(
-        List[str], cast(transformers.PretrainedConfig, config).architectures
-    )
-    if len(model_arch_list) == 0:
-        raise NotSupportedCheckpointError(
-            invalid_option=f"'architectures={model_arch_list}'",
-            valid_options=list(model_arch_converter_map.keys()),
-        )
-    model_arch = model_arch_list[0]
-
-    if model_arch not in model_arch_converter_map:
-        raise NotSupportedCheckpointError(
-            invalid_option=f"'architectures={model_arch}'",
-            valid_options=list(model_arch_converter_map.keys()),
-        )
-    return model_arch
+# pylint: enable=import-outside-toplevel, wrong-import-position, wrong-import-order, ungrouped-imports
 
 
 def convert_checkpoint(  # pylint: disable=too-many-locals
@@ -134,21 +68,22 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         model_name_or_path, model_output_path, cache_dir
     )
     generation_config = get_model_generation_config(model_name_or_path, cache_dir)
+
     model_arch = get_model_arch(model_config)
-
-    if quantize and quant_config:
-        quantizer = get_quantizer(model_arch, model_config, quant_config)
-        quantizer.check_config()
-
-    hf_factory, converter_factory = model_arch_converter_map[model_arch]
+    hf_factory, converter_factory = get_hf_converter_factory(model_arch)
     converter = converter_factory(
         config=model_config,
         generation_config=generation_config,
-        output_path=model_output_path,
         data_type=data_type,
-        quantize=quantize,
     )
     converter.check_config()
+
+    if quantize:
+        assert quant_config is not None
+        converter = get_quantized_converter(  # type: ignore[assignment]
+            model_arch, quant_config, converter
+        )
+        converter.check_config()
 
     if not dry_run:
         logger.info(
@@ -169,20 +104,9 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
             model_name_or_path,
         )
 
-        if quantize:
-            logger.info(
-                "Start SmoothQuant quantization for Hugging Face checkpoint...",
-            )
-            tokenizer = get_tokenizer(model_name_or_path, cache_dir=cache_dir)
-            assert quant_config is not None
-            dataset = get_encoded_dataset(quant_config, tokenizer)
-            quantizer.pre_quantize(model, dataset, data_type)
-            quant_result_iter = quantizer.quantize(model, dataset, data_type)
-            state_dict = model.state_dict()
-            state_dict.update(get_quantized_state_dict(quant_result_iter))
-        else:
-            state_dict = model.state_dict()
-        converter.convert(state_dict=state_dict)
+        convert_dict = converter.get_convert_dict()
+        converter.convert(model, model_output_path, convert_dict)
+
         logger.info(
             "Hugging Face checkpoint(%s) is successfully converted to Periflow format!",
             model_name_or_path,

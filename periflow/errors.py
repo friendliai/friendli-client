@@ -119,12 +119,14 @@ class NotSupportedQuantModeError(QuantizationError):
         )
 
 
-class CheckpointQuantizationError(CheckpointConversionError):
-    """Checkpoint quantization failure error."""
+class NotSupportedQuantConfigError(QuantizationError):
+    """Quantization configuration is not supported."""
 
-    def __init__(self, msg: str) -> None:
-        """Initialize CheckpointQuantizationError."""
-        super().__init__(f"Quantization failed. {msg}")
+    def __init__(self, invalid_option: str, valid_options: List[str]) -> None:
+        """Initialize NotSupportedQuantConfigError."""
+        super().__init__(
+            f"{invalid_option} is not supported. Please use {valid_options}."
+        )
 
 
 class TokenizerNotFoundError(PeriFlowError):

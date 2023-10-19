@@ -204,6 +204,7 @@ deployment_panel.add_substitution_rule("Unhealthy", "[bold red]Unhealthy[/bold r
 deployment_panel.add_substitution_rule(
     "Stopping", "[bold magenta]Stopping[/bold magenta]"
 )
+deployment_panel.add_substitution_rule("Failed", "[bold red]Failed[/bold red]")
 deployment_panel.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
 deployment_table.add_substitution_rule(
@@ -214,6 +215,7 @@ deployment_table.add_substitution_rule("Unhealthy", "[bold red]Unhealthy[/bold r
 deployment_table.add_substitution_rule(
     "Stopping", "[bold magenta]Stopping[/bold magenta]"
 )
+deployment_table.add_substitution_rule("Failed", "[bold red]Failed[/bold red]")
 deployment_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
 deployment_org_table.add_substitution_rule(
@@ -228,6 +230,7 @@ deployment_org_table.add_substitution_rule(
 deployment_org_table.add_substitution_rule(
     "Stopping", "[bold magenta]Stopping[/bold magenta]"
 )
+deployment_org_table.add_substitution_rule("Failed", "[bold red]Failed[/bold red]")
 deployment_org_table.add_substitution_rule("Terminated", "[bold]Terminated[/bold]")
 
 

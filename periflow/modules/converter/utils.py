@@ -6,23 +6,26 @@ from __future__ import annotations
 
 import os
 from functools import partial
-from typing import Any, Dict, Optional, Type
+from pathlib import Path
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import torch
-from transformers import AutoTokenizer, PretrainedConfig  # type: ignore[import]
+from transformers import (  # type: ignore[import]
+    AutoConfig,
+    AutoTokenizer,
+    GenerationConfig,
+    PretrainedConfig,
+)
 
-from periflow.enums import CheckpointDataType, QuantMode
+from periflow.enums import CheckpointDataType
 from periflow.errors import (
     CheckpointConversionError,
     NotFoundError,
-    NotSupportedQuantModeError,
+    NotSupportedCheckpointError,
     TokenizerNotFoundError,
 )
 from periflow.logging import logger
-from periflow.modules.quantizer.base import AbstractQuantizer, SmoothQuantQuantizer
-from periflow.modules.quantizer.maps import model_arch_smoothquant_hook_map
-from periflow.modules.quantizer.schema import OneOfQuantConfig
 
 
 def nontype_partial(cls, *args, **kwargs):
@@ -187,33 +190,49 @@ def save_tokenizer(
         )
 
 
-def get_quanthook_map(quant_mode: QuantMode) -> Dict[str, Any]:
-    """Get quantizer map."""
-    if quant_mode == QuantMode.SMOOTH_QUANT:
-        return model_arch_smoothquant_hook_map
-    raise NotSupportedQuantModeError(
-        invalid_option=quant_mode,
-        valid_options=[e.value for e in QuantMode],
-    )
+def get_model_generation_config(
+    model_name_or_path: str, cache_dir: Optional[str] = None
+) -> Optional[GenerationConfig]:
+    """Get HuggingFace model generation config."""
+    try:
+        generation_config = GenerationConfig.from_pretrained(
+            model_name_or_path, cache_dir=cache_dir, trust_remote_code=True
+        )
+    except (OSError, TypeError):
+        generation_config = None
+
+    return generation_config
 
 
-def get_quantizer_class(quant_mode: QuantMode) -> Type[AbstractQuantizer]:
-    """Get quantizer class."""
-    if quant_mode == QuantMode.SMOOTH_QUANT:
-        return SmoothQuantQuantizer
-    raise NotSupportedQuantModeError(
-        invalid_option=quant_mode,
-        valid_options=[e.value for e in QuantMode],
-    )
+def get_model_pretrained_config(
+    model_name_or_path: str, model_output_path: str, cache_dir: Optional[str] = None
+) -> PretrainedConfig:
+    """Get HuggingFace model configs."""
+    try:
+        config = AutoConfig.from_pretrained(
+            model_name_or_path, cache_dir=cache_dir, trust_remote_code=True
+        )
+    except OSError as exc:  # from AutoConfig.from_pretrained()
+        config_dir = Path(model_name_or_path)
+        model_output_dir = Path(model_output_path).parent
+        if config_dir.exists() and model_output_dir.absolute() == config_dir.absolute():
+            raise NotFoundError(
+                f"'output_dir' ({model_output_dir.as_posix()}) and "
+                f"'model_name_or_path' ({model_name_or_path}) are the same. "
+                "In such a case, checkpoints should be prepared in 'output_dir'."
+            ) from exc
+        raise NotFoundError(str(exc)) from exc
+
+    return config
 
 
-def get_quantizer(
-    model_arch: str,
-    model_config: PretrainedConfig,
-    quant_config: OneOfQuantConfig,
-) -> AbstractQuantizer:
-    """Get quantizer for specific model architecture with quant mode and args."""
-    quant_mode = quant_config.mode
-    quanthook_map = get_quanthook_map(quant_mode)
-    quantizer = get_quantizer_class(quant_mode)
-    return quantizer(quanthook_map[model_arch](model_config), quant_config)
+def get_model_arch(config: PretrainedConfig) -> str:
+    """Get HuggingFace model architecture from config."""
+    model_arch_list = cast(List[str], cast(PretrainedConfig, config).architectures)
+    if len(model_arch_list) == 0:
+        raise NotSupportedCheckpointError(
+            invalid_option=f"'architectures={model_arch_list}'",
+            valid_options=["non emtpy list of architectures"],
+        )
+    model_arch = model_arch_list[0]
+    return model_arch
