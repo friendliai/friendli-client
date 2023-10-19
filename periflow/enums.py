@@ -159,6 +159,7 @@ class DeploymentStatus(str, Enum):
     INITIALIZING = "Initializing"
     HEALTHY = "Healthy"
     UNHEALTHY = "Unhealthy"
+    FAILED = "Failed"
     STOPPING = "Stopping"
     TERMINATED = "Terminated"
 
@@ -182,6 +183,7 @@ class QuantMode(str, Enum):
     """Supported quantization modes."""
 
     SMOOTH_QUANT = "smoothquant"
+    AWQ = "awq"
     NONE = "none"  # HACK: Remove this after another scheme added.
 
 

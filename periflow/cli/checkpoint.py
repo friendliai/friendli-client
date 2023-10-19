@@ -35,11 +35,6 @@ from periflow.formatter import (
     TableFormatter,
     TreeFormatter,
 )
-from periflow.modules.quantizer.schema import (
-    OneOfQuantConfig,
-    QuantConfig,
-    SmoothQuantConfig,
-)
 from periflow.sdk.resource.catalog import Catalog as CatalogAPI
 from periflow.sdk.resource.checkpoint import Checkpoint as CheckpointAPI
 from periflow.utils.decorator import check_api
@@ -762,6 +757,7 @@ def convert(
     mode: smoothquant
     device: cuda:0
     seed: 42
+    percentile: 99.9
     calibration_dataset:
         path_or_name: lambada
         format: json
@@ -771,11 +767,14 @@ def convert(
         max_length: 512
     smoothquant_args:
         migration_strength: 0.5
+        attn_fc_smoothing: False
+        ff2_smoothing: False
     ```
 
     - **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
     - **`device`**: Device to run the quantization process. Defaults to "cuda:0".
     - **`seed`**: Random seed. Defaults to 42.
+    - **`percentile`**: The percentile of calibrated activations to be used for quantization range. Defaults to 99.9.
     - **`calibration_dataset`**
         - **`path_or_name`**: Path or name of the dataset. Datasets from either the Hugging Face Datasets Hub or local file system can be used. Defaults to "lambada".
         - **`format`**: Format of datasets. Defaults to "json".
@@ -785,6 +784,13 @@ def convert(
         - **`max_length`**: The maximum length of a calibration input sequence. Defauts to 512.
     - **`smoothquant_args`** (Fill in this field only for "smoothquant" mode)
         - **`migration_strength`**: A hyper-parameter that controls the degree of difficulty migration from activation to weights. Defaults to 0.5.
+        - **`attn_fc_smoothing`**: Whether to apply smoothing to the linear layer after attention. Defaults to False.
+        - **`ff2_smoothing`**: Whether to apply smoothing to the second linear layer in the mlp. Defaults to False.
+
+    :::tip
+    If you set `percentile` in qunat-config-file into 100,
+    the quantization range will be determined by the maximum absolute values of the activation tensors.
+    :::
 
     :::info
     Currently, [SmoothQuant](https://arxiv.org/abs/2211.10438) is the only supported quantization scheme.
@@ -794,6 +800,11 @@ def convert(
     try:
         from periflow.modules.converter.convert import (  # pylint: disable=import-outside-toplevel
             convert_checkpoint,
+        )
+        from periflow.modules.quantizer.schema.config import (  # pylint: disable=import-outside-toplevel
+            OneOfQuantConfig,
+            QuantConfig,
+            SmoothQuantConfig,
         )
     except ModuleNotFoundError as exc:
         secho_error_and_exit(str(exc))

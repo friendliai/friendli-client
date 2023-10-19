@@ -13,8 +13,7 @@ from transformers import LlamaConfig  # type: ignore[import]
 
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
-from periflow.modules.converter.base import DecoderOnlyConverter
-from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.base import DECODER_PREFIX, DecoderOnlyConverter
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     convert_to_gpt_j_params,
@@ -128,7 +127,7 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
         self,
     ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
         """The convert_dict for transformer blocks in LLaMA."""
-        convert_dict = {
+        return {
             "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
                 per_layer_postfixes=[".input_layernorm.weight"],
@@ -162,47 +161,6 @@ class LlamaForCausalLMConverter(DecoderOnlyConverter):
                 per_layer_postfixes=[".mlp.down_proj.weight"],
             ),
         }
-
-        if self.quantize:
-            for param_name in self.quantized_param_names:
-                del convert_dict[param_name]
-
-        return convert_dict
-
-    @property
-    def quantized_param_names(self) -> List[str]:
-        """The quantized parameters' names in LLaMA."""
-        return super().quantized_param_names + [
-            "mlp/c_gate/weight:0",
-        ]
-
-    @property
-    def quantized_convert_dict(
-        self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for quantized layers in LLaMA."""
-        convert_dict = super().quantized_convert_dict
-        convert_dict.update(
-            {
-                "mlp/c_gate/in_scale:0": nontype_partial(
-                    self.quantized_linear_weight_convert,
-                    per_layer_postfixes=[".ff_gate.in_scale"],
-                ),
-                "mlp/c_gate/out_scale:0": nontype_partial(
-                    self.quantized_linear_weight_convert,
-                    per_layer_postfixes=[".ff_gate.out_scale"],
-                ),
-                "mlp/c_gate/weight_scale:0": nontype_partial(
-                    self.quantized_linear_weight_convert,
-                    per_layer_postfixes=[".ff_gate.weight_scale"],
-                ),
-                "mlp/c_gate/int8_weight:0": nontype_partial(
-                    self.quantized_linear_weight_convert,
-                    per_layer_postfixes=[".ff_gate.int8_weight"],
-                ),
-            }
-        )
-        return convert_dict
 
     @property
     def non_transformer_convert_dict(

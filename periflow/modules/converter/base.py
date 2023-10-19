@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from abc import ABC
+from typing import Callable, Dict, List, Optional, Union
 
 import h5py  # type: ignore[import]
 import numpy as np
@@ -17,10 +17,10 @@ from periflow.enums import CheckpointDataType
 from periflow.errors import NotSupportedCheckpointError
 from periflow.logging import logger
 from periflow.modules.converter.interface import (
-    ConversionInterface,
-    DecoderConversionInterface,
-    EncoderConversionInterface,
-    QuantConversionInterface,
+    DecoderTFBlockConversionInterface,
+    EncoderTFBlockConversionInterface,
+    ModelConversionInterface,
+    NonTFBlockConversionInterface,
 )
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
@@ -37,6 +37,9 @@ SUPPORTED_GELU_FAMILY = [
 ]
 SUPPORTED_HEAD_SIZE = [64, 80, 96, 128, 256]
 
+ENCODER_PREFIX = "encoder"
+DECODER_PREFIX = "decoder"
+
 
 class AbstractConverter(ABC):
     """Abstract class for converting Hugging Face checkpoint to Periflow checkpoint.
@@ -45,7 +48,6 @@ class AbstractConverter(ABC):
         config (PreTrainedConfig): Hugging Face model configuration.
         generation_config (Optional[GenerationConfig]): Hugginface generation config.
             When set to None, `config` is used for configuring generation.
-        output_path (str): Output path for the Periflow checkpoint.
         data_type (CheckpointDataType): Data type for the Periflow checkpoint.
         quantize (bool): Whether to quantize the Periflow checkpoint.
 
@@ -55,33 +57,12 @@ class AbstractConverter(ABC):
         self,
         config: PretrainedConfig,
         generation_config: Optional[GenerationConfig],
-        output_path: str,
         data_type: CheckpointDataType,
-        quantize: bool = False,
     ) -> None:
         """Initialize converter."""
         self.config = config
         self.generation_config = generation_config
-        self.output_path = output_path
         self.data_type = data_type
-        self.quantize = quantize
-
-    @property
-    @abstractmethod
-    def model_type(self) -> str:
-        """Get model type."""
-
-    @abstractmethod
-    def check_config(self) -> None:
-        """Check if the given model config can be converted to PeriFlow format."""
-
-    @abstractmethod
-    def convert(self, state_dict: Dict[str, torch.Tensor]) -> None:
-        """Convert all layers in state_dict to PeriFlow format."""
-
-    @abstractmethod
-    def get_attributes(self) -> Dict[str, Any]:
-        """Get checkpoint attributes."""
 
     def get_eos_token_id(self) -> Optional[int]:
         """Get ID of EOS token."""
@@ -318,9 +299,9 @@ class AbstractConverter(ABC):
 
 class DecoderOnlyConverter(
     AbstractConverter,
-    ConversionInterface,
-    DecoderConversionInterface,
-    QuantConversionInterface,
+    ModelConversionInterface,
+    NonTFBlockConversionInterface,
+    DecoderTFBlockConversionInterface,
 ):
     """Converter for Decoder-Only models."""
 
@@ -332,33 +313,51 @@ class DecoderOnlyConverter(
                 valid_options=SUPPORTED_HEAD_SIZE,
             )
 
-    def convert(self, state_dict: Dict[str, torch.Tensor]) -> None:
-        """Convert Decoder-Only model's all layer to PeriFlow format."""
-        total_layers = len(self.decoder_convert_dict) * self.decoder_layer_num + len(
-            self.non_transformer_convert_dict
-        )
-        if self.quantize:
-            total_layers += len(self.quantized_convert_dict) * self.decoder_layer_num
+    def get_convert_dict(
+        self,
+    ) -> Dict[str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]]:
+        """Get convert dict for Decoder-Only model."""
+        return {
+            "non-transformer": self.non_transformer_convert_dict,
+            "decoder": self.decoder_convert_dict,
+        }
 
-        with h5py.File(self.output_path, "w") as out_f, tqdm(
+    def convert(
+        self,
+        model: torch.nn.Module,
+        output_path: str,
+        convert_dict: Dict[
+            str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
+        ],
+    ) -> None:
+        """Convert Decoder-Only model's all layer to PeriFlow format."""
+        state_dict = model.state_dict()
+        total_layers = len(convert_dict["decoder"]) * self.decoder_layer_num + len(
+            convert_dict["non-transformer"]
+        )
+        with h5py.File(output_path, "w") as out_f, tqdm(
             total=total_layers, desc="Converting", unit="tensor"
         ) as pbar:
-            self.convert_decoder_layers(state_dict=state_dict, out_f=out_f, pbar=pbar)
-            if self.quantize:
-                self.convert_quantized_layers(
-                    state_dict=state_dict, out_f=out_f, pbar=pbar
-                )
+            self.convert_decoder_layers(
+                state_dict=state_dict,
+                convert_dict=convert_dict["decoder"],
+                out_f=out_f,
+                pbar=pbar,
+            )
             self.convert_non_transformer_layers(
-                state_dict=state_dict, out_f=out_f, pbar=pbar
+                state_dict=state_dict,
+                convert_dict=convert_dict["non-transformer"],
+                out_f=out_f,
+                pbar=pbar,
             )
 
 
 class EncoderDecoderConverter(
     AbstractConverter,
-    ConversionInterface,
-    EncoderConversionInterface,
-    DecoderConversionInterface,
-    QuantConversionInterface,
+    ModelConversionInterface,
+    NonTFBlockConversionInterface,
+    EncoderTFBlockConversionInterface,
+    DecoderTFBlockConversionInterface,
 ):
     """Converter for Encoder-Decoder models."""
 
@@ -370,25 +369,52 @@ class EncoderDecoderConverter(
                 valid_options=SUPPORTED_HEAD_SIZE,
             )
 
-    def convert(self, state_dict: Dict[str, torch.Tensor]) -> None:
+    def get_convert_dict(
+        self,
+    ) -> Dict[str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]]:
+        """Get convert dict for Encoder-Decoder model."""
+        return {
+            "non-transformer": self.non_transformer_convert_dict,
+            "encoder": self.encoder_convert_dict,
+            "decoder": self.decoder_convert_dict,
+        }
+
+    def convert(
+        self,
+        model: torch.nn.Module,
+        output_path: str,
+        convert_dict: Dict[
+            str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
+        ],
+    ) -> None:
         """Convert Encoder-Decoder model's all layer to PeriFlow format."""
+        state_dict = model.state_dict()
         total_layers = (
             len(self.encoder_convert_dict) * self.encoder_layer_num
             + len(self.decoder_convert_dict) * self.decoder_layer_num
             + len(self.non_transformer_convert_dict)
         )
-        with h5py.File(self.output_path, "w") as out_f, tqdm(
+        with h5py.File(output_path, "w") as out_f, tqdm(
             total=total_layers, desc="Converting", unit="tensor"
         ) as pbar:
-            self.convert_encoder_layers(state_dict=state_dict, out_f=out_f, pbar=pbar)
-            self.convert_decoder_layers(state_dict=state_dict, out_f=out_f, pbar=pbar)
-            self.convert_non_transformer_layers(
-                state_dict=state_dict, out_f=out_f, pbar=pbar
+            self.convert_decoder_layers(
+                state_dict=state_dict,
+                convert_dict=convert_dict["decoder"],
+                out_f=out_f.create_group[DECODER_PREFIX],
+                pbar=pbar,
             )
-            if self.quantize:
-                self.convert_quantized_layers(
-                    state_dict=state_dict, out_f=out_f, pbar=pbar
-                )
+            self.convert_encoder_layers(
+                state_dict=state_dict,
+                convert_dict=convert_dict["encoder"],
+                out_f=out_f.create_group[ENCODER_PREFIX],
+                pbar=pbar,
+            )
+            self.convert_non_transformer_layers(
+                state_dict=state_dict,
+                convert_dict=convert_dict["non-transformer"],
+                out_f=out_f,
+                pbar=pbar,
+            )
 
     def get_decoder_start_token_id(self) -> Optional[int]:
         """Get ID of decoder start token."""
@@ -421,3 +447,6 @@ class EncoderDecoderConverter(
             )
 
         return decoder_start_token_id
+
+
+OneOfConverter = Union[EncoderDecoderConverter, DecoderOnlyConverter]

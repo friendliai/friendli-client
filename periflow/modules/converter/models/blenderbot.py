@@ -15,10 +15,11 @@ from transformers import BlenderbotConfig  # type: ignore[import]
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
 from periflow.modules.converter.base import (
+    DECODER_PREFIX,
+    ENCODER_PREFIX,
     SUPPORTED_GELU_FAMILY,
     EncoderDecoderConverter,
 )
-from periflow.modules.converter.interface import DECODER_PREFIX, ENCODER_PREFIX
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,

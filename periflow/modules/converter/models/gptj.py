@@ -12,8 +12,11 @@ from transformers import GPTJConfig  # type: ignore[import]
 
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
-from periflow.modules.converter.base import SUPPORTED_GELU_FAMILY, DecoderOnlyConverter
-from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.base import (
+    DECODER_PREFIX,
+    SUPPORTED_GELU_FAMILY,
+    DecoderOnlyConverter,
+)
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
@@ -132,7 +135,7 @@ class GPTJForCausalLMConverter(DecoderOnlyConverter):
     @property
     def decoder_convert_dict(self) -> Dict[str, Any]:
         """The convert_dict for transformer modules in GPTJ."""
-        convert_dict = {
+        return {
             "ln_1/gamma:0": nontype_partial(
                 self.ln_weight_convert,
                 per_layer_postfixes=[".ln_1.weight"],
@@ -170,22 +173,6 @@ class GPTJForCausalLMConverter(DecoderOnlyConverter):
                 per_layer_postfixes=[".mlp.fc_out.weight"],
             ),
         }
-
-        if self.quantize:
-            convert_dict.update(
-                {
-                    "ln_2/gamma:0": nontype_partial(
-                        self.ln_weight_convert, per_layer_postfixes=[".ln_2.weight"]
-                    ),
-                    "ln_2/beta:0": nontype_partial(
-                        self.ln_bias_convert, per_layer_postfixes=[".ln_2.bias"]
-                    ),
-                }
-            )
-            for param_name in self.quantized_param_names:
-                del convert_dict[param_name]
-
-        return convert_dict
 
     @property
     def decoder_layer_prefix(self) -> str:

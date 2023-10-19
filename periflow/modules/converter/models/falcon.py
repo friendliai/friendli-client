@@ -12,8 +12,7 @@ from transformers import FalconConfig  # type: ignore[import]
 
 from periflow.errors import NotSupportedCheckpointError
 from periflow.logging import logger
-from periflow.modules.converter.base import DecoderOnlyConverter
-from periflow.modules.converter.interface import DECODER_PREFIX
+from periflow.modules.converter.base import DECODER_PREFIX, DecoderOnlyConverter
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     convert_to_gpt_j_params,
@@ -213,10 +212,6 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
                     ),
                 }
             )
-
-        if self.quantize:
-            for param_name in self.quantized_param_names:
-                del convert_dict[param_name]
 
         return convert_dict
 
