@@ -46,7 +46,7 @@ class SmoothQuantCodeGenHook(SmoothQuantHook):
                 [
                     decoder_layer.attn.qkv_proj.weight.data,
                 ],
-                f"{self.quantized_layer_prefix}.{index}.attn.qkv_proj",
+                f"{self.quantized_layer_prefix}{index}.attn.qkv_proj",
             )
             yield (
                 [
@@ -56,19 +56,19 @@ class SmoothQuantCodeGenHook(SmoothQuantHook):
                 [
                     decoder_layer.mlp.fc_in.weight.data,
                 ],
-                f"{self.quantized_layer_prefix}.{index}.mlp.fc_in",
+                f"{self.quantized_layer_prefix}{index}.mlp.fc_in",
             )
             if quant_args.attn_fc_smoothing:
                 yield (
                     [decoder_layer.attn_fc_pre_smoother.scale.data],
                     [decoder_layer.attn.out_proj.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.self_attention.dense",
+                    f"{self.quantized_layer_prefix}{index}.self_attention.dense",
                 )
             if quant_args.ff2_smoothing:
                 yield (
                     [decoder_layer.ff2_pre_smoother.scale.data],
                     [decoder_layer.mlp.fc_out.data],
-                    f"{self.quantized_layer_prefix}.{index}.mlp.dense_4h_to_h",
+                    f"{self.quantized_layer_prefix}{index}.mlp.dense_4h_to_h",
                 )
 
     def reshape_qkv_weight(
@@ -118,40 +118,40 @@ class SmoothQuantCodeGenHook(SmoothQuantHook):
                 layer_index=index,
                 q=QuantInput(
                     qkv_weight,
-                    f"{self.quantized_layer_prefix}.{index}.attn.qkv_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.qkv_proj",
                     0,
                     attn_weight_outdim // 3,
                     self.sort_qkv_output_stats,
                 ),
                 k=QuantInput(
                     qkv_weight,
-                    f"{self.quantized_layer_prefix}.{index}.attn.qkv_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.qkv_proj",
                     attn_weight_outdim // 3,
                     attn_weight_outdim // 3 * 2,
                     self.sort_qkv_output_stats,
                 ),
                 v=QuantInput(
                     qkv_weight,
-                    f"{self.quantized_layer_prefix}.{index}.attn.qkv_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.qkv_proj",
                     attn_weight_outdim // 3 * 2,
                     attn_weight_outdim,
                     self.sort_qkv_output_stats,
                 ),
                 attn_fc=QuantInput(
                     self_attn.out_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.attn.out_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.out_proj",
                     None,
                     None,
                 ),
                 ff1=QuantInput(
                     fc1.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.fc_in",
+                    f"{self.quantized_layer_prefix}{index}.mlp.fc_in",
                     None,
                     None,
                 ),
                 ff2=QuantInput(
                     fc2.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.fc_out",
+                    f"{self.quantized_layer_prefix}{index}.mlp.fc_out",
                     None,
                     None,
                 ),

@@ -47,7 +47,7 @@ class SmoothQuantGPTJHook(SmoothQuantHook):
                     decoder_layer.attn.k_proj.weight.data,  # [OutDim, InDim]
                     decoder_layer.attn.v_proj.weight.data,  # [OutDim, InDim]
                 ],
-                f"{self.quantized_layer_prefix}.{index}.attn.q_proj",  # the input tensors fed into Q, K, V matrices are identical.
+                f"{self.quantized_layer_prefix}{index}.attn.q_proj",  # the input tensors fed into Q, K, V matrices are identical.
             )
             # [LayerNorm 1] - [ MLP FF1 ] gets smoothed
             yield (
@@ -58,19 +58,19 @@ class SmoothQuantGPTJHook(SmoothQuantHook):
                 [
                     decoder_layer.mlp.fc_in.weight.data,
                 ],
-                f"{self.quantized_layer_prefix}.{index}.mlp.fc_in",
+                f"{self.quantized_layer_prefix}{index}.mlp.fc_in",
             )
             if quant_args.attn_fc_smoothing:
                 yield (
                     [decoder_layer.attn_fc_pre_smoother.scale.data],
                     [decoder_layer.attn.out_proj.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.attn.out_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.out_proj",
                 )
             if quant_args.ff2_smoothing:
                 yield (
                     [decoder_layer.ff2_pre_smoother.scale.data],
                     [decoder_layer.mlp.fc_out.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.mlp.fc_out",
+                    f"{self.quantized_layer_prefix}{index}.mlp.fc_out",
                 )
 
     def iter_quant_inputs(self, model: GPTJForCausalLM) -> Iterator[TFQuantInputs]:
@@ -83,37 +83,37 @@ class SmoothQuantGPTJHook(SmoothQuantHook):
                 layer_index=index,
                 q=QuantInput(
                     attn.q_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.attn.q_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.q_proj",
                     None,
                     None,
                 ),
                 k=QuantInput(
                     attn.k_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.attn.k_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.k_proj",
                     None,
                     None,
                 ),
                 v=QuantInput(
                     attn.v_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.attn.v_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.v_proj",
                     None,
                     None,
                 ),
                 attn_fc=QuantInput(
                     attn.out_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.attn.out_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.out_proj",
                     None,
                     None,
                 ),
                 ff1=QuantInput(
                     fc1.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.fc_in",
+                    f"{self.quantized_layer_prefix}{index}.mlp.fc_in",
                     None,
                     None,
                 ),
                 ff2=QuantInput(
                     fc2.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.fc_out",
+                    f"{self.quantized_layer_prefix}{index}.mlp.fc_out",
                     None,
                     None,
                 ),

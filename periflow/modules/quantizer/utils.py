@@ -224,7 +224,9 @@ def build_percentile_statistics(
                     min=1e-7
                 ),
             ).icdf(
-                torch.Tensor([scale_percentile / 100.0]).to(max_input_M1[name].device)
+                torch.Tensor([(scale_percentile / 100.0) * 0.5 + 0.5]).to(
+                    max_input_M1[name].device
+                )
             )
             for name in list(max_input_M1.keys())
         }
@@ -237,7 +239,9 @@ def build_percentile_statistics(
                     min=1e-7
                 ),
             ).icdf(
-                torch.Tensor([scale_percentile / 100.0]).to(max_output_M1[name].device)
+                torch.Tensor([(scale_percentile / 100.0) * 0.5 + 0.5]).to(
+                    max_output_M1[name].device
+                )
             )
             for name in list(max_output_M1.keys())
         }

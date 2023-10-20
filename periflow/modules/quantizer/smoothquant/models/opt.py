@@ -36,7 +36,7 @@ class SmoothQuantOPTHook(SmoothQuantHook):
                     decoder_layer.self_attn.k_proj.weight.data,
                     decoder_layer.self_attn.v_proj.weight.data,
                 ],
-                f"{self.quantized_layer_prefix}.{index}.self_attn.q_proj",  # the input tensors fed into Q, K, V matrices are identical.
+                f"{self.quantized_layer_prefix}{index}.self_attn.q_proj",  # the input tensors fed into Q, K, V matrices are identical.
             )
             # [LayerNorm 2] - [ MLP FF 1 ] gets smoothed
             yield (
@@ -45,19 +45,19 @@ class SmoothQuantOPTHook(SmoothQuantHook):
                     decoder_layer.final_layer_norm.bias.data,
                 ],
                 [decoder_layer.fc1.weight.data],
-                f"{self.quantized_layer_prefix}.{index}.fc1",
+                f"{self.quantized_layer_prefix}{index}.fc1",
             )
             if quant_args.attn_fc_smoothing:
                 yield (
                     [decoder_layer.attn_fc_pre_smoother.scale.data],
                     [decoder_layer.self_attn.out_proj.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.out_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.out_proj",
                 )
             if quant_args.ff2_smoothing:
                 yield (
                     [decoder_layer.ff2_pre_smoother.scale.data],
                     [decoder_layer.fc2.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.fc2",
+                    f"{self.quantized_layer_prefix}{index}.fc2",
                 )
 
     def iter_quant_inputs(self, model: OPTForCausalLM) -> Iterator[TFQuantInputs]:
@@ -70,37 +70,37 @@ class SmoothQuantOPTHook(SmoothQuantHook):
                 layer_index=index,
                 q=QuantInput(
                     self_attn.q_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.q_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.q_proj",
                     None,
                     None,
                 ),
                 k=QuantInput(
                     self_attn.k_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.k_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.k_proj",
                     None,
                     None,
                 ),
                 v=QuantInput(
                     self_attn.v_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.v_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.v_proj",
                     None,
                     None,
                 ),
                 attn_fc=QuantInput(
                     self_attn.out_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.out_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.out_proj",
                     None,
                     None,
                 ),
                 ff1=QuantInput(
                     fc1.weight,
-                    f"{self.quantized_layer_prefix}.{index}.fc1",
+                    f"{self.quantized_layer_prefix}{index}.fc1",
                     None,
                     None,
                 ),
                 ff2=QuantInput(
                     fc2.weight,
-                    f"{self.quantized_layer_prefix}.{index}.fc2",
+                    f"{self.quantized_layer_prefix}{index}.fc2",
                     None,
                     None,
                 ),
@@ -120,4 +120,4 @@ class SmoothQuantOPTHook(SmoothQuantHook):
 
     def get_tf_blocks(self, model: OPTForCausalLM) -> List[torch.nn.Module]:
         """Returns the decoder layers(transformer blocks) in the model."""
-        return list(model.decoder.layers)
+        return list(model.model.decoder.layers)

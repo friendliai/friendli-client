@@ -129,7 +129,7 @@ class AWQHook(AbstractQuantHook):
             )
 
         return TFQuantResults(
-            layer_prefix_with_index=f"{self.quantized_layer_prefix}.{quant_input.layer_index}",
+            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_input.layer_index}.",
             q=get_scale(quant_input.q),
             k=get_scale(quant_input.k),
             v=get_scale(quant_input.v),
@@ -442,13 +442,13 @@ class AWQQuantizer(CommonQuantizer):
 
                 if isinstance(layer, WeightOnlyQuantResult):
                     state_dict[
-                        f"{quant_result.layer_prefix_with_index}.{layer_name}.woq_weight"
+                        f"{quant_result.layer_prefix_with_index}{layer_name}.woq_weight"
                     ] = layer.q_weight
                     state_dict[
-                        f"{quant_result.layer_prefix_with_index}.{layer_name}.woq_weight_scale"
+                        f"{quant_result.layer_prefix_with_index}{layer_name}.woq_weight_scale"
                     ] = layer.weight_scale
                     state_dict[
-                        f"{quant_result.layer_prefix_with_index}.{layer_name}.woq_weight_zp"
+                        f"{quant_result.layer_prefix_with_index}{layer_name}.woq_weight_zp"
                     ] = layer.zero_point
 
         return state_dict

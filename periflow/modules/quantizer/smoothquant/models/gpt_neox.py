@@ -50,7 +50,7 @@ class SmoothQuantGPTNeoXHook(SmoothQuantHook):
                 [
                     decoder_layer.attention.query_key_value.weight.data,
                 ],
-                f"{self.quantized_layer_prefix}.{index}.attention.query_key_value",  # the input tensors fed into Q, K, V matrices are identical.
+                f"{self.quantized_layer_prefix}{index}.attention.query_key_value",  # the input tensors fed into Q, K, V matrices are identical.
             )
             # [LayerNorm 2] - [ MLP FF 1 ] gets smoothed
             yield (
@@ -59,19 +59,19 @@ class SmoothQuantGPTNeoXHook(SmoothQuantHook):
                     decoder_layer.post_attention_layernorm.bias.data,
                 ],
                 [decoder_layer.mlp.dense_h_to_4h.weight.data],  # [OutDim, InDim]
-                f"{self.quantized_layer_prefix}.{index}.mlp.dense_h_to_4h",
+                f"{self.quantized_layer_prefix}{index}.mlp.dense_h_to_4h",
             )
             if quant_args.attn_fc_smoothing:
                 yield (
                     [decoder_layer.attn_fc_pre_smoother.scale.data],
                     [decoder_layer.attention.dense.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.attention.dense",
+                    f"{self.quantized_layer_prefix}{index}.attention.dense",
                 )
             if quant_args.ff2_smoothing:
                 yield (
                     [decoder_layer.ff2_pre_smoother.scale.data],
                     [decoder_layer.mlp.dense_4h_to_h.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.mlp.dense_4h_to_h",
+                    f"{self.quantized_layer_prefix}{index}.mlp.dense_4h_to_h",
                 )
 
     def reshape_qkv_weight(
@@ -157,40 +157,40 @@ class SmoothQuantGPTNeoXHook(SmoothQuantHook):
                 layer_index=index,
                 q=QuantInput(
                     qkv_weight,
-                    f"{self.quantized_layer_prefix}.{index}.attention.query_key_value",
+                    f"{self.quantized_layer_prefix}{index}.attention.query_key_value",
                     0,
                     attention_weight_outdim // 3,
                     self.sort_qkv_output_stats,
                 ),
                 k=QuantInput(
                     qkv_weight,
-                    f"{self.quantized_layer_prefix}.{index}.attention.query_key_value",
+                    f"{self.quantized_layer_prefix}{index}.attention.query_key_value",
                     attention_weight_outdim // 3,
                     attention_weight_outdim // 3 * 2,
                     self.sort_qkv_output_stats,
                 ),
                 v=QuantInput(
                     qkv_weight,
-                    f"{self.quantized_layer_prefix}.{index}.attention.query_key_value",
+                    f"{self.quantized_layer_prefix}{index}.attention.query_key_value",
                     attention_weight_outdim // 3 * 2,
                     attention_weight_outdim,
                     self.sort_qkv_output_stats,
                 ),
                 attn_fc=QuantInput(
                     attention.dense.weight,
-                    f"{self.quantized_layer_prefix}.{index}.attention.dense",
+                    f"{self.quantized_layer_prefix}{index}.attention.dense",
                     None,
                     None,
                 ),
                 ff1=QuantInput(
                     fc1.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.dense_h_to_4h",
+                    f"{self.quantized_layer_prefix}{index}.mlp.dense_h_to_4h",
                     None,
                     None,
                 ),
                 ff2=QuantInput(
                     fc2.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.dense_4h_to_h",
+                    f"{self.quantized_layer_prefix}{index}.mlp.dense_4h_to_h",
                     None,
                     None,
                 ),

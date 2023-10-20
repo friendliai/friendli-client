@@ -208,7 +208,7 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
         self.pre_quantize(model)
         quant_result_iter = self.quantize(model)
         state_dict = {
-            **state_dict,
+            **model.state_dict(),
             **self.get_quantized_state_dict(model, quant_result_iter),
         }
 

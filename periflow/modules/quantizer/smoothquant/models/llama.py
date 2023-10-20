@@ -87,7 +87,7 @@ class SmoothQuantLlamaHook(SmoothQuantHook):
                     decoder_layer.self_attn.k_proj.weight.data,
                     decoder_layer.self_attn.v_proj.weight.data,
                 ],
-                f"{self.quantized_layer_prefix}.{index}.self_attn.q_proj",  # the input tensors fed into Q, K, V matrices are identical.
+                f"{self.quantized_layer_prefix}{index}.self_attn.q_proj",  # the input tensors fed into Q, K, V matrices are identical.
             )
             # [LayerNorm 2] - [ MLP FF 1 ] gets smoothed
             yield (
@@ -97,7 +97,7 @@ class SmoothQuantLlamaHook(SmoothQuantHook):
                 [
                     decoder_layer.mlp.up_proj.weight.data,
                 ],
-                f"{self.quantized_layer_prefix}.{index}.mlp.up_proj",
+                f"{self.quantized_layer_prefix}{index}.mlp.up_proj",
             )
             # [LayerNomr 2] = [ MLP GATED FF ] gets smoothed
             yield (
@@ -107,20 +107,20 @@ class SmoothQuantLlamaHook(SmoothQuantHook):
                 [
                     decoder_layer.mlp.gate_proj.weight.data,
                 ],
-                f"{self.quantized_layer_prefix}.{index}.mlp.gate_proj",
+                f"{self.quantized_layer_prefix}{index}.mlp.gate_proj",
             )
             if quant_args.attn_fc_smoothing:
                 yield (
                     [decoder_layer.attn_fc_pre_smoother.scale.data],
                     [decoder_layer.self_attn.o_proj.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.o_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.o_proj",
                 )
 
             if quant_args.ff2_smoothing:
                 yield (
                     [decoder_layer.ff2_pre_smoother.scale.data],
                     [decoder_layer.mlp.down_proj.weight.data],
-                    f"{self.quantized_layer_prefix}.{index}.mlp.down_proj",
+                    f"{self.quantized_layer_prefix}{index}.mlp.down_proj",
                 )
 
     def iter_quant_inputs(self, model: LlamaForCausalLM) -> Iterator[TFQuantInputs]:
@@ -135,43 +135,43 @@ class SmoothQuantLlamaHook(SmoothQuantHook):
                 layer_index=index,
                 q=QuantInput(
                     self_attn.q_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.q_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.q_proj",
                     None,
                     None,
                 ),
                 k=QuantInput(
                     self_attn.k_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.k_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.k_proj",
                     None,
                     None,
                 ),
                 v=QuantInput(
                     self_attn.v_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.v_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.v_proj",
                     None,
                     None,
                 ),
                 attn_fc=QuantInput(
                     self_attn.o_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.o_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.o_proj",
                     None,
                     None,
                 ),
                 ff1=QuantInput(
                     fc1.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.up_proj",
+                    f"{self.quantized_layer_prefix}{index}.mlp.up_proj",
                     None,
                     None,
                 ),
                 ff_gate=QuantInput(
                     ff_gate.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.gate_proj",
+                    f"{self.quantized_layer_prefix}{index}.mlp.gate_proj",
                     None,
                     None,
                 ),
                 ff2=QuantInput(
                     fc2.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.down_proj",
+                    f"{self.quantized_layer_prefix}{index}.mlp.down_proj",
                     None,
                     None,
                 ),
@@ -202,7 +202,7 @@ class SmoothQuantLlamaHook(SmoothQuantHook):
 
         quant_input = cast(LlamaTFQuantInput, quant_input)
         return LlamaTFQuantResults(
-            layer_prefix_with_index=f"{self.quantized_layer_prefix}.{quant_input.layer_index}",
+            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_input.layer_index}.",
             q=get_scale(quant_input.q),
             k=get_scale(quant_input.k),
             v=get_scale(quant_input.v),

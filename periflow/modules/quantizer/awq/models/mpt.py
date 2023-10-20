@@ -95,37 +95,37 @@ class AWQMPTHook(AWQHook):
                 layer_index=index,
                 q=QuantInput(
                     self_attn.Wqkv.weight,  # type: ignore
-                    f"{self.quantized_layer_prefix}.{index}.attn.Wqkv",
+                    f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
                     0,
                     attn_weight_outdim // 3,
                 ),
                 k=QuantInput(
                     self_attn.Wqkv.weight,  # type: ignore
-                    f"{self.quantized_layer_prefix}.{index}.attn.Wqkv",
+                    f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
                     attn_weight_outdim // 3,
                     attn_weight_outdim // 3 * 2,
                 ),
                 v=QuantInput(
                     self_attn.Wqkv.weight,  # type: ignore
-                    f"{self.quantized_layer_prefix}.{index}.attn.Wqkv",
+                    f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
                     attn_weight_outdim // 3 * 2,
                     attn_weight_outdim,
                 ),
                 attn_fc=QuantInput(
                     self_attn.out_proj.weight,  # type: ignore
-                    f"{self.quantized_layer_prefix}.{index}.attn.out_proj",
+                    f"{self.quantized_layer_prefix}{index}.attn.out_proj",
                     None,
                     None,
                 ),
                 ff1=QuantInput(
                     fc1.weight,  # type: ignore
-                    f"{self.quantized_layer_prefix}.{index}.ffn.up_proj",
+                    f"{self.quantized_layer_prefix}{index}.ffn.up_proj",
                     None,
                     None,
                 ),
                 ff2=QuantInput(
                     fc2.weight,  # type: ignore
-                    f"{self.quantized_layer_prefix}.{index}.ffn.down_proj",
+                    f"{self.quantized_layer_prefix}{index}.ffn.down_proj",
                     None,
                     None,
                 ),
@@ -138,11 +138,6 @@ class AWQMPTHook(AWQHook):
     def get_tf_blocks(self, model: torch.nn.Module) -> List[torch.nn.Module]:
         """Returns the transformer blocks in MPTForCausalLM."""
         return model.transformer.blocks  # type: ignore
-
-    @property
-    def quantized_layer_prefix(self) -> str:
-        """Returns the prefix of the transformer block name."""
-        return "transformer.blocks"
 
     @property
     def avoid_clipping_layer_names(self) -> List[str]:

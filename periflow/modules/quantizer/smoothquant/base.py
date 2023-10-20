@@ -154,7 +154,7 @@ class SmoothQuantHook(AbstractQuantHook):
             )
 
         return TFQuantResults(
-            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_input.layer_index}",
+            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_input.layer_index}.",
             q=get_scale(quant_input.q),
             k=get_scale(quant_input.k),
             v=get_scale(quant_input.v),
@@ -183,20 +183,20 @@ class SmoothQuantHook(AbstractQuantHook):
         if sq_args.attn_fc_smoothing:
             new_layer_convert_dict.update(
                 {
-                    "attn/c_proj/smoothing_vector:0": nontype_partial(
+                    "attn/c_proj/smoothquant/smoothing_vector:0": nontype_partial(
                         scale_convert,
                         per_layer_postfixes=[".attn_fc_pre_smoother.scale"],
-                        data_type=self.converter.data_type,
+                        data_type="fp32",
                     )
                 }
             )
         if sq_args.ff2_smoothing:
             new_layer_convert_dict.update(
                 {
-                    "mlp/c_proj/smoothing_vector:0": nontype_partial(
+                    "mlp/c_proj/smoothquant/smoothing_vector:0": nontype_partial(
                         scale_convert,
                         per_layer_postfixes=[".ff2_pre_smoother.scale"],
-                        data_type=self.converter.data_type,
+                        data_type="fp32",
                     )
                 }
             )
@@ -209,105 +209,105 @@ class SmoothQuantHook(AbstractQuantHook):
     ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
         """Return the convert_dict for quantized layers."""
         return {
-            "attn/c_attn/q_weight_scale:0": nontype_partial(
+            "attn/c_attn/smoothquant/q_weight_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".q.weight_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_attn/k_weight_scale:0": nontype_partial(
+            "attn/c_attn/smoothquant/k_weight_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".k.weight_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_attn/v_weight_scale:0": nontype_partial(
+            "attn/c_attn/smoothquant/v_weight_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".v.weight_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_attn/q_out_scale:0": nontype_partial(
+            "attn/c_attn/smoothquant/q_out_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".q.out_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_attn/k_out_scale:0": nontype_partial(
+            "attn/c_attn/smoothquant/k_out_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".k.out_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_attn/v_out_scale:0": nontype_partial(
+            "attn/c_attn/smoothquant/v_out_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".v.out_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_attn/in_scale:0": nontype_partial(
+            "attn/c_attn/smoothquant/in_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".q.in_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_proj/weight_scale:0": nontype_partial(
+            "attn/c_proj/smoothquant/weight_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".attn_fc.weight_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_proj/out_scale:0": nontype_partial(
+            "attn/c_proj/smoothquant/out_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".attn_fc.out_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_proj/in_scale:0": nontype_partial(
+            "attn/c_proj/smoothquant/in_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".attn_fc.in_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "mlp/c_fc/weight_scale:0": nontype_partial(
+            "mlp/c_fc/smoothquant/weight_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".ff1.weight_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "mlp/c_fc/out_scale:0": nontype_partial(
+            "mlp/c_fc/smoothquant/out_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".ff1.out_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "mlp/c_fc/in_scale:0": nontype_partial(
+            "mlp/c_fc/smoothquant/in_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".ff1.in_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "mlp/c_proj/weight_scale:0": nontype_partial(
+            "mlp/c_proj/smoothquant/weight_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".ff2.weight_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "mlp/c_proj/out_scale:0": nontype_partial(
+            "mlp/c_proj/smoothquant/out_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".ff2.out_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "mlp/c_proj/in_scale:0": nontype_partial(
+            "mlp/c_proj/smoothquant/in_scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[".ff2.in_scale"],
-                data_type=self.converter.data_type,
+                data_type="fp32",
             ),
-            "attn/c_attn/int8_weight:0": nontype_partial(
+            "attn/c_attn/smoothquant/weight:0": nontype_partial(
                 quantized_qkv_weight_convert,
                 per_layer_postfixes=[
-                    ".q.int8_weight",
-                    ".k.int8_weight",
-                    ".v.int8_weight",
+                    ".q.weight",
+                    ".k.weight",
+                    ".v.weight",
                 ],
             ),
-            "attn/c_proj/int8_weight:0": nontype_partial(
+            "attn/c_proj/smoothquant/weight:0": nontype_partial(
                 quantized_linear_weight_convert,
-                per_layer_postfixes=[".attn_fc.int8_weight"],
+                per_layer_postfixes=[".attn_fc.weight"],
             ),
-            "mlp/c_fc/int8_weight:0": nontype_partial(
+            "mlp/c_fc/smoothquant/weight:0": nontype_partial(
                 quantized_linear_weight_convert,
-                per_layer_postfixes=[".ff1.int8_weight"],
+                per_layer_postfixes=[".ff1.weight"],
             ),
-            "mlp/c_proj/int8_weight:0": nontype_partial(
+            "mlp/c_proj/smoothquant/weight:0": nontype_partial(
                 quantized_linear_weight_convert,
-                per_layer_postfixes=[".ff2.int8_weight"],
+                per_layer_postfixes=[".ff2.weight"],
             ),
         }
 
@@ -525,16 +525,16 @@ class SmoothQuantQuantizer(CommonQuantizer, ModelConversionInterface):
                 layer = getattr(quant_result, layer_name)
                 if isinstance(layer, WeightActQuantResult):
                     state_dict[
-                        f"{quant_result.layer_prefix_with_index}.{layer_name}.int8_weight"
+                        f"{quant_result.layer_prefix_with_index}{layer_name}.weight"
                     ] = layer.q_weight
                     state_dict[
-                        f"{quant_result.layer_prefix_with_index}.{layer_name}.in_scale"
+                        f"{quant_result.layer_prefix_with_index}{layer_name}.in_scale"
                     ] = layer.in_scale
                     state_dict[
-                        f"{quant_result.layer_prefix_with_index}.{layer_name}.out_scale"
+                        f"{quant_result.layer_prefix_with_index}{layer_name}.out_scale"
                     ] = layer.out_scale
                     state_dict[
-                        f"{quant_result.layer_prefix_with_index}.{layer_name}.weight_scale"
+                        f"{quant_result.layer_prefix_with_index}{layer_name}.weight_scale"
                     ] = layer.weight_scale
 
         return state_dict

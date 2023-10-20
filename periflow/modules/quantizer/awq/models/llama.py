@@ -183,43 +183,43 @@ class AWQLlamaHook(AWQHook):
                 layer_index=index,
                 q=QuantInput(
                     q_weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.q_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.q_proj",
                     None,
                     None,
                 ),
                 k=QuantInput(
                     k_weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.k_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.k_proj",
                     None,
                     None,
                 ),
                 v=QuantInput(
                     v_weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.v_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.v_proj",
                     None,
                     None,
                 ),
                 attn_fc=QuantInput(
                     self_attn.o_proj.weight,
-                    f"{self.quantized_layer_prefix}.{index}.self_attn.o_proj",
+                    f"{self.quantized_layer_prefix}{index}.self_attn.o_proj",
                     None,
                     None,
                 ),
                 ff1=QuantInput(
                     fc1.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.up_proj",
+                    f"{self.quantized_layer_prefix}{index}.mlp.up_proj",
                     None,
                     None,
                 ),
                 ff_gate=QuantInput(
                     ff_gate.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.gate_proj",
+                    f"{self.quantized_layer_prefix}{index}.mlp.gate_proj",
                     None,
                     None,
                 ),
                 ff2=QuantInput(
                     fc2.weight,
-                    f"{self.quantized_layer_prefix}.{index}.mlp.down_proj",
+                    f"{self.quantized_layer_prefix}{index}.mlp.down_proj",
                     None,
                     None,
                 ),
@@ -250,7 +250,7 @@ class AWQLlamaHook(AWQHook):
 
         quant_input = cast(LlamaTFQuantInputs, quant_input)
         return LlamaTFQuantResults(
-            layer_prefix_with_index=f"{self.quantized_layer_prefix}.{quant_input.layer_index}",
+            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_input.layer_index}.",
             q=get_scale(quant_input.q),
             k=get_scale(quant_input.k),
             v=get_scale(quant_input.v),
