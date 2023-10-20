@@ -19,7 +19,7 @@ class CalibrationDatasetConfig(BaseModel):
     format: QuantDatasetFormat = QuantDatasetFormat.JSON
     split: str = "validation"
     lookup_column_name: str = "text"
-    num_samples: int = 512
+    num_samples: int = 128
     max_length: int = 512
 
 

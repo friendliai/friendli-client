@@ -754,30 +754,9 @@ def convert(
 
     ```yaml
     # Default quantization configuration
-    mode: smoothquant
-    device: cuda:0
-    seed: 42
-    percentile: 99.9
-    calibration_dataset:
-        path_or_name: lambada
-        format: json
-        split: validation
-        lookup_column_name: text
-        num_samples: 512
-        max_length: 512
-    smoothquant_args:
-        migration_strength: 0.5
-        attn_fc_smoothing: False
-        ff2_smoothing: False
-    ```
-
-    Another example of quantization configuration using AWQ:
-
-    ```yaml
     mode: awq
     device: cuda:0
     seed: 42
-    percentile: 100
     calibration_dataset:
         path_or_name: lambada
         format: json
@@ -793,7 +772,6 @@ def convert(
     - **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
     - **`device`**: Device to run the quantization process. Defaults to "cuda:0".
     - **`seed`**: Random seed. Defaults to 42.
-    - **`percentile`**: The percentile of calibrated activations to be used for quantization range. Defaults to 99.9.
     - **`calibration_dataset`**
         - **`path_or_name`**: Path or name of the dataset. Datasets from either the Hugging Face Datasets Hub or local file system can be used. Defaults to "lambada".
         - **`format`**: Format of datasets. Defaults to "json".
@@ -801,21 +779,17 @@ def convert(
         - **`lookup_column_name`**: The name of a column in the dataset to be used as calibration inputs. Defaults to "text".
         - **`num_samples`**: The number of dataset samples to use for calibration. Note that the dataset will be shuffled before sampling. Defaults to 512.
         - **`max_length`**: The maximum length of a calibration input sequence. Defauts to 512.
-    - **`smoothquant_args`** (Fill in this field only for "smoothquant" mode)
-        - **`migration_strength`**: A hyper-parameter that controls the degree of difficulty migration from activation to weights. Defaults to 0.5.
-        - **`attn_fc_smoothing`**: Whether to apply smoothing to the linear layer after attention. Defaults to False.
-        - **`ff2_smoothing`**: Whether to apply smoothing to the second linear layer in the mlp. Defaults to False.
     - **`awq_args`** (Fill in this field only for "awq" mode)
         - **`quant_bit`** : Bit width of integers to represent weights. Possible values are `4` or `8`. Defaults to 4.
         - **`quant_group_size`**: Group size of quantized matrices. 64 is the only supported value at this time. Defaults to 64.
 
     :::tip
-    If you set `percentile` in qunat-config-file into 100,
+    If you set `percentile` in quant-config-file into 100,
     the quantization range will be determined by the maximum absolute values of the activation tensors.
     :::
 
     :::info
-    Currently, [SmoothQuant](https://arxiv.org/abs/2211.10438) and [AWQ](https://arxiv.org/abs/2306.00978) are the supported quantization schemes.
+    Currently, [AWQ](https://arxiv.org/abs/2306.00978) is the only supported quantization scheme.
     :::
 
     """
@@ -824,16 +798,16 @@ def convert(
             convert_checkpoint,
         )
         from periflow.modules.quantizer.schema.config import (  # pylint: disable=import-outside-toplevel
+            AWQConfig,
             OneOfQuantConfig,
             QuantConfig,
-            SmoothQuantConfig,
         )
     except ModuleNotFoundError as exc:
         secho_error_and_exit(str(exc))
 
     if not os.path.isdir(output_dir):
         if os.path.exists(output_dir):
-            secho_error_and_exit(f"'{output_dir}' exists, but its not a directory.")
+            secho_error_and_exit(f"'{output_dir}' exists, but it is not a directory.")
         os.mkdir(output_dir)
 
     quant_config: Optional[OneOfQuantConfig] = None
@@ -842,12 +816,12 @@ def convert(
             try:
                 quant_config_dict = cast(dict, yaml.safe_load(quant_config_file.read()))
             except yaml.YAMLError as err:
-                secho_error_and_exit(f"Failed to load smoothquant config file... {err}")
+                secho_error_and_exit(f"Failed to load the quant config file: {err}")
             quant_config = QuantConfig.model_validate(
                 {"config": quant_config_dict}
             ).config
         else:
-            quant_config = SmoothQuantConfig()
+            quant_config = AWQConfig()
 
     model_output_path = os.path.join(output_dir, output_model_file_name)
     tokenizer_output_dir = output_dir
@@ -871,6 +845,6 @@ def convert(
     msg = (
         f"Checkpoint({model_name_or_path}) can be converted."
         if dry_run
-        else f"Checkpoint({model_name_or_path}) is converted successfully."
+        else f"Checkpoint({model_name_or_path}) has been converted successfully."
     )
     typer.secho(msg)
