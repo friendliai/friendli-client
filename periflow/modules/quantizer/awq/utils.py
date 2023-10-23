@@ -26,7 +26,7 @@
 from __future__ import annotations
 
 import gc
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterable, List, Tuple
 
 import torch
 
@@ -75,23 +75,23 @@ def get_act_scale(x):
 
 def search_module_scale(
     module: torch.nn.Module,
-    linears2scale: List[torch.nn.Module],
-    inp: torch.Tensor,
+    module_args: Tuple[Any, ...],
+    module_kwargs: Dict[str, Any],
+    linears2scale: Iterable[torch.nn.Linear],
+    linear_inp: torch.Tensor,
     q_group_size: int,
     q_bit: int,
-    module_kwargs: Dict[str, Any],
 ) -> torch.Tensor:
     """Search the AWQ scale for a module."""
     # pylint: disable=too-many-locals
     weight = torch.cat([_m.weight for _m in linears2scale], dim=0)  # type: ignore
-    inp = inp.to(next(module.parameters()).device)  # type: ignore
 
     with torch.no_grad():
-        org_out = module(inp, **module_kwargs)
+        org_out = module(*module_args, **module_kwargs)
         if isinstance(org_out, tuple):
             org_out = org_out[0]
 
-    x_max = get_act_scale(inp)
+    x_max = get_act_scale(linear_inp)
     w_max = get_weight_scale(weight, q_group_size)
     del weight
     gc.collect()  # type: ignore
@@ -101,7 +101,7 @@ def search_module_scale(
     best_scales = torch.zeros(x_max.shape[0], device=x_max.device)
     n_grid = 20
     history = []
-    org_sd = {k: v.cpu() for k, v in module.state_dict().items()}
+    org_sd = {k: v.to("cpu", copy=True) for k, v in module.state_dict().items()}
     for grid in range(n_grid):
         ratio = grid * 1.0 / n_grid
         scales = (x_max.pow(ratio) / w_max.pow(1 - ratio)).clamp(min=1e-4).view(-1)
@@ -114,7 +114,7 @@ def search_module_scale(
                 q_group_size=q_group_size,
             ) / (scales.view(1, -1))
 
-        out = module(inp, **module_kwargs)
+        out = module(*module_args, **module_kwargs)
         if isinstance(out, tuple):
             out = out[0]
 
@@ -133,28 +133,26 @@ def search_module_scale(
 
 def apply_module_scale(
     prev_ops: List[torch.nn.Module],
-    linear_layers: List[torch.nn.Module],
+    linear_layers: Iterable[torch.nn.Linear],
     scales: torch.Tensor,
-    inp: torch.Tensor,
-) -> torch.Tensor:
+) -> None:
     """Apply AWQ Scale for Module, and return the scaled input for Clipping."""
     for prev_op in prev_ops:
         for _, param in prev_op.named_parameters(recurse=False):
             if isinstance(prev_op, torch.nn.Linear):
+                # TODO: handle bias
+                assert len(param.data.shape) == 2
                 param.data.div_(scales.view(-1, 1))
             else:
                 assert param.data.shape == scales.shape
                 param.data.div_(scales)
 
     for layer in linear_layers:
-        for _, param in layer.named_parameters(recurse=False):
-            param.data.mul_(scales.view(1, -1))
-
-    return inp.div_(scales.view(1, -1)).to("cpu")
+        layer.weight.data.mul_(scales.view(1, -1))
 
 
 def search_module_clip(
-    linears2clip: List[torch.nn.Module],
+    w: torch.Tensor,
     inp: torch.Tensor,
     q_group_size: int,
     q_bit: int,
@@ -166,7 +164,6 @@ def search_module_clip(
     # pylint: disable=too-many-locals
     # w           [co, ci]      -> [co, 1, n_group, group size]
     # inp  [n_token, ci] -> [1, n_token, n_group, group size]
-    w = torch.cat([_m.weight for _m in linears2clip], dim=0)  # type: ignore
     w = w.view(w.shape[0], 1, -1, q_group_size)
 
     inp = inp.view(-1, inp.shape[-1])
@@ -220,12 +217,11 @@ def search_module_clip(
 
 def apply_module_clip(
     max_val: torch.Tensor,
-    linear_layers: List[torch.nn.Module],
+    layer: torch.nn.Linear,
 ):
     """Apply AWQ Clip for Module."""
-    for layer in linear_layers:
-        max_val = max_val.to(layer.weight.device)  # type: ignore
-        org_shape = layer.weight.shape
-        layer.weight.data = layer.weight.data.reshape(*max_val.shape[:2], -1)  # type: ignore
-        layer.weight.data = torch.clamp(layer.weight.data, -max_val, max_val)
-        layer.weight.data = layer.weight.data.reshape(org_shape)  # type: ignore
+    max_val = max_val.to(layer.weight.device)  # type: ignore
+    org_shape = layer.weight.shape
+    layer.weight.data = layer.weight.data.reshape(*max_val.shape[:2], -1)  # type: ignore
+    layer.weight.data = torch.clamp(layer.weight.data, -max_val, max_val)
+    layer.weight.data = layer.weight.data.reshape(org_shape)  # type: ignore

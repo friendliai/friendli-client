@@ -59,37 +59,27 @@ class AWQLlamaHook(AWQHook):
         self.hidden_size = config.hidden_size
         self.head_size = self.hidden_size // self.num_attention_heads
         self.rotary_dim = self.head_size
-        self.require_attn_fc_pre_scale = (
-            self.num_attention_heads != self.num_kv_attention_heads
-        )
+        self.scale_attn_fc = self.num_attention_heads == self.num_kv_attention_heads
 
     def add_pre_scaler(self, model: torch.nn.Module) -> torch.nn.Module:
         """Adds scaler to LlamaForCausalLM."""
-        for tf_block in self.get_tf_blocks(model):
-            if self.require_attn_fc_pre_scale:
-                attn_fc_scaler = self._register_pre_scaler(
-                    tf_block.self_attn.o_proj,
-                )
-                tf_block.self_attn.add_module("scaler", attn_fc_scaler)
         return model
 
     def get_inspect_module_types(
         self, block: torch.nn.Module
     ) -> Tuple[type[torch.nn.Module], ...]:
         """Returns the layer types in inspected blocks."""
-        return (type(block.self_attn),)
+        return (type(block.self_attn), type(block.mlp))
 
     def iter_inspect_modules(
         self,
         block: torch.nn.Module,
-        intra_kwargs: Dict[str, Any],
     ) -> Iterator[
         Tuple[
             List[torch.nn.Module],
-            List[torch.nn.Module],
-            ModuleName,
+            List[Tuple[ModuleName, torch.nn.Linear]],
             torch.nn.Module,
-            Dict[str, Any],
+            ModuleName,
         ]
     ]:
         """Returns iterator of layers in blocks."""
@@ -97,44 +87,37 @@ class AWQLlamaHook(AWQHook):
         yield (
             [block.input_layernorm],
             [
-                block.self_attn.q_proj,
-                block.self_attn.k_proj,
-                block.self_attn.v_proj,
+                ("self_attn.q_proj", block.self_attn.q_proj),
+                ("self_attn.k_proj", block.self_attn.k_proj),
+                ("self_attn.v_proj", block.self_attn.v_proj),
             ],
-            "self_attn.q_proj",  # "self_attn.k_proj" or "self_attn.v_proj" is also valid
             block.self_attn,
-            intra_kwargs["self_attn"],
+            "self_attn",
         )
         # attn out proj
-        yield (
-            [
-                block.self_attn.scaler
-                if self.require_attn_fc_pre_scale
-                else block.self_attn.v_proj
-            ],
-            [block.self_attn.o_proj],
-            "self_attn.o_proj",
-            block.self_attn.o_proj,
-            {},
-        )
+        if self.scale_attn_fc:
+            yield (
+                [block.self_attn.v_proj],
+                [("self_attn.o_proj", block.self_attn.o_proj)],
+                block.self_attn.o_proj,
+                "self_attn.o_proj",
+            )
         # ff1
         yield (
             [block.post_attention_layernorm],
             [
-                block.mlp.up_proj,
-                block.mlp.gate_proj,
+                ("mlp.up_proj", block.mlp.up_proj),
+                ("mlp.gate_proj", block.mlp.gate_proj),
             ],
-            "mlp.gate_proj",  # "mlp.up_proj" is also valid
             block.mlp,
-            {},
+            "mlp",
         )
         # ff2
         yield (
             [block.mlp.up_proj],
-            [block.mlp.down_proj],
-            "mlp.down_proj",
+            [("mlp.down_proj", block.mlp.down_proj)],
             block.mlp.down_proj,
-            {},
+            "mlp.down_proj",
         )
 
     def reshape_qkv_weight(
@@ -231,7 +214,7 @@ class AWQLlamaHook(AWQHook):
         **kwargs: Any,
     ) -> TFQuantResults:
         """Get quantization result for a specific layer in LlamaForCausalLM."""
-        awq_args = cast(AWQConfig, self.quant_config).awq_args
+        awq_config = cast(AWQConfig, self.quant_config)
 
         def get_scale(quant_input: QuantInput) -> WeightOnlyQuantResult:
             weight, name, start, end = (
@@ -240,12 +223,13 @@ class AWQLlamaHook(AWQHook):
                 quant_input.start_offset,
                 quant_input.end_offset,
             )
+            weight = weight.to(awq_config.device)
 
             return get_weight_only_quant_scales(
                 layer_name=name,
                 w=weight[start:end],
-                q_bit=awq_args.quant_bit,
-                q_group_size=awq_args.quant_group_size,
+                q_bit=awq_config.awq_args.quant_bit,
+                q_group_size=awq_config.awq_args.quant_group_size,
             )
 
         quant_input = cast(LlamaTFQuantInputs, quant_input)
@@ -280,22 +264,12 @@ class AWQLlamaHook(AWQHook):
         self,
     ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
         """Return the convert_dict for modified layers."""
-        return (
-            {
-                "attn/c_proj/awq/pre_scale:0": nontype_partial(
-                    scale_convert,
-                    per_layer_postfixes=[".self_attn.scaler.scale"],
-                    data_type="fp32",
-                ),
-            }
-            if self.require_attn_fc_pre_scale
-            else {}
-        )
+        return {}
 
     @property
     def avoid_clipping_layer_names(self) -> List[str]:
-        """Returns the layer names which should avoid AWQ clipping."""
-        return ["q_proj", "k_proj", "v_proj"]
+        """Returns the layer names which should be avoided for AWQ clipping."""
+        return ["q_proj", "k_proj"]
 
     @property
     def quantized_convert_dict(

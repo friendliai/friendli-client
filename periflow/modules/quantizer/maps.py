@@ -10,6 +10,8 @@ from periflow.enums import QuantMode
 from periflow.errors import NotSupportedQuantModeError
 from periflow.modules.converter.base import OneOfConverter
 from periflow.modules.quantizer.awq.base import AWQHook, AWQQuantizer
+from periflow.modules.quantizer.awq.models.gpt_neox import AWQGPTNeoXHook
+from periflow.modules.quantizer.awq.models.gptj import AWQGPTJHook
 from periflow.modules.quantizer.awq.models.llama import AWQLlamaHook
 from periflow.modules.quantizer.awq.models.mpt import AWQMPTHook
 from periflow.modules.quantizer.base import CommonQuantizer
@@ -43,8 +45,10 @@ model_arch_smoothquant_hook_map: Dict[str, type[SmoothQuantHook]] = {
 }
 
 model_arch_awq_hook_map: Dict[str, type[AWQHook]] = {
-    "MPTForCausalLM": AWQMPTHook,
+    "GPTJForCausalLM": AWQGPTJHook,
+    "GPTNeoXForCausalLM": AWQGPTNeoXHook,
     "LlamaForCausalLM": AWQLlamaHook,
+    "MPTForCausalLM": AWQMPTHook,
 }
 
 

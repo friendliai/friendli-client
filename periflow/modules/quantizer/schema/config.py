@@ -28,6 +28,7 @@ class CommonQuantConfig(BaseModel):
 
     mode: QuantMode
     device: str = "cuda:0"
+    offload: bool = True
     seed: int = 42
     percentile: float = 99.9
     calibration_dataset: CalibrationDatasetConfig = Field(
@@ -64,15 +65,8 @@ class AWQConfig(CommonQuantConfig):
     awq_args: AWQArgs = Field(default_factory=AWQArgs)
 
 
-# Added for utilizing discriminated union.
-class MockConfig(CommonQuantConfig):
-    """HACK: Will be removed after adding another quantization scheme."""
-
-    mode: Literal[QuantMode.NONE] = QuantMode.NONE
-
-
 OneOfQuantConfig = Annotated[
-    Union[SmoothQuantConfig, AWQConfig, MockConfig], Field(discriminator="mode")
+    Union[SmoothQuantConfig, AWQConfig], Field(discriminator="mode")
 ]
 
 

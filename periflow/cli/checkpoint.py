@@ -757,6 +757,7 @@ def convert(
     mode: awq
     device: cuda:0
     seed: 42
+    offload: true
     calibration_dataset:
         path_or_name: lambada
         format: json
@@ -769,9 +770,10 @@ def convert(
         quant_group_size: 64
     ```
 
-    - **`mode`**: Quantization scheme to apply. Defaults to "smoothquant".
+    - **`mode`**: Quantization scheme to apply. Defaults to "awq".
     - **`device`**: Device to run the quantization process. Defaults to "cuda:0".
     - **`seed`**: Random seed. Defaults to 42.
+    - **`offload`**: When enabled, this option significantly reduces GPU memory usage by offloading model layers onto CPU RAM. Defaults to true.
     - **`calibration_dataset`**
         - **`path_or_name`**: Path or name of the dataset. Datasets from either the Hugging Face Datasets Hub or local file system can be used. Defaults to "lambada".
         - **`format`**: Format of datasets. Defaults to "json".
@@ -782,6 +784,10 @@ def convert(
     - **`awq_args`** (Fill in this field only for "awq" mode)
         - **`quant_bit`** : Bit width of integers to represent weights. Possible values are `4` or `8`. Defaults to 4.
         - **`quant_group_size`**: Group size of quantized matrices. 64 is the only supported value at this time. Defaults to 64.
+
+    :::tip
+    If you encounter OOM issues when running with AWQ, try enabling the `offload` option.
+    :::
 
     :::tip
     If you set `percentile` in quant-config-file into 100,

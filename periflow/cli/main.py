@@ -34,7 +34,7 @@ from periflow.utils.decorator import check_api
 from periflow.utils.format import secho_error_and_exit
 from periflow.utils.request import DEFAULT_REQ_TIMEOUT
 from periflow.utils.url import URLProvider
-from periflow.utils.validate import validate_package_version
+from periflow.utils.validate import check_package_version
 from periflow.utils.version import get_installed_version
 
 app = typer.Typer(
@@ -42,7 +42,7 @@ app = typer.Typer(
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
     add_completion=False,
-    callback=validate_package_version,
+    callback=check_package_version,
     pretty_exceptions_enable=False,
 )
 

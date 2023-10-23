@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "periflow-client"
-version = "0.1.10"
+version = "0.1.11"
 description = "Client of PeriFlow, the fastest generative AI serving available."
 license = "Apache-2.0"
 authors = ["PeriFlow teams <eng@friendli.ai>"]
@@ -98,10 +98,6 @@ ignore-decorators = "overload"
 [tool.pytest.ini_options]
 python_files = "test_*.py"
 addopts = "-rf --cov=periflow --cov-report=html --cov-report=xml --cov-config=.coveragerc --junit-xml=test-result.xml"
-
-[tool.license]
-header = "Copyright (c) 2022-present, FriendliAI Inc. All rights reserved."
-space = 1
 
 [tool.coverage.run]
 branch = true

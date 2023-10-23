@@ -468,6 +468,7 @@ class SmoothQuantQuantizer(CommonQuantizer, ModelConversionInterface):
         quant_config = cast(SmoothQuantConfig, self.quant_config)
         max_input_stats, _ = collect_stats(
             model,
+            quant_config.device,
             dataset,
             cast(SmoothQuantHook, self.hook).get_linear_layer_types(),
             tqdm_desc="Collecting stats for Smoothing.",
@@ -502,6 +503,7 @@ class SmoothQuantQuantizer(CommonQuantizer, ModelConversionInterface):
         dataset = self.get_calib_dataset()
         max_input_stats, max_output_stats = collect_stats(
             model,
+            self.quant_config.device,
             dataset,
             cast(SmoothQuantHook, self.hook).get_linear_layer_types(),
             percentile=self.quant_config.percentile,

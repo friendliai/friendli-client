@@ -184,7 +184,6 @@ class QuantMode(str, Enum):
 
     SMOOTH_QUANT = "smoothquant"
     AWQ = "awq"
-    NONE = "none"  # HACK: Remove this after another scheme added.
 
 
 class QuantDatasetFormat(str, Enum):

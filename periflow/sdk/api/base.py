@@ -23,6 +23,7 @@ from urllib.parse import urljoin
 import aiohttp
 import requests
 from pydantic import BaseModel
+from typing_extensions import Self
 
 from periflow.auth import get_auth_header
 from periflow.client.deployment import DeploymentClient
@@ -44,7 +45,7 @@ class GenerationStream(ABC, Generic[_GenerationLine, _Generation]):
         """Initializes generation stream."""
         self._iter = response.iter_lines()
 
-    def __iter__(self) -> GenerationStream:  # noqa: D105
+    def __iter__(self) -> Self:  # noqa: D105
         return self
 
     @abstractmethod
@@ -63,7 +64,7 @@ class AsyncGenerationStream(ABC, Generic[_GenerationLine, _Generation]):
         """Initializes generation stream."""
         self._iter = response.content.__aiter__()
 
-    def __aiter__(self) -> AsyncGenerationStream:  # noqa: D105
+    def __aiter__(self) -> Self:  # noqa: D105
         return self
 
     @abstractmethod

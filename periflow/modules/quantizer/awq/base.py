@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import gc
 from abc import abstractmethod
+from contextlib import contextmanager
 from dataclasses import fields
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, cast
 
@@ -16,6 +17,7 @@ from datasets.utils.logging import disable_progress_bar  # type: ignore[import]
 from tqdm import tqdm
 
 from periflow.errors import QuantizationError
+from periflow.logging import logger
 from periflow.modules.converter.utils import get_tokenizer, nontype_partial
 from periflow.modules.quantizer.awq.utils import (
     apply_module_clip,
@@ -35,10 +37,12 @@ from periflow.modules.quantizer.schema.data import (
 from periflow.modules.quantizer.utils import (
     collect_inps,
     get_weight_only_quant_scales,
+    offload_module_sequence,
     quantized_linear_weight_convert,
     quantized_qkv_weight_convert,
     safe_load_datasets,
     scale_convert,
+    send_model_to_device,
 )
 
 
@@ -61,18 +65,18 @@ class AWQScaler(torch.nn.Module):
 
 
 class AWQHook(AbstractQuantHook):
-    """Quantization Hook for SmoothQuant."""
+    """Quantization Hook for AWQ."""
 
     @abstractmethod
     def iter_inspect_modules(
-        self, model: torch.nn.Module, model_kwargs: Dict[str, Any]
+        self,
+        block: torch.nn.Module,
     ) -> Iterator[
         Tuple[
             List[torch.nn.Module],
-            List[torch.nn.Module],
-            ModuleName,
+            List[Tuple[ModuleName, torch.nn.Linear]],
             torch.nn.Module,
-            Dict[str, Any],
+            ModuleName,
         ]
     ]:
         """Returns iterator of modules to inspect for AWQ scale."""
@@ -109,7 +113,7 @@ class AWQHook(AbstractQuantHook):
         **kwargs: Any,
     ) -> TFQuantResults:
         """Get quantization result for AWQ."""
-        awq_args = cast(AWQConfig, self.quant_config).awq_args
+        awq_config = cast(AWQConfig, self.quant_config)
 
         def get_scale(
             quant_input: QuantInput,
@@ -120,12 +124,13 @@ class AWQHook(AbstractQuantHook):
                 quant_input.start_offset,
                 quant_input.end_offset,
             )
+            weight = weight.to(awq_config.device)
 
             return get_weight_only_quant_scales(
                 layer_name=name,
                 w=weight[start:end],
-                q_bit=awq_args.quant_bit,
-                q_group_size=awq_args.quant_group_size,
+                q_bit=awq_config.awq_args.quant_bit,
+                q_group_size=awq_config.awq_args.quant_group_size,
             )
 
         return TFQuantResults(
@@ -144,22 +149,11 @@ class AWQHook(AbstractQuantHook):
         """Return the layer names to avoid clipping."""
 
     @property
+    @abstractmethod
     def modified_layers_convert_dict(
         self,
     ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
         """Return the convert_dict for modified layers."""
-        return {
-            "attn/c_proj/awq/pre_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".attn.scaler.scale"],
-                data_type="fp32",
-            ),
-            "mlp/c_proj/awq/pre_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ffn.scaler.scale"],
-                data_type="fp32",
-            ),
-        }
 
     @property
     def quantized_convert_dict(
@@ -314,60 +308,132 @@ class AWQQuantizer(CommonQuantizer):
     def _apply_awq_scale_clip_block(
         self,
         block: torch.nn.Module,
-        block_inps: torch.Tensor,
+        block_args: Tuple[Any, ...],
         block_kwargs: Dict[str, Any],
     ) -> None:
         """Search AWQ scale, clipping range and Apply them into a transformer block."""
         # pylint: disable=too-many-locals
 
         inpsected_mod_types = cast(AWQHook, self.hook).get_inspect_module_types(block)
-        input_feat, intra_kwargs = collect_inps(
-            block_inps,
-            tuple([*self.hook.get_linear_layer_types(), *inpsected_mod_types]),
+        args_dict, kwargs_dict = collect_inps(
             block,
+            block_args,
             block_kwargs,
+            self.quant_config.device,
+            tuple([*self.hook.get_linear_layer_types(), *inpsected_mod_types]),
         )
         awq_args = cast(AWQConfig, self.quant_config).awq_args
 
-        for prev_ops, linear_layers, layer_name, module2inspect, kwargs in cast(
+        for prev_ops, linear_tuples, module2inspect, module2inspect_name in cast(
             AWQHook, self.hook
-        ).iter_inspect_modules(block, intra_kwargs):
-            module_inp = input_feat[layer_name]
+        ).iter_inspect_modules(block):
+            linear_inp = args_dict[linear_tuples[0][0]][0]
+            linear_layers = [linear for _, linear in linear_tuples]
+
             scales = search_module_scale(
                 module2inspect,
+                args_dict[module2inspect_name] if module2inspect_name else block_args,
+                kwargs_dict[module2inspect_name]
+                if module2inspect_name
+                else block_kwargs,
                 linear_layers,
-                module_inp,
+                linear_inp,
                 awq_args.quant_group_size,
                 awq_args.quant_bit,
-                module_kwargs=kwargs,
             )
-            scaled_module_inp = apply_module_scale(
+
+            apply_module_scale(
                 prev_ops,
                 linear_layers,
                 scales.to(self.quant_config.device),
-                module_inp.to(self.quant_config.device),
             )
 
+            for name, _ in linear_tuples:
+                assert len(args_dict[name]) == 1
+                assert torch.equal(args_dict[name][0], linear_inp)
+                args_dict[name] = (args_dict[name][0].div(scales.view(1, -1)),)
+
+        named_linears = {
+            name: m
+            for name, m in block.named_modules()
+            if isinstance(m, torch.nn.Linear)
+        }
+        for name, linear in named_linears.items():
             if any(
                 (
-                    avoid in layer_name
+                    avoid in name
                     for avoid in cast(AWQHook, self.hook).avoid_clipping_layer_names
                 )
             ):
                 continue
             max_val = search_module_clip(
-                linear_layers,
-                scaled_module_inp,
+                linear.weight,
+                args_dict[name][0],
                 awq_args.quant_group_size,
                 awq_args.quant_bit,
                 n_sample_token=self.quant_config.calibration_dataset.num_samples,
             )
             apply_module_clip(
                 max_val.to(self.quant_config.device),
-                linear_layers,
+                linear,
             )
 
-        del input_feat
+    def get_input_kwargs_tf_blocks(
+        self,
+        model: torch.nn.Module,
+    ) -> Tuple[List[Tuple[Any, ...]], List[Dict[str, Any]]]:
+        """Gather input tensor and kwargs from the designated pytorch module."""
+        block_args = []
+        block_kwargs = []
+
+        num_tf_blocks = len(self.hook.get_tf_blocks(model))
+        progress_bar = tqdm(
+            range(num_tf_blocks),
+            total=num_tf_blocks,
+            desc="Collect args for transformer blocks..",
+        )
+
+        def hook(m, args, kwargs):  # pylint: disable=unused-argument
+            block_args.append(
+                tuple(
+                    (t.detach().cpu() if isinstance(t, torch.Tensor) else t)
+                    for t in args
+                )
+            )
+            block_kwargs.append(
+                {
+                    k: (v.detach().cpu() if isinstance(v, torch.Tensor) else v)
+                    for k, v in kwargs.items()
+                }
+            )
+            progress_bar.update()
+
+        removables = []
+        for tf_block in self.hook.get_tf_blocks(model):
+            removables.append(
+                tf_block.register_forward_pre_hook(hook, with_kwargs=True)
+            )
+
+        batched_samples = self.get_batched_samples()
+        model(batched_samples.to(self.quant_config.device))
+
+        for removable in removables:
+            removable.remove()
+
+        return block_args, block_kwargs
+
+    @contextmanager
+    def _try_offload_model(self, model: torch.nn.Module):
+        if not self.quant_config.offload:
+            logger.info("AWQ offloading not enabled. Skipping.")
+            model.to(self.quant_config.device)
+            yield
+        else:
+            logger.info("AWQ offloading enabled.")
+            tf_blocks = self.hook.get_tf_blocks(model)
+            send_model_to_device(model, self.quant_config.device, exclude=tf_blocks)
+            with offload_module_sequence(tf_blocks, self.quant_config.device):
+                yield
 
     @torch.no_grad()
     def _apply_awq_scale_clip(
@@ -377,32 +443,25 @@ class AWQQuantizer(CommonQuantizer):
         """Search AWQ scale, clipping range and Apply them into model."""
         # pylint: disable=too-many-locals
         model.eval()
-        model.to(self.quant_config.device)
-        tf_blocks = self.hook.get_tf_blocks(model)
-        block_inps, block_kwargs = collect_inps(
-            inps=self.get_batched_samples(),
-            target_classes=(type(tf_blocks[0]),),
-            module=model,
-            module_kwargs={},
-        )
-        model.to("cpu")
-        gc.collect()
-        torch.cuda.empty_cache()
+        with self._try_offload_model(model):
+            tf_blocks = self.hook.get_tf_blocks(model)
+            block_args, block_kwargs = self.get_input_kwargs_tf_blocks(model)
 
-        for block, inps, kwargs in tqdm(
-            zip(
-                tf_blocks,
-                block_inps.values(),
-                block_kwargs.values(),
-            ),
-            total=len(tf_blocks),
-            desc="Search and Apply AWQ Scale, Clip range..",
-        ):
-            block = block.to(self.quant_config.device)
-            self._apply_awq_scale_clip_block(block, inps, kwargs)
-            block.to("cpu")
             gc.collect()
             torch.cuda.empty_cache()
+
+            for block, args, kwargs in tqdm(
+                zip(
+                    tf_blocks,
+                    block_args,
+                    block_kwargs,
+                ),
+                total=len(tf_blocks),
+                desc="Search and Apply AWQ Scale, Clip range..",
+            ):
+                self._apply_awq_scale_clip_block(block, args, kwargs)
+                gc.collect()
+                torch.cuda.empty_cache()
 
     @torch.no_grad()
     def pre_quantize(
@@ -418,9 +477,8 @@ class AWQQuantizer(CommonQuantizer):
         self,
         model: torch.nn.Module,
     ) -> Iterator[TFQuantResults]:
-        """Quantize model with SmoothQuant."""
+        """Quantize model with AWQ."""
         model.eval()
-        model.to(self.quant_config.device)
         for quant_input in tqdm(
             self.hook.iter_quant_inputs(model),
             total=len(self.hook.get_tf_blocks(model)),

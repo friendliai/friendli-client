@@ -5,12 +5,27 @@
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from itertools import islice
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Protocol,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import datasets  # type: ignore[import]
 import numpy as np
 import torch
+from accelerate import cpu_offload_with_hook  # type: ignore
 from tqdm import tqdm
 
 from periflow.enums import CheckpointDataType
@@ -286,6 +301,7 @@ def build_max_statistics() -> Tuple[Callable, Callable, Callable]:
 @torch.no_grad()
 def collect_stats(
     model: torch.nn.Module,
+    device: str,
     dataset: datasets.Dataset,
     target_classes: Tuple[Type[torch.nn.Module], ...],
     tqdm_desc: str,
@@ -323,7 +339,6 @@ def collect_stats(
         for name, module in model.named_modules()
         if isinstance(module, target_classes)
     ]
-    device = next(model.parameters()).device
 
     removables = []
     for name, module in name_mods:
@@ -340,48 +355,54 @@ def collect_stats(
 
 def build_inps_hook():
     """Builds the hooks for getting the input and output activations of a module."""
-    inp_dict = {}
-    module_kwargs = {}
+    args_dict = {}
+    kwargs_dict = {}
 
     def create_hook(name: ModuleName):
-        def hook(m, x, kwargs, y):  # pylint: disable=unused-argument
-            x = x[0]
-            x = x.detach().cpu()
-            try:
-                inp_dict[name] = torch.cat([inp_dict[name], x], dim=0)
-                module_kwargs[name].update(kwargs)
-            except KeyError:
-                inp_dict[name] = x
-                module_kwargs[name] = kwargs
+        def hook(m, args, kwargs, y):  # pylint: disable=unused-argument
+            assert name not in args_dict
+            assert name not in kwargs_dict
+            # assumption: all positional arguments are torch.Tensor
+            args_dict[name] = [t.detach() for t in args]
+            kwargs_dict[name] = {
+                k: (v.detach() if isinstance(v, torch.Tensor) else v)
+                for k, v in kwargs.items()
+            }
 
         return hook
 
-    return inp_dict, module_kwargs, create_hook
+    return args_dict, kwargs_dict, create_hook
 
 
 def collect_inps(
-    inps: torch.Tensor,
-    target_classes: Tuple[Type[torch.nn.Module], ...],
     module: torch.nn.Module,
+    module_args: Tuple[Any, ...],
     module_kwargs: Dict[str, Any],
-) -> Tuple[Dict[ModuleName, torch.Tensor], Dict[ModuleName, Dict[str, Any]]]:
+    device: str,
+    target_classes: Tuple[Type[torch.nn.Module], ...],
+) -> Tuple[Dict[ModuleName, Tuple[Any]], Dict[ModuleName, Dict[str, Any]]]:
     """Collects concated input and output activations of a specific module."""
-    inp_dict, module_kwargs, create_hook = build_inps_hook()
+    args_dict, kwargs_dict, create_hook = build_inps_hook()
     name_mods = [
         (name, m) for name, m in module.named_modules() if isinstance(m, target_classes)
     ]
-    device = next(module.parameters()).device
 
     removables = []
     for name, m in name_mods:
         removables.append(m.register_forward_hook(create_hook(name), with_kwargs=True))
-    try:
-        module(inps.to(device), **module_kwargs)
-    finally:
-        for removable in removables:
-            removable.remove()
 
-    return inp_dict, module_kwargs
+    module(
+        *((t.to(device) if isinstance(t, torch.Tensor) else t) for t in module_args),
+        **{
+            k: (v.to(device) if isinstance(v, torch.Tensor) else v)
+            for k, v in module_kwargs.items()
+        },
+    )
+
+    for removable in removables:
+        removable.remove()
+
+    return args_dict, kwargs_dict
 
 
 def get_torch_quant_dtype(q_bit: int = 8):
@@ -478,3 +499,65 @@ def get_weight_only_quant_scales(
         weight_scale=scales,
         q_weight=q_weight,
     )
+
+
+def send_model_to_device(
+    model: torch.nn.Module,
+    device: Union[str, torch.device],
+    *,
+    exclude: Iterable[torch.nn.Module] = (),
+):
+    """Send the model and its submodules onto device except for modules designated by `exclude`."""
+    exclude_set = set(exclude)
+
+    @torch.no_grad()
+    def recurse(m: torch.nn.Module):
+        if m in exclude_set:
+            return
+        for name, p in list(m.named_parameters(recurse=False)):
+            m.register_parameter(name, torch.nn.Parameter(p.to(device)))
+        for name, b in list(m.named_buffers(recurse=False)):
+            m.register_buffer(name, b.to(device))
+
+        for child in m.children():
+            recurse(child)
+
+    recurse(model)
+
+
+class RemovableOffloaderHook(Protocol):
+    """Hook protocol for cpu offloader."""
+
+    def offload(self) -> None:
+        """Offload the associated block onto CPU."""
+
+    def remove(self) -> None:
+        """Remove this hook."""
+
+
+@contextmanager
+def offload_module_sequence(
+    blocks: Sequence[torch.nn.Module], device: Union[str, torch.device]
+):
+    """Offload a sequence of torch modules automatically.
+
+    In the beginning, all blocks are supposed to reside on CPU.
+    When i-th block is called, it is loaded onto `device` on the fly.
+    And at the same time, it offloads (i-1)-th block back to CPU.
+    """
+    module_hooks: List[RemovableOffloaderHook] = []
+    if blocks:
+        prev_module_hook = None
+        for tf_block in blocks:
+            _, module_hook = cpu_offload_with_hook(
+                tf_block, device, prev_module_hook=prev_module_hook
+            )
+            prev_module_hook = module_hook
+            module_hooks.append(module_hook)
+    try:
+        yield
+    finally:
+        for hook in module_hooks:
+            hook.offload()
+        for hook in module_hooks:
+            hook.remove()
