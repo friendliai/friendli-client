@@ -50,6 +50,7 @@ model_arch_converter_map: Dict[
     "GPTJForCausalLM": (GPTJForCausalLM, GPTJForCausalLMConverter),
     "LlamaForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
     "LLaMAForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
+    "MistralForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
     "MPTForCausalLM": (AutoModelForCausalLM, MPTForCausalLMConverter),
     "OPTForCausalLM": (OPTForCausalLM, OPTForCausalLMConverter),
     "T5ForConditionalGeneration": (T5ForConditionalGeneration, T5Converter),
