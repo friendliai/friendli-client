@@ -65,6 +65,7 @@ class SmoothQuantMPTHook(SmoothQuantHook):
 
             yield TFQuantInputs(
                 layer_index=index,
+                parent_module=decoder_layer,
                 q=QuantInput(
                     self_attn.Wqkv.weight,
                     f"{self.quantized_layer_prefix}{index}.attn.Wqkv",

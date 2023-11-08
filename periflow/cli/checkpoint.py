@@ -854,3 +854,90 @@ def convert(
         else f"Checkpoint({model_name_or_path}) has been converted successfully."
     )
     typer.secho(msg)
+
+
+@app.command()
+def convert_adapter(
+    adapter_name_or_path: str = typer.Option(
+        ...,
+        "--adapter-name-or-path",
+        "-a",
+        help="Hugging Face pretrained adapter name or path to the saved adapter checkpoint.",
+    ),
+    output_dir: str = typer.Option(
+        ...,
+        "--output-dir",
+        "-o",
+        help=(
+            "Directory path to save the converted adapter checkpoint and related configuration "
+            "files. Two files will be created in the directory: `adapter.h5`, "
+            "and `attr.yaml`. "
+            "The `adapter.h5` is the converted checkpoint and can be renamed using "
+            "the `--output-adapter-filename` option. "
+            "The `attr.yaml` is the adapter checkpoint attribute file, to be used when uploading "
+            "the converted model to PeriFlow. You can designate the file name using "
+            "the `--output-attr-filename` option."
+        ),
+    ),
+    data_type: CheckpointDataType = typer.Option(
+        ..., "--data-type", "-dt", help="The data type of converted checkpoint."
+    ),
+    cache_dir: Optional[str] = typer.Option(
+        None, "--cache-dir", help="Directory for downloading checkpoint."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Only check conversion avaliability."
+    ),
+    output_adapter_filename: str = typer.Option(
+        "adapter.h5",
+        "--output-adapter-filename",
+        help="Name of the converted adapter checkpoint file.",
+    ),
+    output_attr_filename: str = typer.Option(
+        "adapter_attr.yaml",
+        "--output-attr-filename",
+        help="Name of the adapter checkpoint attribute file.",
+    ),
+) -> None:
+    """Convert huggingface's adapter checkpoint to PeriFlow format.
+
+    When an adapter checkpoint is in the Hugging Face PEFT format, it cannot
+    be directly served in Periflow. It requires conversion to the PeriFlow format.
+    The conversion process involves copying the original adapter checkpoint and
+    transforming it into a checkpoint in the PeriFlow format (*.h5).
+
+    This function does not included in the `pf checkpoint convert` command. i.e.
+    `pf checkpoint convert-adapter` only converts adapter's parameters, not backbone's.
+
+    :::caution
+    The `pf checkpoint convert-adapter` is available only when the package is installed with
+    `pip install periflow-client[mllib]`.
+    :::
+
+    """
+    try:
+        from periflow.modules.converter.convert import (  # pylint: disable=import-outside-toplevel
+            convert_adapter_checkpoint,
+        )
+    except ModuleNotFoundError as exc:
+        secho_error_and_exit(str(exc))
+
+    if not os.path.isdir(output_dir):
+        if os.path.exists(output_dir):
+            secho_error_and_exit(f"'{output_dir}' exists, but it is not a directory.")
+        os.mkdir(output_dir)
+
+    adapter_output_path = os.path.join(output_dir, output_adapter_filename)
+    attr_output_path = os.path.join(output_dir, output_attr_filename)
+
+    try:
+        convert_adapter_checkpoint(
+            adapter_name_or_path=adapter_name_or_path,
+            adapter_output_path=adapter_output_path,
+            adapter_attr_output_path=attr_output_path,
+            data_type=data_type,
+            cache_dir=cache_dir,
+            dry_run=dry_run,
+        )
+    except (NotFoundError, CheckpointConversionError, InvalidConfigError) as exc:
+        secho_error_and_exit(str(exc))

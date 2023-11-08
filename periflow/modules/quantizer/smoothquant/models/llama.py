@@ -133,6 +133,7 @@ class SmoothQuantLlamaHook(SmoothQuantHook):
 
             yield LlamaTFQuantInput(
                 layer_index=index,
+                parent_module=decoder_layer,
                 q=QuantInput(
                     self_attn.q_proj.weight,
                     f"{self.quantized_layer_prefix}{index}.self_attn.q_proj",

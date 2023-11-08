@@ -71,6 +71,7 @@ class SmoothQuantGPT2Hook(SmoothQuantHook):
 
             yield TFQuantInputs(
                 layer_index=index,
+                parent_module=decoder_layer,
                 q=QuantInput(
                     attn.c_attn.weight.transpose(0, 1),
                     f"{self.quantized_layer_prefix}{index}.attn.c_attn",

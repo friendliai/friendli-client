@@ -155,6 +155,7 @@ class SmoothQuantGPTNeoXHook(SmoothQuantHook):
 
             yield TFQuantInputs(
                 layer_index=index,
+                parent_module=decoder_layer,
                 q=QuantInput(
                     qkv_weight,
                     f"{self.quantized_layer_prefix}{index}.attention.query_key_value",

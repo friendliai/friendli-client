@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "periflow-client"
-version = "0.1.11"
+version = "0.1.12"
 description = "Client of PeriFlow, the fastest generative AI serving available."
 license = "Apache-2.0"
 authors = ["PeriFlow teams <eng@friendli.ai>"]
@@ -49,10 +49,11 @@ transformers = { version = "^4.31.0", optional = true }
 h5py = { version = "3.9.0", optional = true }
 einops = { version = "0.6.1", optional = true }
 accelerate = { version = "^0.21.0", optional = true }
-datasets = {version = "^2.14.4", optional = true}
+datasets = { version = "^2.14.4", optional = true }
 injector = "0.21.0"
 protobuf = "4.24.2"
 types-protobuf = "4.24.0.1"
+peft = { version = "^0.6.0", optional = true }
 
 [tool.poetry.group.dev]
 optional = true
@@ -78,7 +79,7 @@ types-toml = "0.10.8.6"
 types-tqdm = "4.65.0.1"
 
 [tool.poetry.extras]
-mllib = ["transformers", "h5py", "accelerate", "einops", "datasets"]
+mllib = ["transformers", "h5py", "accelerate", "einops", "datasets", "peft"]
 
 [tool.isort]
 profile = "black"

@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import torch
+from peft import PeftConfig  # type: ignore[import] # pylint: disable=import-error
 from transformers import (  # type: ignore[import]
     AutoConfig,
     AutoTokenizer,
@@ -236,3 +237,16 @@ def get_model_arch(config: PretrainedConfig) -> str:
         )
     model_arch = model_arch_list[0]
     return model_arch
+
+
+def get_adapter_config(
+    adapter_name_or_path: str, cache_dir: Optional[str]
+) -> PeftConfig:
+    """Get PeftConfig for Adapter."""
+    try:
+        adapter_config = PeftConfig.from_pretrained(
+            adapter_name_or_path, cache_dir=cache_dir, trust_remote_code=True
+        )
+    except ValueError as exc:
+        raise NotFoundError(str(exc)) from exc
+    return adapter_config

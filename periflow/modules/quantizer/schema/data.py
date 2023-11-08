@@ -51,10 +51,11 @@ class QuantInput:
 
 
 @dataclass
-class TFQuantInputs:
+class TFQuantInputs:  # pylint: disable=too-many-instance-attributes
     """Dataclass for int8 quantization input per transformer block."""
 
     layer_index: int
+    parent_module: torch.nn.Module
     q: QuantInput
     k: QuantInput
     v: QuantInput
@@ -64,10 +65,11 @@ class TFQuantInputs:
 
 
 @dataclass
-class TFQuantResults:
+class TFQuantResults:  # pylint: disable=too-many-instance-attributes
     """Dataclass for int8 quantization result per a transformer block."""
 
     layer_prefix_with_index: str
+    parent_module: torch.nn.Module
     q: CommonQuantResult
     k: CommonQuantResult
     v: CommonQuantResult

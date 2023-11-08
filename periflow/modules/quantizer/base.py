@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Type
 
 import datasets  # type: ignore[import]
+import huggingface_hub  # type: ignore[import]
 import numpy as np
 import torch
 
@@ -50,7 +51,7 @@ class AbstractQuantHook(ABC):
     @abstractmethod
     def get_quant_result(
         self,
-        quant_input: TFQuantInputs,
+        quant_inputs: TFQuantInputs,
         **kwargs: Any,
     ) -> TFQuantResults:
         """Returns the quantization result of the layer."""
@@ -123,16 +124,8 @@ class AbstractQuantizer(ABC):
     def quantize(
         self,
         model: torch.nn.Module,
-    ) -> Iterator[TFQuantResults]:
+    ) -> torch.nn.Module:
         """Setting Quantizer from config and Quantize model."""
-
-    @abstractmethod
-    def get_quantized_state_dict(
-        self,
-        model: torch.nn.Module,
-        quant_result_iter: Iterator[TFQuantResults],
-    ) -> Dict[str, torch.Tensor]:
-        """Get quantized state dict."""
 
 
 class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
@@ -140,6 +133,7 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
 
     def check_config(self) -> None:
         """Check if the quantization config is valid."""
+        self.converter.check_config()
         calibration_dataset_config = self.quant_config.calibration_dataset
         data_path_or_name = calibration_dataset_config.path_or_name
         percentile = self.quant_config.percentile
@@ -150,10 +144,12 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
             )
         if not os.path.exists(data_path_or_name):
             data_name = data_path_or_name.split(":")[0]
-            if data_name not in datasets.list_datasets():
+            if data_name not in (
+                data.id for data in huggingface_hub.list_datasets(search=data_name)
+            ):
                 raise NotSupportedQuantConfigError(
                     invalid_option=data_name,
-                    valid_options=[datasets.list_datasets(), "local path"],
+                    valid_options=["datasets on the huggingface hub", "local path"],
                 )
         else:
             if calibration_dataset_config.format not in QuantDatasetFormat:
@@ -189,7 +185,6 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
         self,
         model: torch.nn.Module,
         output_path: str,
-        state_dict: Dict[str, torch.Tensor],
         convert_dict: Dict[
             str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
         ],
@@ -206,10 +201,5 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
 
         """
         self.pre_quantize(model)
-        quant_result_iter = self.quantize(model)
-        state_dict = {
-            **model.state_dict(),
-            **self.get_quantized_state_dict(model, quant_result_iter),
-        }
-
-        self.converter.convert(model, output_path, state_dict, convert_dict)
+        model = self.quantize(model)
+        self.converter.convert(model, output_path, convert_dict)

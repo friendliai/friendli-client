@@ -185,6 +185,7 @@ class SmoothQuantFalconHook(SmoothQuantHook):
 
             yield TFQuantInputs(
                 layer_index=index,
+                parent_module=decoder_layer,
                 q=QuantInput(
                     qkv_weight,
                     f"{self.quantized_layer_prefix}{index}.self_attention.query_key_value",

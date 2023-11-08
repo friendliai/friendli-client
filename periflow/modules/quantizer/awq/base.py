@@ -26,6 +26,7 @@ from periflow.modules.quantizer.awq.utils import (
     search_module_scale,
 )
 from periflow.modules.quantizer.base import AbstractQuantHook, CommonQuantizer
+from periflow.modules.quantizer.layers import WeightOnlyQuantizedLinearLayer
 from periflow.modules.quantizer.schema.config import AWQConfig
 from periflow.modules.quantizer.schema.data import (
     ModuleName,
@@ -109,7 +110,7 @@ class AWQHook(AbstractQuantHook):
 
     def get_quant_result(
         self,
-        quant_input: TFQuantInputs,
+        quant_inputs: TFQuantInputs,
         **kwargs: Any,
     ) -> TFQuantResults:
         """Get quantization result for AWQ."""
@@ -134,13 +135,14 @@ class AWQHook(AbstractQuantHook):
             )
 
         return TFQuantResults(
-            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_input.layer_index}.",
-            q=get_scale(quant_input.q),
-            k=get_scale(quant_input.k),
-            v=get_scale(quant_input.v),
-            attn_fc=get_scale(quant_input.attn_fc),
-            ff1=get_scale(quant_input.ff1),
-            ff2=get_scale(quant_input.ff2),
+            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_inputs.layer_index}.",
+            parent_module=quant_inputs.parent_module,
+            q=get_scale(quant_inputs.q),
+            k=get_scale(quant_inputs.k),
+            v=get_scale(quant_inputs.v),
+            attn_fc=get_scale(quant_inputs.attn_fc),
+            ff1=get_scale(quant_inputs.ff1),
+            ff2=get_scale(quant_inputs.ff2),
         )
 
     @property
@@ -166,73 +168,73 @@ class AWQHook(AbstractQuantHook):
             "attn/c_attn/awq/scale:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[
-                    ".q.woq_weight_scale",
-                    ".k.woq_weight_scale",
-                    ".v.woq_weight_scale",
+                    ".q.weight_scale",
+                    ".k.weight_scale",
+                    ".v.weight_scale",
                 ],
                 data_type=self.converter.data_type,
             ),
             "attn/c_attn/awq/zero:0": nontype_partial(
                 scale_convert,
                 per_layer_postfixes=[
-                    ".q.woq_weight_zp",
-                    ".k.woq_weight_zp",
-                    ".v.woq_weight_zp",
+                    ".q.zeros",
+                    ".k.zeros",
+                    ".v.zeros",
                 ],
                 data_type=self.converter.data_type,
             ),
             "attn/c_attn/awq/weight:0": nontype_partial(
                 quantized_qkv_weight_convert,
                 per_layer_postfixes=[
-                    ".q.woq_weight",
-                    ".k.woq_weight",
-                    ".v.woq_weight",
+                    ".q.weight",
+                    ".k.weight",
+                    ".v.weight",
                 ],
                 n_bit=n_bit,
             ),
             "attn/c_proj/awq/scale:0": nontype_partial(
                 scale_convert,
-                per_layer_postfixes=[".attn_fc.woq_weight_scale"],
+                per_layer_postfixes=[".attn_fc.weight_scale"],
                 data_type=self.converter.data_type,
             ),
             "attn/c_proj/awq/zero:0": nontype_partial(
                 scale_convert,
-                per_layer_postfixes=[".attn_fc.woq_weight_zp"],
+                per_layer_postfixes=[".attn_fc.zeros"],
                 data_type=self.converter.data_type,
             ),
             "attn/c_proj/awq/weight:0": nontype_partial(
                 quantized_linear_weight_convert,
-                per_layer_postfixes=[".attn_fc.woq_weight"],
+                per_layer_postfixes=[".attn_fc.weight"],
                 n_bit=n_bit,
             ),
             "mlp/c_fc/awq/scale:0": nontype_partial(
                 scale_convert,
-                per_layer_postfixes=[".ff1.woq_weight_scale"],
+                per_layer_postfixes=[".ff1.weight_scale"],
                 data_type=self.converter.data_type,
             ),
             "mlp/c_fc/awq/zero:0": nontype_partial(
                 scale_convert,
-                per_layer_postfixes=[".ff1.woq_weight_zp"],
+                per_layer_postfixes=[".ff1.zeros"],
                 data_type=self.converter.data_type,
             ),
             "mlp/c_fc/awq/weight:0": nontype_partial(
                 quantized_linear_weight_convert,
-                per_layer_postfixes=[".ff1.woq_weight"],
+                per_layer_postfixes=[".ff1.weight"],
                 n_bit=n_bit,
             ),
             "mlp/c_proj/awq/scale:0": nontype_partial(
                 scale_convert,
-                per_layer_postfixes=[".ff2.woq_weight_scale"],
+                per_layer_postfixes=[".ff2.weight_scale"],
                 data_type=self.converter.data_type,
             ),
             "mlp/c_proj/awq/zero:0": nontype_partial(
                 scale_convert,
-                per_layer_postfixes=[".ff2.woq_weight_zp"],
+                per_layer_postfixes=[".ff2.zeros"],
                 data_type=self.converter.data_type,
             ),
             "mlp/c_proj/awq/weight:0": nontype_partial(
                 quantized_linear_weight_convert,
-                per_layer_postfixes=[".ff2.woq_weight"],
+                per_layer_postfixes=[".ff2.weight"],
                 n_bit=n_bit,
             ),
         }
@@ -476,7 +478,7 @@ class AWQQuantizer(CommonQuantizer):
     def quantize(
         self,
         model: torch.nn.Module,
-    ) -> Iterator[TFQuantResults]:
+    ) -> torch.nn.Module:
         """Quantize model with AWQ."""
         model.eval()
         for quant_input in tqdm(
@@ -484,29 +486,16 @@ class AWQQuantizer(CommonQuantizer):
             total=len(self.hook.get_tf_blocks(model)),
             desc="Quantize model..",
         ):
-            yield cast(AWQHook, self.hook).get_quant_result(
+            quant_result = cast(AWQHook, self.hook).get_quant_result(
                 quant_input, quant_config=cast(AWQConfig, self.quant_config)
             )
-
-    def get_quantized_state_dict(
-        self, model: torch.nn.Module, quant_result_iter: Iterator[TFQuantResults]
-    ) -> Dict[str, torch.Tensor]:
-        """Get quantized state dict for AWQ."""
-        state_dict = model.state_dict()
-        for quant_result in quant_result_iter:
             for field in fields(quant_result):
-                layer_name = field.name
-                layer = getattr(quant_result, layer_name)
+                layer_quant_result = getattr(quant_result, field.name)
+                if isinstance(layer_quant_result, WeightOnlyQuantResult):
+                    layer = model.get_submodule(layer_quant_result.module_name)
+                    q_layer = WeightOnlyQuantizedLinearLayer.from_layer(
+                        layer, layer_quant_result
+                    )
+                    quant_result.parent_module.add_module(field.name, q_layer)
 
-                if isinstance(layer, WeightOnlyQuantResult):
-                    state_dict[
-                        f"{quant_result.layer_prefix_with_index}{layer_name}.woq_weight"
-                    ] = layer.q_weight
-                    state_dict[
-                        f"{quant_result.layer_prefix_with_index}{layer_name}.woq_weight_scale"
-                    ] = layer.weight_scale
-                    state_dict[
-                        f"{quant_result.layer_prefix_with_index}{layer_name}.woq_weight_zp"
-                    ] = layer.zero_point
-
-        return state_dict
+        return model

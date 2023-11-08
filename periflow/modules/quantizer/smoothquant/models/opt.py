@@ -68,6 +68,7 @@ class SmoothQuantOPTHook(SmoothQuantHook):
             fc2 = decoder_layer.fc2
             yield TFQuantInputs(
                 layer_index=index,
+                parent_module=decoder_layer,
                 q=QuantInput(
                     self_attn.q_proj.weight,
                     f"{self.quantized_layer_prefix}{index}.self_attn.q_proj",

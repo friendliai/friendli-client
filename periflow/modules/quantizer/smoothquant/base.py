@@ -16,6 +16,7 @@ from periflow.errors import NotSupportedQuantConfigError
 from periflow.modules.converter.interface import ModelConversionInterface
 from periflow.modules.converter.utils import get_tokenizer, nontype_partial
 from periflow.modules.quantizer.base import AbstractQuantHook, CommonQuantizer
+from periflow.modules.quantizer.layers import WeightActQuantizedLinearLayer
 from periflow.modules.quantizer.schema.config import SmoothQuantConfig
 from periflow.modules.quantizer.schema.data import (
     ModuleName,
@@ -122,7 +123,7 @@ class SmoothQuantHook(AbstractQuantHook):
 
     def get_quant_result(
         self,
-        quant_input: TFQuantInputs,
+        quant_inputs: TFQuantInputs,
         **kwargs: Any,
     ) -> TFQuantResults:
         """Returns the quantization result of the quantized layer.
@@ -154,13 +155,14 @@ class SmoothQuantHook(AbstractQuantHook):
             )
 
         return TFQuantResults(
-            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_input.layer_index}.",
-            q=get_scale(quant_input.q),
-            k=get_scale(quant_input.k),
-            v=get_scale(quant_input.v),
-            attn_fc=get_scale(quant_input.attn_fc),
-            ff1=get_scale(quant_input.ff1),
-            ff2=get_scale(quant_input.ff2),
+            layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_inputs.layer_index}.",
+            parent_module=quant_inputs.parent_module,
+            q=get_scale(quant_inputs.q),
+            k=get_scale(quant_inputs.k),
+            v=get_scale(quant_inputs.v),
+            attn_fc=get_scale(quant_inputs.attn_fc),
+            ff1=get_scale(quant_inputs.ff1),
+            ff2=get_scale(quant_inputs.ff2),
         )
 
     @property
@@ -498,7 +500,7 @@ class SmoothQuantQuantizer(CommonQuantizer, ModelConversionInterface):
     def quantize(
         self,
         model: torch.nn.Module,
-    ) -> Iterator[TFQuantResults]:
+    ) -> torch.nn.Module:
         """Quantize model with SmoothQuant."""
         dataset = self.get_calib_dataset()
         max_input_stats, max_output_stats = collect_stats(
@@ -510,33 +512,19 @@ class SmoothQuantQuantizer(CommonQuantizer, ModelConversionInterface):
             tqdm_desc="Collecting stats for Static Quantization.",
         )
         for quant_input in self.hook.iter_quant_inputs(model):
-            yield cast(SmoothQuantHook, self.hook).get_quant_result(
+            quant_result = cast(SmoothQuantHook, self.hook).get_quant_result(
                 quant_input,
                 max_input_stats=max_input_stats,
                 max_output_stats=max_output_stats,
             )
 
-    def get_quantized_state_dict(
-        self, model: torch.nn.Module, quant_result_iter: Iterator[TFQuantResults]
-    ) -> Dict[str, torch.Tensor]:
-        """Get quantized state_dict for SmoothQuant."""
-        state_dict = model.state_dict()
-        for quant_result in quant_result_iter:
             for field in fields(quant_result):
-                layer_name = field.name
-                layer = getattr(quant_result, layer_name)
-                if isinstance(layer, WeightActQuantResult):
-                    state_dict[
-                        f"{quant_result.layer_prefix_with_index}{layer_name}.weight"
-                    ] = layer.q_weight
-                    state_dict[
-                        f"{quant_result.layer_prefix_with_index}{layer_name}.in_scale"
-                    ] = layer.in_scale
-                    state_dict[
-                        f"{quant_result.layer_prefix_with_index}{layer_name}.out_scale"
-                    ] = layer.out_scale
-                    state_dict[
-                        f"{quant_result.layer_prefix_with_index}{layer_name}.weight_scale"
-                    ] = layer.weight_scale
+                layer_quant_result = getattr(quant_result, field.name)
+                if isinstance(layer_quant_result, WeightActQuantResult):
+                    layer = model.get_submodule(layer_quant_result.module_name)
+                    q_layer = WeightActQuantizedLinearLayer.from_layer(
+                        layer, layer_quant_result
+                    )
+                    quant_result.parent_module.add_module(field.name, q_layer)
 
-        return state_dict
+        return model

@@ -22,20 +22,26 @@ from transformers import (  # type: ignore[import]
 )
 
 from periflow.errors import NotSupportedCheckpointError
-from periflow.modules.converter.base import OneOfConverter
+from periflow.modules.converter.base import OneOfAdapterConverter, OneOfConverter
 from periflow.modules.converter.models.blenderbot import BlenderbotConverter
 from periflow.modules.converter.models.bloom import BloomForCausalLMConverter
 from periflow.modules.converter.models.codegen import CodegenForCausalLMConverter
 from periflow.modules.converter.models.falcon import FalconForCausalLMConverter
 from periflow.modules.converter.models.gpt2 import GPT2LMHeadModelConverter
 from periflow.modules.converter.models.gpt_neox import GPTNeoXForCausalLMConverter
-from periflow.modules.converter.models.gptj import GPTJForCausalLMConverter
-from periflow.modules.converter.models.llama import LlamaForCausalLMConverter
+from periflow.modules.converter.models.gptj import (
+    GPTJForCausalLMConverter,
+    GPTJForCausalLMLoraConverter,
+)
+from periflow.modules.converter.models.llama import (
+    LlamaForCausalLMConverter,
+    LlamaForCausalLMLoraConverter,
+)
 from periflow.modules.converter.models.mpt import MPTForCausalLMConverter
 from periflow.modules.converter.models.opt import OPTForCausalLMConverter
 from periflow.modules.converter.models.t5 import T5Converter
 
-model_arch_converter_map: Dict[
+MODEL_ARCH_CONVERTER_MAP: Dict[
     str, Tuple[Union[AutoModelForCausalLM, PreTrainedModel], Type[OneOfConverter]]
 ] = {
     "BlenderbotForConditionalGeneration": (
@@ -50,9 +56,19 @@ model_arch_converter_map: Dict[
     "GPTJForCausalLM": (GPTJForCausalLM, GPTJForCausalLMConverter),
     "LlamaForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
     "LLaMAForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
+    "MistralForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
     "MPTForCausalLM": (AutoModelForCausalLM, MPTForCausalLMConverter),
     "OPTForCausalLM": (OPTForCausalLM, OPTForCausalLMConverter),
     "T5ForConditionalGeneration": (T5ForConditionalGeneration, T5Converter),
+}
+
+MODEL_ARCH_ADAPTER_CONVERTER_MAP: Dict[
+    str,
+    Type[OneOfAdapterConverter],
+] = {
+    "GPTJForCausalLM": GPTJForCausalLMLoraConverter,
+    "LlamaForCausalLM": LlamaForCausalLMLoraConverter,
+    "LLaMAForCausalLM": LlamaForCausalLMLoraConverter,
 }
 
 
@@ -72,10 +88,34 @@ def get_hf_converter_factory(
         NotSupportedCheckpointError: Raised when the given model architecture is not supported.
 
     """
-    if model_arch not in model_arch_converter_map:
+    if model_arch not in MODEL_ARCH_CONVERTER_MAP:
         raise NotSupportedCheckpointError(
             invalid_option=f"Model architecture='{model_arch}'",
-            valid_options=list(model_arch_converter_map.keys()),
+            valid_options=list(MODEL_ARCH_CONVERTER_MAP.keys()),
         )
 
-    return model_arch_converter_map[model_arch]
+    return MODEL_ARCH_CONVERTER_MAP[model_arch]
+
+
+def get_adapter_converter_factory(
+    model_arch: str,
+) -> Type[OneOfAdapterConverter]:
+    """Return the converter factory for the given model architecture.
+
+    Args:
+        model_arch (str): Model architecture name.
+
+    Returns:
+        Type[LoraConverter]: Adapter Converter class.
+
+    Raises:
+        NotSupportedCheckpointError: Raised when the given model architecture is not supported.
+    """
+    try:
+        adapter_converter_type = MODEL_ARCH_ADAPTER_CONVERTER_MAP[model_arch]
+    except KeyError as exc:
+        raise NotSupportedCheckpointError(
+            invalid_option=f"adapter for model architecture='{model_arch}'",
+            valid_options=list(MODEL_ARCH_ADAPTER_CONVERTER_MAP.keys()),
+        ) from exc
+    return adapter_converter_type

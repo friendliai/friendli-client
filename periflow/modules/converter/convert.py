@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import Optional
 
 import yaml
+from peft import PeftModel  # type: ignore[import] # pylint: disable=import-error
 
 from periflow.enums import CheckpointDataType
 from periflow.errors import TokenizerNotFoundError
@@ -16,9 +17,14 @@ from periflow.utils.validate import validate_convert_imports
 validate_convert_imports()
 # pylint: disable=import-outside-toplevel, wrong-import-position, wrong-import-order, ungrouped-imports
 import torch  # type: ignore[import]
+from accelerate import init_empty_weights  # type: ignore[import]
 
-from periflow.modules.converter.maps import get_hf_converter_factory
+from periflow.modules.converter.maps import (
+    get_adapter_converter_factory,
+    get_hf_converter_factory,
+)
 from periflow.modules.converter.utils import (
+    get_adapter_config,
     get_model_arch,
     get_model_generation_config,
     get_model_pretrained_config,
@@ -76,14 +82,14 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         generation_config=generation_config,
         data_type=data_type,
     )
-    converter.check_config()
 
     if quantize:
         assert quant_config is not None
         converter = get_quantized_converter(  # type: ignore[assignment]
             model_arch, quant_config, converter
         )
-        converter.check_config()
+
+    converter.check_config()
 
     if not dry_run:
         logger.info(
@@ -99,13 +105,13 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
             # `low_cpu_mem_usage` is for model loading faster and using ~1x model size CPU memory.
             # https://huggingface.co/docs/transformers/main_classes/model#transformers.PreTrainedModel.from_pretrained.example
         )
+
         logger.info(
             "Hugging Face checkpoint(%s) is successfully loaded!",
             model_name_or_path,
         )
-
         convert_dict = converter.get_convert_dict()
-        converter.convert(model, model_output_path, model.state_dict(), convert_dict)
+        converter.convert(model, model_output_path, convert_dict)
 
         logger.info(
             "Hugging Face checkpoint(%s) is successfully converted to Periflow format!",
@@ -126,3 +132,64 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
             )
         except TokenizerNotFoundError as exc:
             logger.warn(str(exc))
+
+
+def convert_adapter_checkpoint(  # pylint: disable=too-many-locals
+    adapter_name_or_path: str,
+    adapter_output_path: str,
+    adapter_attr_output_path: str,
+    data_type: CheckpointDataType,
+    cache_dir: Optional[str],
+    dry_run: bool = False,
+) -> None:
+    """Convert HuggingFace model checkpoint to PeriFlow format."""
+    adapter_config = get_adapter_config(adapter_name_or_path, cache_dir)
+    model_config = get_model_pretrained_config(
+        adapter_config.base_model_name_or_path, adapter_attr_output_path, cache_dir
+    )
+    model_arch = get_model_arch(model_config)
+    hf_factory, converter_factory = get_hf_converter_factory(model_arch)
+    converter = converter_factory(
+        config=model_config,
+        generation_config=None,
+        data_type=data_type,
+    )
+    adapter_converter = get_adapter_converter_factory(model_arch)(
+        converter, adapter_config
+    )
+    adapter_converter.check_config()
+
+    if not dry_run:
+        logger.info(
+            "Start loading Hugging Face adapter checkpoint(%s's %s) for conversion...",
+            adapter_config.base_model_name_or_path,
+            adapter_name_or_path,
+        )
+        with init_empty_weights():
+            model = hf_factory.from_pretrained(
+                adapter_config.base_model_name_or_path,
+                torch_dtype=torch.float32,
+                cache_dir=cache_dir,
+                trust_remote_code=True,
+                low_cpu_mem_usage=True,
+            )
+        # inplace model update
+        PeftModel.from_pretrained(
+            model, adapter_name_or_path, cache_dir=cache_dir, torch_dtype=torch.float32
+        )
+        logger.info(
+            "Hugging Face adapter checkpoint (%s) is successfully loaded!",
+            adapter_name_or_path,
+        )
+        convert_dict = adapter_converter.get_convert_dict()
+        adapter_converter.convert(model, adapter_output_path, convert_dict)
+
+        if adapter_attr_output_path is not None:
+            attr = adapter_converter.get_attributes()
+            with open(adapter_attr_output_path, "w", encoding="utf-8") as file:
+                yaml.dump([attr], file, sort_keys=False)
+
+        logger.info(
+            "Hugging Face checkpoint (%s) is successfully converted to Periflow format!",
+            adapter_name_or_path,
+        )

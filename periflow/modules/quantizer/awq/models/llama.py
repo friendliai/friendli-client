@@ -164,6 +164,7 @@ class AWQLlamaHook(AWQHook):
 
             yield LlamaTFQuantInputs(
                 layer_index=index,
+                parent_module=decoder_layer,
                 q=QuantInput(
                     q_weight,
                     f"{self.quantized_layer_prefix}{index}.self_attn.q_proj",
@@ -235,6 +236,7 @@ class AWQLlamaHook(AWQHook):
         quant_input = cast(LlamaTFQuantInputs, quant_input)
         return LlamaTFQuantResults(
             layer_prefix_with_index=f"{self.quantized_layer_prefix}{quant_input.layer_index}.",
+            parent_module=quant_input.parent_module,
             q=get_scale(quant_input.q),
             k=get_scale(quant_input.k),
             v=get_scale(quant_input.v),
@@ -282,17 +284,17 @@ class AWQLlamaHook(AWQHook):
             {
                 "mlp/c_gate/awq/scale:0": nontype_partial(
                     scale_convert,
-                    per_layer_postfixes=[".ff_gate.woq_weight_scale"],
+                    per_layer_postfixes=[".ff_gate.weight_scale"],
                     data_type=self.data_type,
                 ),
                 "mlp/c_gate/awq/zero:0": nontype_partial(
                     scale_convert,
-                    per_layer_postfixes=[".ff_gate.woq_weight_zp"],
+                    per_layer_postfixes=[".ff_gate.zeros"],
                     data_type=self.data_type,
                 ),
                 "mlp/c_gate/awq/weight:0": nontype_partial(
                     quantized_linear_weight_convert,
-                    per_layer_postfixes=[".ff_gate.woq_weight"],
+                    per_layer_postfixes=[".ff_gate.weight"],
                     n_bit=n_bit,
                 ),
             }

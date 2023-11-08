@@ -9,17 +9,70 @@ from typing import Any, Callable, Dict, List, cast
 
 import numpy as np
 import torch
-from transformers import LlamaConfig  # type: ignore[import]
+from transformers import LlamaConfig, LlamaForCausalLM  # type: ignore[import]
 
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
-from periflow.modules.converter.base import DECODER_PREFIX, DecoderOnlyConverter
+from periflow.modules.converter.base import (
+    DECODER_PREFIX,
+    DecoderOnlyConverter,
+    DecoderOnlyLoraConverter,
+)
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     convert_to_gpt_j_params,
     get_tensor_from_state_dict,
     nontype_partial,
 )
+
+
+class LlamaForCausalLMLoraConverter(DecoderOnlyLoraConverter):
+    """LlamaForCausalLM LoRA Converter Class."""
+
+    def pre_convert(
+        self,
+        model: torch.nn.Module,
+    ) -> torch.nn.Module:
+        """Adjust the LoRA Adatper module's parms in Llama before converting."""
+        converter = cast(LlamaForCausalLMConverter, self.converter)
+        for layer in cast(LlamaForCausalLM, model).model.layers:
+            query_b = layer.self_attn.q_proj.lora_B.default.weight
+            query_b = query_b.reshape(
+                converter.decoder_num_attention_heads,
+                converter.decoder_head_size,
+                -1,
+            )
+            query_b = convert_to_gpt_j_params(query_b, converter.decoder_head_size)
+            query_b = query_b.reshape(
+                converter.decoder_num_attention_heads * converter.decoder_head_size,
+                -1,
+            )
+            layer.self_attn.q_proj.lora_B.default.weight.data = query_b
+        return model
+
+    @property
+    def adapter_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for LoRA adapter modules in Llama."""
+        return {
+            "query_A/weight:0": nontype_partial(
+                self.lora_weight_convert,
+                per_layer_postfixes=[".self_attn.q_proj.lora_A.default.weight"],
+            ),
+            "query_B/weight:0": nontype_partial(
+                self.lora_weight_convert,
+                per_layer_postfixes=[".self_attn.q_proj.lora_B.default.weight"],
+            ),
+            "value_A/weight:0": nontype_partial(
+                self.lora_weight_convert,
+                per_layer_postfixes=[".self_attn.v_proj.lora_A.default.weight"],
+            ),
+            "value_B/weight:0": nontype_partial(
+                self.lora_weight_convert,
+                per_layer_postfixes=[".self_attn.v_proj.lora_B.default.weight"],
+            ),
+        }
 
 
 class LlamaForCausalLMConverter(DecoderOnlyConverter):

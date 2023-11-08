@@ -16,12 +16,41 @@ from periflow.modules.converter.base import (
     DECODER_PREFIX,
     SUPPORTED_GELU_FAMILY,
     DecoderOnlyConverter,
+    DecoderOnlyLoraConverter,
 )
 from periflow.modules.converter.utils import (
     convert_tensor_to_np_array,
     get_tensor_from_state_dict,
     nontype_partial,
 )
+
+
+class GPTJForCausalLMLoraConverter(DecoderOnlyLoraConverter):
+    """GPTJForCausalLM LoRA Converter Class."""
+
+    @property
+    def adapter_convert_dict(
+        self,
+    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+        """The convert_dict for LoRA adapter modules in GPTJ."""
+        return {
+            "query_A/weight:0": nontype_partial(
+                self.lora_weight_convert,
+                per_layer_postfixes=[".attn.q_proj.lora_A.default.weight"],
+            ),
+            "query_B/weight:0": nontype_partial(
+                self.lora_weight_convert,
+                per_layer_postfixes=[".attn.q_proj.lora_B.default.weight"],
+            ),
+            "value_A/weight:0": nontype_partial(
+                self.lora_weight_convert,
+                per_layer_postfixes=[".attn.v_proj.lora_A.default.weight"],
+            ),
+            "value_B/weight:0": nontype_partial(
+                self.lora_weight_convert,
+                per_layer_postfixes=[".attn.v_proj.lora_B.default.weight"],
+            ),
+        }
 
 
 class GPTJForCausalLMConverter(DecoderOnlyConverter):

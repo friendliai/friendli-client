@@ -81,6 +81,7 @@ class SmoothQuantGPTJHook(SmoothQuantHook):
             fc2 = decoder_layer.mlp.fc_out
             yield TFQuantInputs(
                 layer_index=index,
+                parent_module=decoder_layer,
                 q=QuantInput(
                     attn.q_proj.weight,
                     f"{self.quantized_layer_prefix}{index}.attn.q_proj",
