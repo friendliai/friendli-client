@@ -6,15 +6,17 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from dataclasses import fields
-from typing import Any, Callable, Dict, Iterator, List, Tuple, cast
+from typing import Any, Dict, Iterator, List, Tuple, cast
 
 import datasets  # type: ignore[import]
-import numpy as np
 import torch
 
+from periflow.enums import CheckpointDataType
 from periflow.errors import NotSupportedQuantConfigError
+from periflow.modules.converter.base import DECODER_PREFIX
 from periflow.modules.converter.interface import ModelConversionInterface
-from periflow.modules.converter.utils import get_tokenizer, nontype_partial
+from periflow.modules.converter.schema import ConvertInfo
+from periflow.modules.converter.utils import get_tokenizer
 from periflow.modules.quantizer.base import AbstractQuantHook, CommonQuantizer
 from periflow.modules.quantizer.layers import WeightActQuantizedLinearLayer
 from periflow.modules.quantizer.schema.config import SmoothQuantConfig
@@ -166,152 +168,185 @@ class SmoothQuantHook(AbstractQuantHook):
         )
 
     @property
-    def modified_layers_convert_dict(
+    def modified_layers_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for modified modules.
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for modified modules.
 
-        This convert_dict is used for modules that are modified for quantization.
+        This convert_info_list is used for modules that are modified for quantization.
         Especially, for attention fc layer and MLP ff2 layer, we need to migrate
         smooth scale to the previous layer. Thus, we add the smoothing scaler, and
-        modify the convert_dict for the modified modules.
+        modify the convert_info_list for the modified modules.
 
         In some models, matmul layers share activations from the same norms. Therefore,
         we use `copy_norms()` to copy and register the norms for seperated smoothing scale.
-        Thus, we modify the convert_dict for the modified modules.
+        Thus, we modify the convert_info_list for the modified modules.
         """
         sq_args = cast(SmoothQuantConfig, self.quant_config).smoothquant_args
-        new_layer_convert_dict = {}
-        if sq_args.attn_fc_smoothing:
-            new_layer_convert_dict.update(
-                {
-                    "attn/c_proj/smoothquant/smoothing_vector:0": nontype_partial(
-                        scale_convert,
-                        per_layer_postfixes=[".attn_fc_pre_smoother.scale"],
-                        data_type="fp32",
-                    )
-                }
-            )
-        if sq_args.ff2_smoothing:
-            new_layer_convert_dict.update(
-                {
-                    "mlp/c_proj/smoothquant/smoothing_vector:0": nontype_partial(
-                        scale_convert,
-                        per_layer_postfixes=[".ff2_pre_smoother.scale"],
-                        data_type="fp32",
-                    )
-                }
-            )
+        new_layer_convert_info_list = []
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.quantized_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
 
-        return new_layer_convert_dict
+            if sq_args.attn_fc_smoothing:
+                new_layer_convert_info_list.append(
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn_fc_pre_smoother.scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_proj/smoothquant/smoothing_vector:0",  # pylint: disable=line-too-long
+                        convert_fn=scale_convert,
+                    )
+                )
+            if sq_args.ff2_smoothing:
+                new_layer_convert_info_list.append(
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff2_pre_smoother.scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/smoothing_vector:0",  # pylint: disable=line-too-long
+                        convert_fn=scale_convert,
+                    )
+                )
+
+        return new_layer_convert_info_list
 
     @property
-    def quantized_convert_dict(
+    def quantized_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for quantized layers."""
-        return {
-            "attn/c_attn/smoothquant/q_weight_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".q.weight_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_attn/smoothquant/k_weight_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".k.weight_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_attn/smoothquant/v_weight_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".v.weight_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_attn/smoothquant/q_out_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".q.out_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_attn/smoothquant/k_out_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".k.out_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_attn/smoothquant/v_out_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".v.out_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_attn/smoothquant/in_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".q.in_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_proj/smoothquant/weight_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".attn_fc.weight_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_proj/smoothquant/out_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".attn_fc.out_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_proj/smoothquant/in_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".attn_fc.in_scale"],
-                data_type="fp32",
-            ),
-            "mlp/c_fc/smoothquant/weight_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff1.weight_scale"],
-                data_type="fp32",
-            ),
-            "mlp/c_fc/smoothquant/out_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff1.out_scale"],
-                data_type="fp32",
-            ),
-            "mlp/c_fc/smoothquant/in_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff1.in_scale"],
-                data_type="fp32",
-            ),
-            "mlp/c_proj/smoothquant/weight_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff2.weight_scale"],
-                data_type="fp32",
-            ),
-            "mlp/c_proj/smoothquant/out_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff2.out_scale"],
-                data_type="fp32",
-            ),
-            "mlp/c_proj/smoothquant/in_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff2.in_scale"],
-                data_type="fp32",
-            ),
-            "attn/c_attn/smoothquant/weight:0": nontype_partial(
-                quantized_qkv_weight_convert,
-                per_layer_postfixes=[
-                    ".q.weight",
-                    ".k.weight",
-                    ".v.weight",
-                ],
-            ),
-            "attn/c_proj/smoothquant/weight:0": nontype_partial(
-                quantized_linear_weight_convert,
-                per_layer_postfixes=[".attn_fc.weight"],
-            ),
-            "mlp/c_fc/smoothquant/weight:0": nontype_partial(
-                quantized_linear_weight_convert,
-                per_layer_postfixes=[".ff1.weight"],
-            ),
-            "mlp/c_proj/smoothquant/weight:0": nontype_partial(
-                quantized_linear_weight_convert,
-                per_layer_postfixes=[".ff2.weight"],
-            ),
-        }
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for quantized layers."""
+        convert_info_list = []
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.quantized_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}q.weight_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_attn/smoothquant/q_weight_scale:0",  # pylint: disable=line-too-long
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}k.weight_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_attn/smoothquant/k_weight_scale:0",  # pylint: disable=line-too-long
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}v.weight_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_attn/smoothquant/v_weight_scale:0",  # pylint: disable=line-too-long
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}q.out_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_attn/smoothquant/q_out_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}k.out_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_attn/smoothquant/k_out_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}v.out_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_attn/smoothquant/v_out_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}q.in_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_attn/smoothquant/in_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn_fc.weight_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_proj/smoothquant/weight_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn_fc.out_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_proj/smoothquant/out_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn_fc.in_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_proj/smoothquant/in_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff1.weight_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}mlp/c_fc/smoothquant/weight_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff1.out_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}mlp/c_fc/smoothquant/out_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff1.in_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}mlp/c_fc/smoothquant/in_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff2.weight_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/weight_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff2.out_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/out_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff2.in_scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/in_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[
+                            f"{layer_prefix}q.weight",
+                            f"{layer_prefix}k.weight",
+                            f"{layer_prefix}v.weight",
+                        ],
+                        data_type=CheckpointDataType.INT8,
+                        converted_name=f"{converted_prefix}attn/c_attn/smoothquant/weight:0",
+                        convert_fn=quantized_qkv_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn_fc.weight"],
+                        data_type=CheckpointDataType.INT8,
+                        converted_name=f"{converted_prefix}attn/c_proj/smoothquant/weight:0",
+                        convert_fn=quantized_linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff1.weight"],
+                        data_type=CheckpointDataType.INT8,
+                        converted_name=f"{converted_prefix}mlp/c_fc/smoothquant/weight:0",
+                        convert_fn=quantized_linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff2.weight"],
+                        data_type=CheckpointDataType.INT8,
+                        converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/weight:0",
+                        convert_fn=quantized_linear_weight_convert,
+                    ),
+                ]
+            )
+        return convert_info_list
 
 
 class SmoothQuantQuantizer(CommonQuantizer, ModelConversionInterface):

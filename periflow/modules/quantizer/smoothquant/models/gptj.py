@@ -7,13 +7,13 @@
 from __future__ import annotations
 
 import copy
-from typing import Callable, Dict, Iterator, List, Tuple, Type, cast
+from typing import Iterator, List, Tuple, Type, cast
 
-import numpy as np
 import torch
 from transformers.models.gptj import GPTJForCausalLM  # type: ignore[import]
 
-from periflow.modules.converter.utils import nontype_partial
+from periflow.modules.converter.base import DECODER_PREFIX
+from periflow.modules.converter.schema import ConvertInfo
 from periflow.modules.quantizer.schema.config import SmoothQuantConfig
 from periflow.modules.quantizer.schema.data import ModuleName, QuantInput, TFQuantInputs
 from periflow.modules.quantizer.smoothquant.base import SmoothQuantHook
@@ -121,23 +121,33 @@ class SmoothQuantGPTJHook(SmoothQuantHook):
             )
 
     @property
-    def modified_layers_convert_dict(
+    def modified_layers_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
+    ) -> List[ConvertInfo]:
         """Returns the modified layers' convert dict in GPTJForCausalLM."""
-        convert_dict = super().modified_layers_convert_dict
-        convert_dict.update(
-            {
-                "ln_2/gamma:0": nontype_partial(
-                    self.converter.ln_weight_convert,
-                    per_layer_postfixes=[".ln_2.weight"],
-                ),
-                "ln_2/beta:0": nontype_partial(
-                    self.converter.ln_bias_convert, per_layer_postfixes=[".ln_2.bias"]
-                ),
-            }
-        )
-        return convert_dict
+        convert_info_list = super().modified_layers_convert_info_list
+
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.quantized_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ln_2.weight"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}ln_2/gamma:0",
+                        convert_func=self.converter.ln_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ln_2.bias"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}ln_2/beta:0",
+                        convert_func=self.converter.ln_bias_convert,
+                    ),
+                ]
+            )
+
+        return convert_info_list
 
     def get_linear_layer_types(self) -> Tuple[Type[torch.nn.Module]]:
         """Returns the linear layer types in GPTJForCausalLM."""

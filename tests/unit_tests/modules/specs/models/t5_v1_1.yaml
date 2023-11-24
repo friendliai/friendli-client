@@ -1,0 +1,189 @@
+# Jinja2 template to validate T5 (t5-v1_1) model in PeriFlow format.
+
+type: group
+decoder:
+  type: group
+  h_._*:
+    type: repeat_group
+    range:
+      lo: 0
+      hi: {{ num_decoder_layers - 1 | int }}
+    attn:
+      type: group
+      c_attn:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ hidden_size * 3 | int }}
+      c_proj:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ hidden_size | int }}
+    cross_attn:
+      type: group
+      c_attn:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ hidden_size * 3 | int }}
+      c_proj:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ hidden_size | int }}
+    ln_*:
+      type: repeat_group
+      range:
+        lo: 1
+        hi: 3
+      gamma:0:
+        type: data
+        dtype: {{ dtype }}
+        shape:
+          - {{ hidden_size | int }}
+    mlp:
+      type: group
+      c_fc:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ ff_intermediate_size | int }}
+      c_gate:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ ff_intermediate_size | int }}
+      c_proj:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ ff_intermediate_size | int }}
+            - {{ hidden_size | int }}
+  ln_f:
+    type: group
+    gamma:0:
+      type: data
+      dtype: {{ dtype }}
+      shape:
+        - {{ hidden_size | int }}
+  wpe:
+    type: group
+    weight:0:
+      type: data
+      dtype: float32
+      shape:
+        - {{ 32 | int }}
+        - {{ num_heads | int }}
+encoder:
+  type: group
+  h_._*:
+    type: repeat_group
+    range:
+      lo: 0
+      hi: {{ num_encoder_layers - 1 | int }}
+    attn:
+      type: group
+      c_attn:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ hidden_size * 3 | int }}
+      c_proj:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ hidden_size | int }}
+    ln_*:
+      type: repeat_group
+      range:
+        lo: 1
+        hi: 2
+      gamma:0:
+        type: data
+        dtype: {{ dtype }}
+        shape:
+          - {{ hidden_size | int }}
+    mlp:
+      type: group
+      c_fc:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ ff_intermediate_size | int }}
+      c_gate:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+            - {{ ff_intermediate_size | int }}
+      c_proj:
+        type: group
+        weight:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ ff_intermediate_size | int }}
+            - {{ hidden_size | int }}
+  ln_f:
+    type: group
+    gamma:0:
+      type: data
+      dtype: {{ dtype }}
+      shape:
+        - {{ hidden_size | int }}
+  wpe:
+    type: group
+    weight:0:
+      type: data
+      dtype: float32
+      shape:
+        - {{ 32 | int }}
+        - {{ num_heads | int }}
+head_fc:
+  type: group
+  weight:0:
+    type: data
+    dtype: {{ dtype }}
+    shape:
+      - {{ vocab_size | int }}
+      - {{ hidden_size | int }}
+wte:
+  type: group
+  weight:0:
+    type: data
+    dtype: {{ dtype }}
+    shape:
+      - {{ vocab_size | int }}
+      - {{ hidden_size | int }}

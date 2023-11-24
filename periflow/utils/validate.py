@@ -126,5 +126,5 @@ def validate_convert_imports() -> None:
     if find_spec("transformers") is None or find_spec("accelerate") is None:
         raise ModuleNotFoundError(
             "To convert the checkpoint,"
-            " your must install the package with 'pip install periflow-client[mllib]'"
+            " your must install the package with 'pip install \"periflow-client[mllib]\"'"
         )

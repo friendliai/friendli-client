@@ -4,12 +4,12 @@
 
 from __future__ import annotations
 
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Extra, Field
 from typing_extensions import Annotated
 
-from periflow.enums import CheckpointDataType
+from periflow.enums import CheckpointDataType, QuantMode
 
 
 class V1CommonAttributes(BaseModel):
@@ -18,6 +18,9 @@ class V1CommonAttributes(BaseModel):
     model_config = ConfigDict(protected_namespaces=(), extra=Extra.forbid)
 
     dtype: CheckpointDataType
+    quant_scheme: Optional[QuantMode] = None
+    quant_group_size: Optional[int] = None
+    quant_bit: Optional[int] = None
 
 
 class V1BlenderbotAttributes(V1CommonAttributes):
@@ -115,6 +118,22 @@ class V1LlamaAttributes(V1CommonAttributes):
     eos_token: int
 
 
+class V1MistralAttributes(V1CommonAttributes):
+    """V1 Mistral attributes schema."""
+
+    model_type: Literal["mistral"]
+    head_size: int
+    rotary_dim: int
+    num_heads: int
+    num_kv_heads: int
+    num_layers: int
+    ff_intermediate_size: int
+    max_length: int
+    vocab_size: int
+    eos_token: int
+    attention_window_size: int
+
+
 class V1OPTAttributes(V1CommonAttributes):
     """V1 OPT attributes schema."""
 
@@ -183,6 +202,7 @@ V1CheckpointAttributes = Annotated[
         V1GPTNeoXAttributes,
         V1GPTNeoXHFAttributes,
         V1LlamaAttributes,
+        V1MistralAttributes,
         V1MPTAttributes,
         V1OPTAttributes,
         V1T5Attributes,
@@ -193,5 +213,7 @@ V1CheckpointAttributes = Annotated[
 
 class V1AttributesValidationModel(BaseModel):
     """Model for validating attributes."""
+
+    model_config = ConfigDict(extra=Extra.forbid)
 
     attr: V1CheckpointAttributes

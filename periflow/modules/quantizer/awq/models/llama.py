@@ -7,12 +7,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, cast
+from typing import Any, Iterator, List, Tuple, Type, cast
 
-import numpy as np
 import torch
 
-from periflow.modules.converter.utils import convert_to_gpt_j_params, nontype_partial
+from periflow.modules.converter.base import DECODER_PREFIX
+from periflow.modules.converter.schema import ConvertInfo
+from periflow.modules.converter.utils import convert_to_gpt_j_params
 from periflow.modules.quantizer.awq.base import AWQHook
 from periflow.modules.quantizer.schema.config import AWQConfig
 from periflow.modules.quantizer.schema.data import (
@@ -257,16 +258,20 @@ class AWQLlamaHook(AWQHook):
     @property
     def quantized_param_names(self) -> List[str]:
         """Returns the parameter names in LlamaForCausalLM."""
-        return super().quantized_param_names + [
-            "mlp/c_gate/weight:0",
-        ]
+        param_names = super().quantized_param_names
+        for i in range(self.converter.decoder_layer_num):
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            param_names.append(
+                f"{converted_prefix}mlp/c_gate/weight:0",
+            )
+        return param_names
 
     @property
-    def modified_layers_convert_dict(
+    def modified_layers_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for modified layers."""
-        return {}
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for modified layers."""
+        return []
 
     @property
     def avoid_clipping_layer_names(self) -> List[str]:
@@ -274,29 +279,35 @@ class AWQLlamaHook(AWQHook):
         return ["q_proj", "k_proj"]
 
     @property
-    def quantized_convert_dict(
+    def quantized_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for quantized layers."""
-        n_bit = cast(AWQConfig, self.quant_config).awq_args.quant_bit
-        convert_dict = super().quantized_convert_dict
-        convert_dict.update(
-            {
-                "mlp/c_gate/awq/scale:0": nontype_partial(
-                    scale_convert,
-                    per_layer_postfixes=[".ff_gate.weight_scale"],
-                    data_type=self.data_type,
-                ),
-                "mlp/c_gate/awq/zero:0": nontype_partial(
-                    scale_convert,
-                    per_layer_postfixes=[".ff_gate.zeros"],
-                    data_type=self.data_type,
-                ),
-                "mlp/c_gate/awq/weight:0": nontype_partial(
-                    quantized_linear_weight_convert,
-                    per_layer_postfixes=[".ff_gate.weight"],
-                    n_bit=n_bit,
-                ),
-            }
-        )
-        return convert_dict
+    ) -> List[ConvertInfo]:
+        """Return the convert_info_list for quantized layers."""
+        convert_info_list = super().quantized_convert_info_list
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.quantized_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff_gate.weight_scale"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_gate/awq/scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff_gate.zeros"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_gate/awq/zero:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff_gate.weight"],
+                        data_type=self.quant_dtype,
+                        converted_name=f"{converted_prefix}mlp/c_gate/awq/weight:0",
+                        convert_fn=quantized_linear_weight_convert,
+                    ),
+                ]
+            )
+        return convert_info_list

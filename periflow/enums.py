@@ -170,6 +170,19 @@ class CheckpointDataType(str, Enum):
     BF16 = "bf16"
     FP16 = "fp16"
     FP32 = "fp32"
+    INT8 = "int8"
+    INT4 = "int4"
+
+
+class CheckpointFileType(str, Enum):
+    """Checkpoint file types."""
+
+    HDF5 = "hdf5"
+    SAFETENSORS = "safetensors"
+
+    def __str__(self):
+        """Convert to a human-readable string."""
+        return self.value
 
 
 class FileSizeType(str, Enum):

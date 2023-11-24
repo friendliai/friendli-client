@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import os
-from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
@@ -27,14 +26,6 @@ from periflow.errors import (
     TokenizerNotFoundError,
 )
 from periflow.logging import logger
-
-
-def nontype_partial(cls, *args, **kwargs):
-    """Partial function with type hint."""
-    # NOTE: [mypy/issue] (https://github.com/python/mypy/issues/1484)
-    # In Python type system, partial function does not preserve type hint.
-    # This function is a workaround for this issue.
-    return partial(cls, *args, **kwargs)
 
 
 def convert_to_gpt_j_params(param: torch.Tensor, rotary_dim: int) -> torch.Tensor:
@@ -116,6 +107,8 @@ def convert_tensor_to_np_array(
         CheckpointDataType.BF16: torch.bfloat16,
         CheckpointDataType.FP16: torch.float16,
         CheckpointDataType.FP32: torch.float32,
+        CheckpointDataType.INT8: torch.int8,
+        CheckpointDataType.INT4: torch.int8,
     }
 
     dtype = dtype_map[data_type]
@@ -130,7 +123,19 @@ def convert_tensor_to_np_array(
             .view(np.uint16)
         )
 
-    return param.cpu().detach().to(dtype).numpy()
+    if data_type is CheckpointDataType.INT4:
+        pack_num = 8 // 4
+        int4_param = torch.zeros(
+            (param.shape[0], param.shape[1] // pack_num),
+            dtype=torch.uint8,
+            device=param.device,
+        )
+        for col in range(int4_param.shape[1]):
+            for i in range(pack_num):
+                int4_param[:, col] |= param[:, col * pack_num + i] << (i * 4)
+        param = int4_param
+
+    return param.to("cpu").detach().to(dtype).numpy()
 
 
 def get_tokenizer(

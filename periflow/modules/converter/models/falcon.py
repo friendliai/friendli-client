@@ -4,24 +4,22 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, cast
+from typing import Any, Dict, List, cast
 
-import numpy as np
 import torch
 from transformers import FalconConfig  # type: ignore[import]
 
 from periflow.errors import NotSupportedCheckpointError
 from periflow.logging import logger
 from periflow.modules.converter.base import DECODER_PREFIX, DecoderOnlyConverter
-from periflow.modules.converter.utils import (
-    convert_tensor_to_np_array,
-    convert_to_gpt_j_params,
-    get_tensor_from_state_dict,
-    nontype_partial,
-)
+from periflow.modules.converter.interface import RotaryEmbeddingConversionInterface
+from periflow.modules.converter.schema import ConvertInfo
+from periflow.modules.converter.utils import convert_to_gpt_j_params
 
 
-class FalconForCausalLMConverter(DecoderOnlyConverter):
+class FalconForCausalLMConverter(
+    DecoderOnlyConverter, RotaryEmbeddingConversionInterface
+):
     """FalconForCausalLM Architectures Converter Class."""
 
     def check_config(self) -> None:
@@ -67,15 +65,11 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
 
     def qkv_weight_convert(
         self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+        params: List[torch.Tensor],
+    ) -> torch.Tensor:
         """qkv_weight_convert for Falcon's attention layer."""
-        assert len(per_layer_postfixes) == 1
-        qkv_weight = get_tensor_from_state_dict(
-            state_dict, layer + per_layer_postfixes[0]
-        )
+        assert len(params) == 1
+        qkv_weight = params[0]
 
         num_queries_per_kv = (
             self.decoder_num_attention_heads // self.decoder_num_kv_attention_heads
@@ -120,7 +114,7 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
         qkv_weight = torch.cat((q_weight, k_weight, v_weight), dim=0)
         qkv_weight = qkv_weight.transpose(0, 1)
 
-        return convert_tensor_to_np_array(qkv_weight, self.data_type)
+        return qkv_weight
 
     def get_attributes(self) -> Dict[str, Any]:
         """Get checkpoint attributes."""
@@ -144,6 +138,7 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
             "max_length": "FILL ME",
             "vocab_size": config.vocab_size,
             "eos_token": self.get_eos_token_id() or "FILL ME",
+            "rope_theta": self.rotary_emb_base,
         }
         return attr
 
@@ -155,91 +150,126 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
         return "falcon-7b"
 
     @property
-    def decoder_convert_dict(
+    def non_transformer_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for transformer blocks in Falcon."""
-        convert_dict = {
-            "attn/c_attn/weight:0": nontype_partial(
-                self.qkv_weight_convert,
-                per_layer_postfixes=[".self_attention.query_key_value.weight"],
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for non-transformer blocks in Falcon."""
+        return [
+            ConvertInfo(
+                param_names=["transformer.word_embeddings.weight"],
+                data_type=self.data_type,
+                converted_name="wte/weight:0",
+                convert_fn=self.token_embed_weight_convert,
             ),
-            "attn/c_proj/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".self_attention.dense.weight"],
+            ConvertInfo(
+                param_names=["transformer.ln_f.weight"],
+                data_type=self.data_type,
+                converted_name=f"{DECODER_PREFIX}/ln_f/gamma:0",
+                convert_fn=self.ln_weight_convert,
             ),
-            "mlp/c_fc/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".mlp.dense_h_to_4h.weight"],
+            ConvertInfo(
+                param_names=["transformer.ln_f.bias"],
+                data_type=self.data_type,
+                converted_name=f"{DECODER_PREFIX}/ln_f/beta:0",
+                convert_fn=self.ln_bias_convert,
             ),
-            "mlp/c_proj/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".mlp.dense_4h_to_h.weight"],
+            ConvertInfo(
+                param_names=["lm_head.weight"],
+                data_type=self.data_type,
+                converted_name="head_fc/weight:0",
+                convert_fn=self.head_weight_convert,
             ),
-        }
-
-        if cast(FalconConfig, self.config).new_decoder_architecture:
-            convert_dict.update(
-                {
-                    "ln_1/gamma:0": nontype_partial(
-                        self.ln_weight_convert,
-                        per_layer_postfixes=[".ln_attn.weight"],
-                    ),
-                    "ln_1/beta:0": nontype_partial(
-                        self.ln_bias_convert,
-                        per_layer_postfixes=[".ln_attn.bias"],
-                    ),
-                    "ln_2/gamma:0": nontype_partial(
-                        self.ln_weight_convert,
-                        per_layer_postfixes=[".ln_mlp.weight"],
-                    ),
-                    "ln_2/beta:0": nontype_partial(
-                        self.ln_bias_convert,
-                        per_layer_postfixes=[".ln_mlp.bias"],
-                    ),
-                }
-            )
-        else:
-            convert_dict.update(
-                {
-                    "ln_1/gamma:0": nontype_partial(
-                        self.ln_weight_convert,
-                        per_layer_postfixes=[".input_layernorm.weight"],
-                    ),
-                    "ln_1/beta:0": nontype_partial(
-                        self.ln_bias_convert,
-                        per_layer_postfixes=[".input_layernorm.bias"],
-                    ),
-                }
-            )
-
-        return convert_dict
+        ]
 
     @property
-    def non_transformer_convert_dict(
+    def decoder_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for non-transformer blocks in Falcon."""
-        return {
-            "wte/weight:0": nontype_partial(
-                self.token_embed_weight_convert,
-                per_layer_postfixes=["transformer.word_embeddings.weight"],
-            ),
-            DECODER_PREFIX
-            + "/ln_f/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=["transformer.ln_f.weight"],
-            ),
-            DECODER_PREFIX
-            + "/ln_f/beta:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=["transformer.ln_f.bias"],
-            ),
-            "head_fc/weight:0": nontype_partial(
-                self.head_weight_convert,
-                per_layer_postfixes=["lm_head.weight"],
-            ),
-        }
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for transformer blocks in Falcon."""
+        convert_info_list = []
+        for i in range(self.decoder_layer_num):
+            layer_prefix = f"{self.decoder_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[
+                            f"{layer_prefix}self_attention.query_key_value.weight"
+                        ],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/weight:0",
+                        convert_fn=self.qkv_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}self_attention.dense.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_proj/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_h_to_4h.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_fc/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_4h_to_h.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_proj/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                ]
+            )
+
+            if cast(FalconConfig, self.config).new_decoder_architecture:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[f"{layer_prefix}ln_attn.weight"],
+                            data_type=self.data_type,
+                            converted_name=f"{converted_prefix}ln_1/gamma:0",
+                            convert_fn=self.ln_weight_convert,
+                        ),
+                        ConvertInfo(
+                            param_names=[f"{layer_prefix}ln_attn.bias"],
+                            data_type=self.data_type,
+                            converted_name=f"{converted_prefix}ln_1/beta:0",
+                            convert_fn=self.ln_bias_convert,
+                        ),
+                        ConvertInfo(
+                            param_names=[f"{layer_prefix}ln_mlp.weight"],
+                            data_type=self.data_type,
+                            converted_name=f"{converted_prefix}ln_2/gamma:0",
+                            convert_fn=self.ln_weight_convert,
+                        ),
+                        ConvertInfo(
+                            param_names=[f"{layer_prefix}ln_mlp.bias"],
+                            data_type=self.data_type,
+                            converted_name=f"{converted_prefix}ln_2/beta:0",
+                            convert_fn=self.ln_bias_convert,
+                        ),
+                    ]
+                )
+            else:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[f"{layer_prefix}input_layernorm.weight"],
+                            data_type=self.data_type,
+                            converted_name=f"{converted_prefix}ln_1/gamma:0",
+                            convert_fn=self.ln_weight_convert,
+                        ),
+                        ConvertInfo(
+                            param_names=[f"{layer_prefix}input_layernorm.bias"],
+                            data_type=self.data_type,
+                            converted_name=f"{converted_prefix}ln_1/beta:0",
+                            convert_fn=self.ln_bias_convert,
+                        ),
+                    ]
+                )
+
+        return convert_info_list
 
     @property
     def decoder_layer_prefix(self) -> str:
@@ -284,6 +314,16 @@ class FalconForCausalLMConverter(DecoderOnlyConverter):
         return self.decoder_hidden_size // self.decoder_num_attention_heads
 
     @property
+    def decoder_ff_intermediate_size(self) -> int:
+        """The intermediate size of the linear layer in falcon MLP."""
+        return self.decoder_hidden_size * 4
+
+    @property
     def rotary_dim(self) -> int:
         """The rotary embedding dimesion of Falcon."""
         return self.decoder_head_size
+
+    @property
+    def rotary_emb_base(self) -> float:
+        """The rotary embedding base of Falcon."""
+        return cast(FalconConfig, self.config).rope_theta

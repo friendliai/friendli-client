@@ -11,7 +11,9 @@ from typing import Any, Callable, Dict, Iterator, List, Tuple, Type
 import numpy as np
 import torch
 
-from periflow.modules.converter.utils import nontype_partial
+from periflow.enums import CheckpointDataType
+from periflow.modules.converter.base import DECODER_PREFIX
+from periflow.modules.converter.schema import ConvertInfo
 from periflow.modules.quantizer.awq.base import AWQHook
 from periflow.modules.quantizer.schema.data import ModuleName, QuantInput, TFQuantInputs
 from periflow.modules.quantizer.utils import scale_convert
@@ -84,7 +86,16 @@ class AWQMPTHook(AWQHook):
             self.get_tf_blocks(model)  # type: ignore[union-attr, arg-type]
         ):
             self_attn = decoder_layer.attn
-            attn_weight_outdim = self_attn.Wqkv.weight.size(0)  # OutDim
+            q_outdim = (
+                self.converter.decoder_num_attention_heads
+                * self.converter.decoder_head_size
+            )
+            kv_outdim = (
+                self.converter.decoder_num_kv_attention_heads
+                * self.converter.decoder_head_size
+            )
+            qkv_outdim = self_attn.Wqkv.weight.size(0)
+            assert qkv_outdim == q_outdim + kv_outdim * 2
             fc1 = decoder_layer.ffn.up_proj  # type: ignore
             fc2 = decoder_layer.ffn.down_proj  # type: ignore
 
@@ -95,19 +106,19 @@ class AWQMPTHook(AWQHook):
                     self_attn.Wqkv.weight,  # type: ignore
                     f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
                     0,
-                    attn_weight_outdim // 3,
+                    q_outdim,
                 ),
                 k=QuantInput(
                     self_attn.Wqkv.weight,  # type: ignore
                     f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
-                    attn_weight_outdim // 3,
-                    attn_weight_outdim // 3 * 2,
+                    q_outdim,
+                    q_outdim + kv_outdim,
                 ),
                 v=QuantInput(
                     self_attn.Wqkv.weight,  # type: ignore
                     f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
-                    attn_weight_outdim // 3 * 2,
-                    attn_weight_outdim,
+                    q_outdim + kv_outdim,
+                    qkv_outdim,
                 ),
                 attn_fc=QuantInput(
                     self_attn.out_proj.weight,  # type: ignore
@@ -138,22 +149,31 @@ class AWQMPTHook(AWQHook):
         return model.transformer.blocks  # type: ignore
 
     @property
-    def modified_layers_convert_dict(
+    def modified_layers_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for modified layers."""
-        return {
-            "attn/c_proj/awq/pre_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".attn.scaler.scale"],
-                data_type="fp32",
-            ),
-            "mlp/c_proj/awq/pre_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ffn.scaler.scale"],
-                data_type="fp32",
-            ),
-        }
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for modified layers."""
+        convert_info_list = []
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.quantized_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn.scaler.scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}attn/c_proj/awq/pre_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ffn.scaler.scale"],
+                        data_type=CheckpointDataType.FP32,
+                        converted_name=f"{converted_prefix}mlp/c_proj/awq/pre_scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                ]
+            )
+        return convert_info_list
 
     @property
     def avoid_clipping_layer_names(self) -> List[str]:

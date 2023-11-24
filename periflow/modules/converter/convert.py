@@ -9,9 +9,10 @@ from typing import Optional
 import yaml
 from peft import PeftModel  # type: ignore[import] # pylint: disable=import-error
 
-from periflow.enums import CheckpointDataType
+from periflow.enums import CheckpointDataType, CheckpointFileType
 from periflow.errors import TokenizerNotFoundError
 from periflow.logging import logger
+from periflow.modules.converter.saver import get_saver
 from periflow.utils.validate import validate_convert_imports
 
 validate_convert_imports()
@@ -40,6 +41,7 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
     model_name_or_path: str,
     model_output_path: str,
     data_type: CheckpointDataType,
+    output_ckpt_file_type: CheckpointFileType,
     *,
     tokenizer_output_dir: Optional[str] = None,
     attr_output_path: Optional[str] = None,
@@ -110,8 +112,11 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
             "Hugging Face checkpoint(%s) is successfully loaded!",
             model_name_or_path,
         )
-        convert_dict = converter.get_convert_dict()
-        converter.convert(model, model_output_path, convert_dict)
+
+        convert_info_list = converter.get_convert_info_list()
+        with get_saver(output_ckpt_file_type, model_output_path) as saver:
+            for name, w in converter.convert(model, convert_info_list):
+                saver.save_tensor(name, w)
 
         logger.info(
             "Hugging Face checkpoint(%s) is successfully converted to Periflow format!",
@@ -139,6 +144,7 @@ def convert_adapter_checkpoint(  # pylint: disable=too-many-locals
     adapter_output_path: str,
     adapter_attr_output_path: str,
     data_type: CheckpointDataType,
+    output_adapter_file_type: CheckpointFileType,
     cache_dir: Optional[str],
     dry_run: bool = False,
 ) -> None:
@@ -181,8 +187,10 @@ def convert_adapter_checkpoint(  # pylint: disable=too-many-locals
             "Hugging Face adapter checkpoint (%s) is successfully loaded!",
             adapter_name_or_path,
         )
-        convert_dict = adapter_converter.get_convert_dict()
-        adapter_converter.convert(model, adapter_output_path, convert_dict)
+        convert_dict = adapter_converter.get_convert_info_list()
+        with get_saver(output_adapter_file_type, adapter_output_path) as saver:
+            for name, w in adapter_converter.convert(model, convert_dict):
+                saver.save_tensor(name, w)
 
         if adapter_attr_output_path is not None:
             attr = adapter_converter.get_attributes()

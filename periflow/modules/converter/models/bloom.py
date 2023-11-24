@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, cast
+from typing import Any, Dict, List, cast
 
 import numpy as np
 import torch
@@ -13,11 +13,7 @@ from transformers import BloomConfig  # type: ignore[import]
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
 from periflow.modules.converter.base import DECODER_PREFIX, DecoderOnlyConverter
-from periflow.modules.converter.utils import (
-    convert_tensor_to_np_array,
-    get_tensor_from_state_dict,
-    nontype_partial,
-)
+from periflow.modules.converter.schema import ConvertInfo
 
 
 class BloomForCausalLMConverter(DecoderOnlyConverter):
@@ -49,17 +45,10 @@ class BloomForCausalLMConverter(DecoderOnlyConverter):
         except AttributeError as exc:
             raise CheckpointConversionError(str(exc)) from exc
 
-    def qkv_weight_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def qkv_weight_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """qkv_weight_convert for Bloom's attention layer."""
-        assert len(per_layer_postfixes) == 1
-        qkv_weight = get_tensor_from_state_dict(
-            state_dict, layer + per_layer_postfixes[0]
-        )
+        assert len(params) == 1
+        qkv_weight = params[0]
         split_qkv_weight_list = torch.split(qkv_weight, self.decoder_head_size, dim=0)
         qkv_weight_list = [
             torch.cat(
@@ -73,19 +62,12 @@ class BloomForCausalLMConverter(DecoderOnlyConverter):
         ]
 
         qkv_weight = torch.cat(qkv_weight_list, dim=0).transpose(0, 1)
-        return convert_tensor_to_np_array(qkv_weight, self.data_type)
+        return qkv_weight
 
-    def qkv_bias_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: str,  # type: ignore[override]
-    ) -> np.ndarray:
+    def qkv_bias_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """qkv_bias_convert for Bloom's attention layer."""
-        assert len(per_layer_postfixes) == 1
-        qkv_bias = get_tensor_from_state_dict(
-            state_dict, layer + per_layer_postfixes[0]
-        )
+        assert len(params) == 1
+        qkv_bias = params[0]
         split_qkv_bias_list = torch.split(qkv_bias, self.decoder_head_size, dim=0)
         qkv_bias_list = [
             torch.cat(
@@ -99,7 +81,7 @@ class BloomForCausalLMConverter(DecoderOnlyConverter):
         ]
 
         qkv_bias = torch.cat(qkv_bias_list, dim=0)
-        return convert_tensor_to_np_array(qkv_bias, self.data_type)
+        return qkv_bias
 
     def get_attributes(self) -> Dict[str, Any]:
         """Get checkpoint attributes."""
@@ -131,88 +113,133 @@ class BloomForCausalLMConverter(DecoderOnlyConverter):
         return "bloom"
 
     @property
-    def non_transformer_convert_dict(
+    def non_transformer_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for non-transformer blocks in Bloom."""
-        return {
-            "wte/weight:0": nontype_partial(
-                self.token_embed_weight_convert,
-                per_layer_postfixes=["transformer.word_embeddings.weight"],
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for non-transformer blocks in Bloom."""
+        return [
+            ConvertInfo(
+                param_names=["transformer.word_embeddings.weight"],
+                data_type=self.data_type,
+                converted_name="wte/weight:0",
+                convert_fn=self.token_embed_weight_convert,
             ),
-            "wte/ln/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=["transformer.word_embeddings_layernorm.weight"],
+            ConvertInfo(
+                param_names=["transformer.word_embeddings_layernorm.weight"],
+                data_type=self.data_type,
+                converted_name="wte/ln/gamma:0",
+                convert_fn=self.ln_weight_convert,
             ),
-            "wte/ln/beta:0": nontype_partial(
-                self.ln_bias_convert,
-                per_layer_postfixes=["transformer.word_embeddings_layernorm.bias"],
+            ConvertInfo(
+                param_names=["transformer.word_embeddings_layernorm.bias"],
+                data_type=self.data_type,
+                converted_name="wte/ln/beta:0",
+                convert_fn=self.ln_bias_convert,
             ),
-            DECODER_PREFIX
-            + "/ln_f/gamma:0": nontype_partial(
-                self.ln_weight_convert, per_layer_postfixes=["transformer.ln_f.weight"]
+            ConvertInfo(
+                param_names=["transformer.ln_f.weight"],
+                data_type=self.data_type,
+                converted_name=f"{DECODER_PREFIX}/ln_f/gamma:0",
+                convert_fn=self.ln_weight_convert,
             ),
-            DECODER_PREFIX
-            + "/ln_f/beta:0": nontype_partial(
-                self.ln_bias_convert, per_layer_postfixes=["transformer.ln_f.bias"]
+            ConvertInfo(
+                param_names=["transformer.ln_f.bias"],
+                data_type=self.data_type,
+                converted_name=f"{DECODER_PREFIX}/ln_f/beta:0",
+                convert_fn=self.ln_bias_convert,
             ),
-        }
+        ]
 
     @property
-    def decoder_convert_dict(
+    def decoder_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for transformer blocks in Bloom."""
-        return {
-            "ln_1/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=[".input_layernorm.weight"],
-            ),
-            "ln_1/beta:0": nontype_partial(
-                self.ln_bias_convert,
-                per_layer_postfixes=[".input_layernorm.bias"],
-            ),
-            "attn/c_attn/bias:0": nontype_partial(
-                self.qkv_bias_convert,
-                per_layer_postfixes=[".self_attention.query_key_value.bias"],
-            ),
-            "attn/c_proj/bias:0": nontype_partial(
-                self.linear_bias_convert,
-                per_layer_postfixes=[".self_attention.dense.bias"],
-            ),
-            "ln_2/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=[".post_attention_layernorm.weight"],
-            ),
-            "ln_2/beta:0": nontype_partial(
-                self.ln_bias_convert,
-                per_layer_postfixes=[".post_attention_layernorm.bias"],
-            ),
-            "mlp/c_fc/bias:0": nontype_partial(
-                self.linear_bias_convert,
-                per_layer_postfixes=[".mlp.dense_h_to_4h.bias"],
-            ),
-            "mlp/c_proj/bias:0": nontype_partial(
-                self.linear_bias_convert,
-                per_layer_postfixes=[".mlp.dense_4h_to_h.bias"],
-            ),
-            "attn/c_attn/weight:0": nontype_partial(
-                self.qkv_weight_convert,
-                per_layer_postfixes=[".self_attention.query_key_value.weight"],
-            ),
-            "attn/c_proj/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".self_attention.dense.weight"],
-            ),
-            "mlp/c_fc/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".mlp.dense_h_to_4h.weight"],
-            ),
-            "mlp/c_proj/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".mlp.dense_4h_to_h.weight"],
-            ),
-        }
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for transformer blocks in Bloom."""
+        convert_info_list = []
+        for i in range(self.decoder_layer_num):
+            layer_prefix = f"{self.decoder_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}input_layernorm.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_1/gamma:0",
+                        convert_fn=self.ln_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}input_layernorm.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_1/beta:0",
+                        convert_fn=self.ln_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[
+                            f"{layer_prefix}self_attention.query_key_value.bias"
+                        ],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/bias:0",
+                        convert_fn=self.qkv_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}self_attention.dense.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_proj/bias:0",
+                        convert_fn=self.linear_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}post_attention_layernorm.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_2/gamma:0",
+                        convert_fn=self.ln_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}post_attention_layernorm.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_2/beta:0",
+                        convert_fn=self.ln_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_h_to_4h.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_fc/bias:0",
+                        convert_fn=self.linear_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_4h_to_h.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_proj/bias:0",
+                        convert_fn=self.linear_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[
+                            f"{layer_prefix}self_attention.query_key_value.weight"
+                        ],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/weight:0",
+                        convert_fn=self.qkv_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}self_attention.dense.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_proj/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_h_to_4h.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_fc/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_4h_to_h.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_proj/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                ]
+            )
+        return convert_info_list
 
     @property
     def decoder_layer_prefix(self) -> str:
@@ -243,3 +270,8 @@ class BloomForCausalLMConverter(DecoderOnlyConverter):
     def decoder_head_size(self) -> int:
         """The size of each attention head in Bloom."""
         return self.decoder_hidden_size // self.decoder_num_attention_heads
+
+    @property
+    def decoder_ff_intermediate_size(self) -> int:
+        """The intermediate size of the linear layer in Bloom MLP."""
+        return self.decoder_hidden_size * 4

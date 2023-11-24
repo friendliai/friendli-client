@@ -23,18 +23,12 @@ from typing import (
 )
 
 import datasets  # type: ignore[import]
-import numpy as np
 import torch
 from accelerate import cpu_offload_with_hook  # type: ignore
 from tqdm import tqdm
 
-from periflow.enums import CheckpointDataType
 from periflow.errors import InvalidConfigError, QuantizationError
 from periflow.logging import logger
-from periflow.modules.converter.utils import (
-    convert_tensor_to_np_array,
-    get_tensor_from_state_dict,
-)
 from periflow.modules.quantizer.schema.config import CalibrationDatasetConfig
 from periflow.modules.quantizer.schema.data import (
     ModuleName,
@@ -44,78 +38,36 @@ from periflow.modules.quantizer.schema.data import (
 
 
 def scale_convert(
-    state_dict: Dict[str, torch.Tensor],
-    prefix: str,
-    per_layer_postfixes: List[str],
-    data_type: CheckpointDataType,
-) -> np.ndarray:
+    params: List[torch.Tensor],
+) -> torch.Tensor:
     """Convert scale/zero of quantized layers."""
-    if len(per_layer_postfixes) == 1:
-        t = state_dict[prefix + per_layer_postfixes[0]]
+    if len(params) == 1:
+        t = params[0]
     else:
-        t = torch.cat(
-            [state_dict[prefix + postfix] for postfix in per_layer_postfixes], dim=1
-        )
-    return convert_tensor_to_np_array(t, data_type)
+        t = torch.cat(params, dim=1)
+    return t
 
 
 def quantized_qkv_weight_convert(
-    state_dict: Dict[str, torch.Tensor],
-    layer: str,
-    per_layer_postfixes: List[str],
-    n_bit: int = 8,
-) -> np.ndarray:
+    params: List[torch.Tensor],
+) -> torch.Tensor:
     """Convert weight of quantized qkv layers."""
-    assert len(per_layer_postfixes) == 3
+    assert len(params) == 3
     qkv_weight = torch.concat(
-        [
-            get_tensor_from_state_dict(state_dict, layer + postfix)
-            for postfix in per_layer_postfixes
-        ],
+        params,
         dim=0,
     )  # [OutDim, InDim]
 
-    int8_weight = qkv_weight.to(torch.uint8)
-    if n_bit == 8:
-        return int8_weight.to("cpu").view(torch.int8).detach().numpy()
-
-    pack_num = 8 // n_bit
-    int4_weight = torch.zeros(
-        (int8_weight.shape[0], int8_weight.shape[1] // pack_num),
-        dtype=torch.uint8,
-        device=int8_weight.device,
-    )
-    for col in range(int4_weight.shape[1]):
-        for i in range(pack_num):
-            int4_weight[:, col] |= int8_weight[:, col * pack_num + i] << (i * 4)
-    return int4_weight.to("cpu").view(torch.int8).detach().numpy()
+    return qkv_weight.to(torch.uint8)
 
 
 def quantized_linear_weight_convert(
-    state_dict: Dict[str, torch.Tensor],
-    layer: str,
-    per_layer_postfixes: List[str],
-    n_bit: int = 8,
-) -> np.ndarray:
+    params: List[torch.Tensor],
+) -> torch.Tensor:
     """Convert weight of quantized linear layers."""
-    assert len(per_layer_postfixes) == 1
-    weight = get_tensor_from_state_dict(
-        state_dict, layer + per_layer_postfixes[0]
-    )  # [OutDim, InDim]
+    assert len(params) == 1
 
-    int8_weight = weight.to(torch.uint8)
-    if n_bit == 8:
-        return int8_weight.to("cpu").view(torch.int8).detach().numpy()
-    pack_num = 8 // n_bit
-    int4_weight = torch.zeros(
-        (int8_weight.shape[0], int8_weight.shape[1] // pack_num),
-        dtype=torch.uint8,
-        device=int8_weight.device,
-    )
-    for col in range(int4_weight.shape[1]):
-        for i in range(pack_num):
-            int4_weight[:, col] |= int8_weight[:, col * pack_num + i] << (i * 4)
-    return int4_weight.to("cpu").view(torch.int8).detach().numpy()
+    return params[0].to(torch.uint8)
 
 
 def get_torch_data_type(data_type: str):

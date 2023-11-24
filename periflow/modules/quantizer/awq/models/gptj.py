@@ -6,12 +6,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Type
+from typing import Iterator, List, Tuple, Type
 
-import numpy as np
 import torch
 
-from periflow.modules.converter.utils import nontype_partial
+from periflow.enums import CheckpointDataType
+from periflow.modules.converter.base import DECODER_PREFIX
+from periflow.modules.converter.schema import ConvertInfo
 from periflow.modules.quantizer.awq.base import AWQHook
 from periflow.modules.quantizer.schema.data import ModuleName, QuantInput, TFQuantInputs
 from periflow.modules.quantizer.utils import scale_convert
@@ -90,6 +91,7 @@ class AWQGPTJHook(AWQHook):
         ):
             yield TFQuantInputs(
                 layer_index=index,
+                parent_module=tf_block,
                 q=QuantInput(
                     tf_block.attn.q_proj.weight,
                     f"{self.quantized_layer_prefix}{index}.attn.q_proj",
@@ -137,17 +139,23 @@ class AWQGPTJHook(AWQHook):
         return model.transformer.h  # type: ignore
 
     @property
-    def modified_layers_convert_dict(
+    def modified_layers_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for modified layers."""
-        return {
-            "mlp/c_proj/awq/pre_scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".mlp.ff2_scaler.scale"],
-                data_type="fp32",
-            ),
-        }
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for modified layers."""
+        convert_info_list = []
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.quantized_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.append(
+                ConvertInfo(
+                    param_names=[f"{layer_prefix}mlp.ff2_scaler.scale"],
+                    data_type=CheckpointDataType.FP32,
+                    converted_name=f"{converted_prefix}mlp/c_proj/awq/pre_scale:0",
+                    convert_fn=scale_convert,
+                )
+            )
+        return convert_info_list
 
     @property
     def avoid_clipping_layer_names(self) -> List[str]:

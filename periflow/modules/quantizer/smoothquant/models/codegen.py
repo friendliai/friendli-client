@@ -7,13 +7,13 @@
 from __future__ import annotations
 
 import copy
-from typing import Callable, Dict, Iterator, List, Tuple, Type, cast
+from typing import Iterator, List, Tuple, Type, cast
 
-import numpy as np
 import torch
 from transformers.models.codegen import CodeGenForCausalLM  # type: ignore[import]
 
-from periflow.modules.converter.utils import nontype_partial
+from periflow.modules.converter.base import DECODER_PREFIX
+from periflow.modules.converter.schema import ConvertInfo
 from periflow.modules.quantizer.schema.config import SmoothQuantConfig
 from periflow.modules.quantizer.schema.data import ModuleName, QuantInput, TFQuantInputs
 from periflow.modules.quantizer.smoothquant.base import SmoothQuantHook
@@ -62,13 +62,13 @@ class SmoothQuantCodeGenHook(SmoothQuantHook):
                 yield (
                     [decoder_layer.attn_fc_pre_smoother.scale.data],
                     [decoder_layer.attn.out_proj.weight.data],
-                    f"{self.quantized_layer_prefix}{index}.self_attention.dense",
+                    f"{self.quantized_layer_prefix}{index}.attn.out_proj",
                 )
             if quant_args.ff2_smoothing:
                 yield (
                     [decoder_layer.ff2_pre_smoother.scale.data],
-                    [decoder_layer.mlp.fc_out.data],
-                    f"{self.quantized_layer_prefix}{index}.mlp.dense_4h_to_h",
+                    [decoder_layer.mlp.fc_out.weight.data],
+                    f"{self.quantized_layer_prefix}{index}.mlp.fc_out",
                 )
 
     def reshape_qkv_weight(
@@ -159,24 +159,32 @@ class SmoothQuantCodeGenHook(SmoothQuantHook):
             )
 
     @property
-    def modified_layers_convert_dict(
+    def modified_layers_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Returns the convert_dict for modified layers in CodeGenForCausalLM."""
-        convert_dict = super().modified_layers_convert_dict
-        convert_dict.update(
-            {
-                "ln_2/gamma:0": nontype_partial(
-                    self.converter.ln_weight_convert,
-                    per_layer_postfixes=[".ln_2.weight"],
-                ),
-                "ln_2/beta:0": nontype_partial(
-                    self.converter.ln_bias_convert,
-                    per_layer_postfixes=[".ln_2.bias"],
-                ),
-            }
-        )
-        return convert_dict
+    ) -> List[ConvertInfo]:
+        """Returns the list of conversion informations for modified layers in CodeGenForCausalLM."""
+        convert_info_list = super().modified_layers_convert_info_list
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.quantized_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ln_2.weight"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}ln_2/gamma:0",
+                        convert_fn=self.converter.ln_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ln_2.bias"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}ln_2/beta:0",
+                        convert_fn=self.converter.ln_bias_convert,
+                    ),
+                ]
+            )
+
+        return convert_info_list
 
     def get_linear_layer_types(self) -> Tuple[Type[torch.nn.Module]]:
         """Returns the linear layer types in CodeGenForCausalLM."""

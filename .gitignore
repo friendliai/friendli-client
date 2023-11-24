@@ -161,6 +161,7 @@ cython_debug/
 #.idea/
 
 *.yaml
+!tests/unit_tests/modules/specs/*/*.yaml
 *.jsonl
 
 ## Vim
@@ -199,3 +200,6 @@ tags
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# Mac OS system file
+.DS_Store

@@ -4,9 +4,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, cast
+from typing import Any, Dict, List, cast
 
-import numpy as np
 import torch
 from transformers import GPTNeoXConfig  # type: ignore[import]
 
@@ -17,15 +16,14 @@ from periflow.modules.converter.base import (
     SUPPORTED_GELU_FAMILY,
     DecoderOnlyConverter,
 )
-from periflow.modules.converter.utils import (
-    convert_tensor_to_np_array,
-    convert_to_gpt_j_params,
-    get_tensor_from_state_dict,
-    nontype_partial,
-)
+from periflow.modules.converter.interface import RotaryEmbeddingConversionInterface
+from periflow.modules.converter.schema import ConvertInfo
+from periflow.modules.converter.utils import convert_to_gpt_j_params
 
 
-class GPTNeoXForCausalLMConverter(DecoderOnlyConverter):
+class GPTNeoXForCausalLMConverter(
+    DecoderOnlyConverter, RotaryEmbeddingConversionInterface
+):
     """GPTNeoXForCausalLM Architectures Converter Class."""
 
     def check_config(self) -> None:
@@ -65,15 +63,11 @@ class GPTNeoXForCausalLMConverter(DecoderOnlyConverter):
 
     def qkv_weight_convert(
         self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: str,  # type: ignore[override]
-    ) -> np.ndarray:
+        params: List[torch.Tensor],
+    ) -> torch.Tensor:
         """qkv_weight_convert for GPTNeoX's attention layer."""
-        assert len(per_layer_postfixes) == 1
-        qkv_weight = get_tensor_from_state_dict(
-            state_dict, layer + per_layer_postfixes[0]
-        )
+        assert len(params) == 1
+        qkv_weight = params[0]
         qkv_weight = qkv_weight.reshape(
             self.decoder_num_attention_heads,
             3,
@@ -110,19 +104,12 @@ class GPTNeoXForCausalLMConverter(DecoderOnlyConverter):
         qkv_weight = torch.cat((q_weight, k_weight, v_weight), dim=0)
         qkv_weight = qkv_weight.transpose(0, 1)
 
-        return convert_tensor_to_np_array(qkv_weight, self.data_type)
+        return qkv_weight
 
-    def qkv_bias_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: str,  # type: ignore[override]
-    ) -> np.ndarray:
+    def qkv_bias_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """qkv_bias_convert for GPTNeoX's attention layer."""
-        assert len(per_layer_postfixes) == 1
-        qkv_bias = get_tensor_from_state_dict(
-            state_dict, layer + per_layer_postfixes[0]
-        )
+        assert len(params) == 1
+        qkv_bias = params[0]
         qkv_bias = qkv_bias.reshape(
             self.decoder_num_attention_heads,
             3,
@@ -143,7 +130,7 @@ class GPTNeoXForCausalLMConverter(DecoderOnlyConverter):
         k_bias = convert_to_gpt_j_params(k_bias, self.rotary_dim).flatten()
 
         qkv_bias = torch.cat((q_bias, k_bias, v_bias), dim=0)
-        return convert_tensor_to_np_array(qkv_bias, self.data_type)
+        return qkv_bias
 
     def get_attributes(self) -> Dict[str, Any]:
         """Get checkpoint attributes."""
@@ -167,6 +154,7 @@ class GPTNeoXForCausalLMConverter(DecoderOnlyConverter):
             "max_length": config.max_position_embeddings,
             "vocab_size": config.vocab_size,
             "eos_token": eos_token_id if eos_token_id is not None else "FILL ME",
+            "rope_theta": self.rotary_emb_base,
         }
         return attr
 
@@ -176,85 +164,123 @@ class GPTNeoXForCausalLMConverter(DecoderOnlyConverter):
         return "gpt-neox"
 
     @property
-    def non_transformer_convert_dict(
+    def non_transformer_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for non-transformer blocks in GPTNeoX."""
-        return {
-            "wte/weight:0": nontype_partial(
-                self.token_embed_weight_convert,
-                per_layer_postfixes=["gpt_neox.embed_in.weight"],
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for non-transformer blocks in GPTNeoX."""
+        return [
+            ConvertInfo(
+                param_names=["gpt_neox.embed_in.weight"],
+                data_type=self.data_type,
+                converted_name="wte/weight:0",
+                convert_fn=self.token_embed_weight_convert,
             ),
-            DECODER_PREFIX
-            + "/ln_f/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=["gpt_neox.final_layer_norm.weight"],
+            ConvertInfo(
+                param_names=["gpt_neox.final_layer_norm.weight"],
+                data_type=self.data_type,
+                converted_name=f"{DECODER_PREFIX}/ln_f/gamma:0",
+                convert_fn=self.ln_weight_convert,
             ),
-            DECODER_PREFIX
-            + "/ln_f/beta:0": nontype_partial(
-                self.ln_bias_convert,
-                per_layer_postfixes=["gpt_neox.final_layer_norm.bias"],
+            ConvertInfo(
+                param_names=["gpt_neox.final_layer_norm.bias"],
+                data_type=self.data_type,
+                converted_name=f"{DECODER_PREFIX}/ln_f/beta:0",
+                convert_fn=self.ln_bias_convert,
             ),
-            "head_fc/weight:0": nontype_partial(
-                self.head_weight_convert, per_layer_postfixes=["embed_out.weight"]
+            ConvertInfo(
+                param_names=["embed_out.weight"],
+                data_type=self.data_type,
+                converted_name="head_fc/weight:0",
+                convert_fn=self.head_weight_convert,
             ),
-        }
+        ]
 
     @property
-    def decoder_convert_dict(
+    def decoder_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for transformer blocks in GPTNeoX."""
-        return {
-            "ln_1/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=[".input_layernorm.weight"],
-            ),
-            "ln_1/beta:0": nontype_partial(
-                self.ln_bias_convert,
-                per_layer_postfixes=[".input_layernorm.bias"],
-            ),
-            "attn/c_attn/bias:0": nontype_partial(
-                self.qkv_bias_convert,
-                per_layer_postfixes=[".attention.query_key_value.bias"],
-            ),
-            "attn/c_proj/bias:0": nontype_partial(
-                self.linear_bias_convert,
-                per_layer_postfixes=[".attention.dense.bias"],
-            ),
-            "ln_2/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=[".post_attention_layernorm.weight"],
-            ),
-            "ln_2/beta:0": nontype_partial(
-                self.ln_bias_convert,
-                per_layer_postfixes=[".post_attention_layernorm.bias"],
-            ),
-            "mlp/c_fc/bias:0": nontype_partial(
-                self.linear_bias_convert,
-                per_layer_postfixes=[".mlp.dense_h_to_4h.bias"],
-            ),
-            "mlp/c_proj/bias:0": nontype_partial(
-                self.linear_bias_convert,
-                per_layer_postfixes=[".mlp.dense_4h_to_h.bias"],
-            ),
-            "attn/c_attn/weight:0": nontype_partial(
-                self.qkv_weight_convert,
-                per_layer_postfixes=[".attention.query_key_value.weight"],
-            ),
-            "attn/c_proj/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".attention.dense.weight"],
-            ),
-            "mlp/c_fc/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".mlp.dense_h_to_4h.weight"],
-            ),
-            "mlp/c_proj/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".mlp.dense_4h_to_h.weight"],
-            ),
-        }
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for transformer blocks in GPTNeoX."""
+        convert_info_list = []
+        for i in range(self.decoder_layer_num):
+            layer_prefix = f"{self.decoder_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}input_layernorm.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_1/gamma:0",
+                        convert_fn=self.ln_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}input_layernorm.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_1/beta:0",
+                        convert_fn=self.ln_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attention.query_key_value.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/bias:0",
+                        convert_fn=self.qkv_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attention.dense.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_proj/bias:0",
+                        convert_fn=self.linear_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}post_attention_layernorm.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_2/gamma:0",
+                        convert_fn=self.ln_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}post_attention_layernorm.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_2/beta:0",
+                        convert_fn=self.ln_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_h_to_4h.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_fc/bias:0",
+                        convert_fn=self.linear_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_4h_to_h.bias"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_proj/bias:0",
+                        convert_fn=self.linear_bias_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attention.query_key_value.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/weight:0",
+                        convert_fn=self.qkv_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attention.dense.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_proj/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_h_to_4h.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_fc/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}mlp.dense_4h_to_h.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_proj/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                ]
+            )
+        return convert_info_list
 
     @property
     def decoder_layer_prefix(self) -> str:
@@ -287,6 +313,16 @@ class GPTNeoXForCausalLMConverter(DecoderOnlyConverter):
         return self.decoder_hidden_size // self.decoder_num_attention_heads
 
     @property
+    def decoder_ff_intermediate_size(self) -> int:
+        """The intermediate size of the linear layer in codegen MLP."""
+        return self.decoder_hidden_size * 4
+
+    @property
     def rotary_dim(self) -> int:
         """The rotary embedding dimesion of GPTNeoX."""
         return int(self.decoder_head_size * cast(GPTNeoXConfig, self.config).rotary_pct)
+
+    @property
+    def rotary_emb_base(self) -> float:
+        """The rotary embedding base of GPTNeoX."""
+        return float(cast(GPTNeoXConfig, self.config).rotary_emb_base)

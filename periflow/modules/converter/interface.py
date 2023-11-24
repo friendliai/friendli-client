@@ -5,57 +5,70 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict
+from collections.abc import Generator
+from typing import Any, Dict, List, Tuple
 
-import h5py  # type: ignore[import]
 import numpy as np
 import torch
-from tqdm.std import tqdm as std_tqdm
+from tqdm import tqdm
+
+from periflow.modules.converter.schema import ConvertInfo
+from periflow.modules.converter.utils import (
+    convert_tensor_to_np_array,
+    get_tensor_from_state_dict,
+)
 
 
 class ModelConversionInterface(ABC):
     """Interface get information for converting models."""
 
     @abstractmethod
-    def get_convert_dict(
+    def get_convert_info_list(
         self,
-    ) -> Dict[str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]]:
-        """Return the convert_dict for the model.
-
-        ### convert_dict format
-        convert_dict = {
-            "block-type": {
-                "converted_layer_name": convert_fn,
-            },
-        }
-        """
+    ) -> List[ConvertInfo]:
+        """Get list of conversion informations for the model."""
 
     @abstractmethod
     def get_attributes(self) -> Dict[str, Any]:
         """Get checkpoint attributes."""
 
     @abstractmethod
+    def check_config(self) -> None:
+        """Check if the model is convertable."""
+
     def convert(
         self,
         model: torch.nn.Module,
-        output_path: str,
-        convert_dict: Dict[
-            str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
-        ],
-    ) -> None:
+        convert_info_list: List[ConvertInfo],
+    ) -> Generator[Tuple[str, np.ndarray], None, None]:
         """Convert Huggingface Model to PeriFlow format(.h5).
 
         Args:
             model (torch.nn.Module): Huggingface model.
             output_path (str): Path to save the converted checkpoint.
-            convert_dict (Dict[Callable[[Dict[str, torch.Tensor], str], np.ndarray]]):
-                Dictionary of mapping converted params name to conversion functions.
-
+            convert_info_list (List[ConvertInfo]):
+                List of convert information of the parameter in huggingface checkpoint.
         """
-
-    @abstractmethod
-    def check_config(self) -> None:
-        """Check if the model is convertable."""
+        state_dict = model.state_dict()
+        total_layers = len(convert_info_list)
+        with tqdm(total=total_layers, desc="Converting", unit="tensor") as pbar:
+            for convert_info in convert_info_list:
+                converted_name, convert_fn, param_names, data_type = (
+                    convert_info.converted_name,
+                    convert_info.convert_fn,
+                    convert_info.param_names,
+                    convert_info.data_type,
+                )
+                params = [
+                    get_tensor_from_state_dict(state_dict, param_name)
+                    for param_name in param_names
+                ]
+                reshaped_tensor = convert_fn(params)
+                yield (
+                    converted_name,
+                    convert_tensor_to_np_array(reshaped_tensor, data_type),
+                )
+                pbar.update()
 
 
 class NonTFBlockConversionInterface(ABC):
@@ -63,26 +76,10 @@ class NonTFBlockConversionInterface(ABC):
 
     @property
     @abstractmethod
-    def non_transformer_convert_dict(
+    def non_transformer_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for layers that do not belong to transformer blocks."""
-
-    def convert_non_transformer_layers(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        convert_dict: Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]],
-        out_f: h5py.Group,
-        pbar: std_tqdm,
-    ) -> None:
-        """Return the number of transformer blocks converted in the decoder."""
-        for (
-            converted_layer_name,
-            convert_fn,
-        ) in convert_dict.items():
-            converted_np_array = convert_fn(state_dict, "")
-            out_f[converted_layer_name] = converted_np_array
-            pbar.update()
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for the non-transformer blocks."""
 
 
 class DecoderTFBlockConversionInterface(ABC):
@@ -115,32 +112,20 @@ class DecoderTFBlockConversionInterface(ABC):
 
     @property
     @abstractmethod
-    def decoder_convert_dict(
+    def decoder_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for transformer blocks in the decoder."""
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for transformer blocks in the decoder."""
 
     @property
     @abstractmethod
     def decoder_head_size(self) -> int:
         """Return the head size of the decoder."""
 
-    def convert_decoder_layers(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        convert_dict: Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]],
-        out_f: h5py.Group,
-        pbar: std_tqdm,
-    ) -> None:
-        """Return the number of transformer blocks converted in the decoder."""
-        for i in range(self.decoder_layer_num):
-            layer = self.decoder_layer_prefix + f"{i}"
-            per_layer_out_ckpt = out_f.create_group(f"h_._{i}")
-
-            for converted_layer_name, convert_fn in convert_dict.items():
-                converted_np_array = convert_fn(state_dict, layer)
-                per_layer_out_ckpt[converted_layer_name] = converted_np_array
-                pbar.update()
+    @property
+    @abstractmethod
+    def decoder_ff_intermediate_size(self) -> int:
+        """Return the intermediate size of the linear layer in decoder's MLP."""
 
 
 class EncoderTFBlockConversionInterface(ABC):
@@ -168,29 +153,31 @@ class EncoderTFBlockConversionInterface(ABC):
 
     @property
     @abstractmethod
-    def encoder_convert_dict(
+    def encoder_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for transformer blocks in the encoder."""
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for transformer blocks in the encoder."""
 
     @property
     @abstractmethod
     def encoder_head_size(self) -> int:
         """Return the head size of the encoder."""
 
-    def convert_encoder_layers(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        convert_dict: Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]],
-        out_f: h5py.Group,
-        pbar: std_tqdm,
-    ) -> None:
-        """Return the number of transformer blocks converted in the encoder."""
-        for i in range(self.encoder_layer_num):
-            layer = self.encoder_layer_prefix + f"{i}"
-            per_layer_out_ckpt = out_f.create_group(f"h_._{i}")
+    @property
+    @abstractmethod
+    def encoder_ff_intermediate_size(self) -> int:
+        """Return the intermediate size of the linear layer in encoder's MLP."""
 
-            for converted_layer_name, convert_fn in convert_dict.items():
-                converted_np_array = convert_fn(state_dict, layer)
-                per_layer_out_ckpt[converted_layer_name] = converted_np_array
-                pbar.update()
+
+class RotaryEmbeddingConversionInterface(ABC):
+    """Interface get information for converting rotary embeddings."""
+
+    @property
+    @abstractmethod
+    def rotary_dim(self) -> int:
+        """Return the dimension of rotary embeddings."""
+
+    @property
+    @abstractmethod
+    def rotary_emb_base(self) -> float:
+        """Return the base of rotary embeddings."""

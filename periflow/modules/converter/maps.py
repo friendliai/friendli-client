@@ -7,7 +7,6 @@ from __future__ import annotations
 from typing import Dict, Tuple, Type, Union
 
 from transformers import (  # type: ignore[import]
-    AutoModelForCausalLM,
     BlenderbotForConditionalGeneration,
     BloomForCausalLM,
     CodeGenForCausalLM,
@@ -16,6 +15,8 @@ from transformers import (  # type: ignore[import]
     GPTJForCausalLM,
     GPTNeoXForCausalLM,
     LlamaForCausalLM,
+    MistralForCausalLM,
+    MptForCausalLM,
     OPTForCausalLM,
     PreTrainedModel,
     T5ForConditionalGeneration,
@@ -37,12 +38,13 @@ from periflow.modules.converter.models.llama import (
     LlamaForCausalLMConverter,
     LlamaForCausalLMLoraConverter,
 )
+from periflow.modules.converter.models.mistral import MistralForCausalLMConverter
 from periflow.modules.converter.models.mpt import MPTForCausalLMConverter
 from periflow.modules.converter.models.opt import OPTForCausalLMConverter
 from periflow.modules.converter.models.t5 import T5Converter
 
 MODEL_ARCH_CONVERTER_MAP: Dict[
-    str, Tuple[Union[AutoModelForCausalLM, PreTrainedModel], Type[OneOfConverter]]
+    str, Tuple[Union[PreTrainedModel, PreTrainedModel], Type[OneOfConverter]]
 ] = {
     "BlenderbotForConditionalGeneration": (
         BlenderbotForConditionalGeneration,
@@ -56,8 +58,8 @@ MODEL_ARCH_CONVERTER_MAP: Dict[
     "GPTJForCausalLM": (GPTJForCausalLM, GPTJForCausalLMConverter),
     "LlamaForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
     "LLaMAForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
-    "MistralForCausalLM": (LlamaForCausalLM, LlamaForCausalLMConverter),
-    "MPTForCausalLM": (AutoModelForCausalLM, MPTForCausalLMConverter),
+    "MistralForCausalLM": (MistralForCausalLM, MistralForCausalLMConverter),
+    "MPTForCausalLM": (MptForCausalLM, MPTForCausalLMConverter),
     "OPTForCausalLM": (OPTForCausalLM, OPTForCausalLMConverter),
     "T5ForConditionalGeneration": (T5ForConditionalGeneration, T5Converter),
 }
@@ -74,14 +76,14 @@ MODEL_ARCH_ADAPTER_CONVERTER_MAP: Dict[
 
 def get_hf_converter_factory(
     model_arch: str,
-) -> Tuple[Union[AutoModelForCausalLM, PreTrainedModel], Type[OneOfConverter]]:
+) -> Tuple[PreTrainedModel, Type[OneOfConverter]]:
     """Return the converter factory for the given model architecture.
 
     Args:
         model_arch (str): Model architecture name.
 
     Returns:
-        Tuple[Union[AutoModelForCausalLM, PreTrainedModel], Type[OneOfConverter]]: Tuple of
+        Tuple[PretrainedModel, Type[OneOfConverter]]: Tuple of
             model class and converter class.
 
     Raises:

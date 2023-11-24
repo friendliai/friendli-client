@@ -8,17 +8,19 @@ import gc
 from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import fields
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Type, cast
+from typing import Any, Dict, Iterator, List, Tuple, Type, cast
 
 import datasets  # type: ignore[import]
-import numpy as np
 import torch
 from datasets.utils.logging import disable_progress_bar  # type: ignore[import]
 from tqdm import tqdm
 
+from periflow.enums import CheckpointDataType
 from periflow.errors import QuantizationError
 from periflow.logging import logger
-from periflow.modules.converter.utils import get_tokenizer, nontype_partial
+from periflow.modules.converter.base import DECODER_PREFIX
+from periflow.modules.converter.schema import ConvertInfo
+from periflow.modules.converter.utils import get_tokenizer
 from periflow.modules.quantizer.awq.utils import (
     apply_module_clip,
     apply_module_scale,
@@ -146,98 +148,124 @@ class AWQHook(AbstractQuantHook):
         )
 
     @property
+    def quant_dtype(self) -> CheckpointDataType:
+        """Return the quantization dtype."""
+        quant_config = cast(AWQConfig, self.quant_config)
+        awq_args = quant_config.awq_args
+        if awq_args.quant_bit == 4:
+            return CheckpointDataType.INT4
+        return CheckpointDataType.INT8
+
+    @property
     @abstractmethod
     def avoid_clipping_layer_names(self) -> List[str]:
         """Return the layer names to avoid clipping."""
 
     @property
     @abstractmethod
-    def modified_layers_convert_dict(
+    def modified_layers_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for modified layers."""
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for modified layers."""
 
     @property
-    def quantized_convert_dict(
+    def quantized_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for quantized layers."""
-        quant_config = cast(AWQConfig, self.quant_config)
-        n_bit = quant_config.awq_args.quant_bit
-        return {
-            "attn/c_attn/awq/scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[
-                    ".q.weight_scale",
-                    ".k.weight_scale",
-                    ".v.weight_scale",
-                ],
-                data_type=self.converter.data_type,
-            ),
-            "attn/c_attn/awq/zero:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[
-                    ".q.zeros",
-                    ".k.zeros",
-                    ".v.zeros",
-                ],
-                data_type=self.converter.data_type,
-            ),
-            "attn/c_attn/awq/weight:0": nontype_partial(
-                quantized_qkv_weight_convert,
-                per_layer_postfixes=[
-                    ".q.weight",
-                    ".k.weight",
-                    ".v.weight",
-                ],
-                n_bit=n_bit,
-            ),
-            "attn/c_proj/awq/scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".attn_fc.weight_scale"],
-                data_type=self.converter.data_type,
-            ),
-            "attn/c_proj/awq/zero:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".attn_fc.zeros"],
-                data_type=self.converter.data_type,
-            ),
-            "attn/c_proj/awq/weight:0": nontype_partial(
-                quantized_linear_weight_convert,
-                per_layer_postfixes=[".attn_fc.weight"],
-                n_bit=n_bit,
-            ),
-            "mlp/c_fc/awq/scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff1.weight_scale"],
-                data_type=self.converter.data_type,
-            ),
-            "mlp/c_fc/awq/zero:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff1.zeros"],
-                data_type=self.converter.data_type,
-            ),
-            "mlp/c_fc/awq/weight:0": nontype_partial(
-                quantized_linear_weight_convert,
-                per_layer_postfixes=[".ff1.weight"],
-                n_bit=n_bit,
-            ),
-            "mlp/c_proj/awq/scale:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff2.weight_scale"],
-                data_type=self.converter.data_type,
-            ),
-            "mlp/c_proj/awq/zero:0": nontype_partial(
-                scale_convert,
-                per_layer_postfixes=[".ff2.zeros"],
-                data_type=self.converter.data_type,
-            ),
-            "mlp/c_proj/awq/weight:0": nontype_partial(
-                quantized_linear_weight_convert,
-                per_layer_postfixes=[".ff2.weight"],
-                n_bit=n_bit,
-            ),
-        }
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for quantized layers."""
+        convert_info_list = []
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.quantized_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[
+                            f"{layer_prefix}q.weight_scale",
+                            f"{layer_prefix}k.weight_scale",
+                            f"{layer_prefix}v.weight_scale",
+                        ],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/awq/scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[
+                            f"{layer_prefix}q.zeros",
+                            f"{layer_prefix}k.zeros",
+                            f"{layer_prefix}v.zeros",
+                        ],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/awq/zero:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[
+                            f"{layer_prefix}q.weight",
+                            f"{layer_prefix}k.weight",
+                            f"{layer_prefix}v.weight",
+                        ],
+                        data_type=self.quant_dtype,
+                        converted_name=f"{converted_prefix}attn/c_attn/awq/weight:0",
+                        convert_fn=quantized_qkv_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn_fc.weight_scale"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}attn/c_proj/awq/scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn_fc.zeros"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}attn/c_proj/awq/zero:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn_fc.weight"],
+                        data_type=self.quant_dtype,
+                        converted_name=f"{converted_prefix}attn/c_proj/awq/weight:0",
+                        convert_fn=quantized_linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff1.weight_scale"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_fc/awq/scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff1.zeros"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_fc/awq/zero:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff1.weight"],
+                        data_type=self.quant_dtype,
+                        converted_name=f"{converted_prefix}mlp/c_fc/awq/weight:0",
+                        convert_fn=quantized_linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff2.weight_scale"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_proj/awq/scale:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff2.zeros"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_proj/awq/zero:0",
+                        convert_fn=scale_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ff2.weight"],
+                        data_type=self.quant_dtype,
+                        converted_name=f"{converted_prefix}mlp/c_proj/awq/weight:0",
+                        convert_fn=quantized_linear_weight_convert,
+                    ),
+                ]
+            )
+        return convert_info_list
 
 
 class AWQQuantizer(CommonQuantizer):
@@ -423,6 +451,15 @@ class AWQQuantizer(CommonQuantizer):
             removable.remove()
 
         return block_args, block_kwargs
+
+    def get_attributes(self) -> Dict[str, Any]:
+        """Return the attributes of the converted model."""
+        attributes = self.converter.get_attributes()
+        awq_args = cast(AWQConfig, self.quant_config).awq_args
+        attributes["quant_scheme"] = self.quant_config.mode.value  # awq
+        attributes["quant_group_size"] = awq_args.quant_group_size
+        attributes["quant_bit"] = awq_args.quant_bit
+        return attributes
 
     @contextmanager
     def _try_offload_model(self, model: torch.nn.Module):

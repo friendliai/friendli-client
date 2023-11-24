@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Union, cast
+from collections.abc import Generator
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-import h5py  # type: ignore[import]
 import numpy as np
 import torch
 from peft import PeftType  # type: ignore[import] # pylint: disable=import-error
@@ -15,7 +15,6 @@ from peft.config import PeftConfig
 from peft.tuners.lora import (  # type: ignore[import] # pylint: disable=import-error
     LoraConfig,
 )
-from tqdm.auto import tqdm
 from transformers import GenerationConfig, PretrainedConfig  # type: ignore[import]
 
 from periflow.enums import CheckpointDataType
@@ -27,10 +26,7 @@ from periflow.modules.converter.interface import (
     ModelConversionInterface,
     NonTFBlockConversionInterface,
 )
-from periflow.modules.converter.utils import (
-    convert_tensor_to_np_array,
-    get_tensor_from_state_dict,
-)
+from periflow.modules.converter.schema import ConvertInfo
 
 SUPPORTED_GELU_FAMILY = [
     "gelu",
@@ -104,12 +100,7 @@ class AbstractConverter(ModelConversionInterface, ABC):
 
         return eos_token_id
 
-    def token_embed_weight_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def token_embed_weight_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert embedding layer's weight to PeriFlow format.
 
         Args:
@@ -118,19 +109,13 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-            The numpy array of the converted embedding weight.
+            The tensor of reshaped embedding weight.
 
         """
-        assert len(per_layer_postfixes) == 1
-        param = get_tensor_from_state_dict(state_dict, layer + per_layer_postfixes[0])
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        assert len(params) == 1
+        return params[0]
 
-    def pos_embed_weight_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def pos_embed_weight_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert position embedding layer's weight to PeriFlow format.
 
         Args:
@@ -139,18 +124,12 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-            The numpy array of the converted position embedding weight.
+            The tensor of reshaped position embedding weight.
         """
-        assert len(per_layer_postfixes) == 1
-        param = get_tensor_from_state_dict(state_dict, layer + per_layer_postfixes[0])
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        assert len(params) == 1
+        return params[0]
 
-    def head_weight_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def head_weight_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert head layer's weight to PeriFlow format.
 
         Args:
@@ -159,19 +138,13 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-            The numpy array of the converted head weight.
+            The tensor of reshaped head weight.
 
         """
-        assert len(per_layer_postfixes) == 1
-        param = get_tensor_from_state_dict(state_dict, layer + per_layer_postfixes[0])
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        assert len(params) == 1
+        return params[0]
 
-    def linear_weight_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def linear_weight_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert linear layer's weight to PeriFlow format.
 
         Args:
@@ -180,20 +153,14 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-            The numpy array of the converted linear weight.
+            The tensor of reshaped linear weight.
 
         """
-        assert len(per_layer_postfixes) == 1
-        param = get_tensor_from_state_dict(state_dict, layer + per_layer_postfixes[0])
-        param = param.transpose(0, 1)
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        assert len(params) == 1
+        param = params[0].transpose(0, 1)
+        return param
 
-    def linear_bias_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def linear_bias_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert linear layer's bias to PeriFlow format.
 
         Args:
@@ -202,19 +169,13 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-            The numpy array of the converted linear bias.
+            The tensor of reshaped linear bias.
 
         """
-        assert len(per_layer_postfixes) == 1
-        param = get_tensor_from_state_dict(state_dict, layer + per_layer_postfixes[0])
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        assert len(params) == 1
+        return params[0]
 
-    def ln_weight_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def ln_weight_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert layer norm layer's weight to PeriFlow format.
 
         Args:
@@ -223,19 +184,13 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-            The numpy array of the converted layer norm weight.
+            The tensor of reshaped layer norm weight.
 
         """
-        assert len(per_layer_postfixes) == 1
-        param = get_tensor_from_state_dict(state_dict, layer + per_layer_postfixes[0])
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        assert len(params) == 1
+        return params[0]
 
-    def ln_bias_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def ln_bias_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert layer norm layer's bias to PeriFlow format.
 
         Args:
@@ -244,19 +199,13 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-            The numpy array of the converted layer norm bias.
+            The tensor of reshaped layer norm bias.
 
         """
-        assert len(per_layer_postfixes) == 1
-        param = get_tensor_from_state_dict(state_dict, layer + per_layer_postfixes[0])
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        assert len(params) == 1
+        return params[0]
 
-    def qkv_weight_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def qkv_weight_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert qkv layer's weight to PeriFlow format.
 
         In the original checkpoint, the qkv weight is stored as a single tensor or
@@ -268,23 +217,14 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-            The numpy array of the converted qkv weight.
+            The tensor of reshaped qkv weight.
 
         """
-        params = [
-            get_tensor_from_state_dict(state_dict, layer + postfix)
-            for postfix in per_layer_postfixes
-        ]
         param = torch.cat(params, dim=0)
         param = param.transpose(0, 1)
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        return param
 
-    def qkv_bias_convert(
-        self,
-        state_dict: Dict[str, torch.Tensor],
-        layer: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+    def qkv_bias_convert(self, params: List[torch.Tensor]) -> torch.Tensor:
         """Convert qkv layer's bias to PeriFlow format.
 
         In the original checkpoint, the qkv weight is stored as a single tensor or
@@ -296,15 +236,11 @@ class AbstractConverter(ModelConversionInterface, ABC):
             per_layer_postfixes (List[str]): The list of postfixes of the layer.
 
         Returns:
-           The numpy array of the converted qkv bias.
+           The tensor of reshaped qkv bias.
 
         """
-        params = [
-            get_tensor_from_state_dict(state_dict, layer + postfix)
-            for postfix in per_layer_postfixes
-        ]
         param = torch.cat(params, dim=0)
-        return convert_tensor_to_np_array(param=param, data_type=self.data_type)
+        return param
 
 
 class DecoderOnlyConverter(
@@ -323,43 +259,11 @@ class DecoderOnlyConverter(
                 valid_options=SUPPORTED_HEAD_SIZE,
             )
 
-    def get_convert_dict(
+    def get_convert_info_list(
         self,
-    ) -> Dict[str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]]:
-        """Get convert dict for Decoder-Only model."""
-        return {
-            "non-transformer": self.non_transformer_convert_dict,
-            "decoder": self.decoder_convert_dict,
-        }
-
-    def convert(
-        self,
-        model: torch.nn.Module,
-        output_path: str,
-        convert_dict: Dict[
-            str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
-        ],
-    ) -> None:
-        """Convert Decoder-Only model's all layer to PeriFlow format."""
-        state_dict = model.state_dict()
-        total_layers = len(convert_dict["decoder"]) * self.decoder_layer_num + len(
-            convert_dict["non-transformer"]
-        )
-        with h5py.File(output_path, "w") as out_f, tqdm(
-            total=total_layers, desc="Converting", unit="tensor"
-        ) as pbar:
-            self.convert_decoder_layers(
-                state_dict=state_dict,
-                convert_dict=convert_dict["decoder"],
-                out_f=out_f.create_group(DECODER_PREFIX),
-                pbar=pbar,
-            )
-            self.convert_non_transformer_layers(
-                state_dict=state_dict,
-                convert_dict=convert_dict["non-transformer"],
-                out_f=out_f,
-                pbar=pbar,
-            )
+    ) -> List[ConvertInfo]:
+        """Get List of conversion informations for Decoder-Only model."""
+        return self.non_transformer_convert_info_list + self.decoder_convert_info_list
 
 
 class EncoderDecoderConverter(
@@ -378,52 +282,15 @@ class EncoderDecoderConverter(
                 valid_options=SUPPORTED_HEAD_SIZE,
             )
 
-    def get_convert_dict(
+    def get_convert_info_list(
         self,
-    ) -> Dict[str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]]:
-        """Get convert dict for Encoder-Decoder model."""
-        return {
-            "non-transformer": self.non_transformer_convert_dict,
-            "encoder": self.encoder_convert_dict,
-            "decoder": self.decoder_convert_dict,
-        }
-
-    def convert(
-        self,
-        model: torch.nn.Module,
-        output_path: str,
-        convert_dict: Dict[
-            str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
-        ],
-    ) -> None:
-        """Convert Encoder-Decoder model's all layer to PeriFlow format."""
-        state_dict = model.state_dict()
-        total_layers = (
-            len(self.encoder_convert_dict) * self.encoder_layer_num
-            + len(self.decoder_convert_dict) * self.decoder_layer_num
-            + len(self.non_transformer_convert_dict)
+    ) -> List[ConvertInfo]:
+        """Get list of conversion informations for Encoder-Decoder model."""
+        return (
+            self.non_transformer_convert_info_list
+            + self.decoder_convert_info_list
+            + self.encoder_convert_info_list
         )
-        with h5py.File(output_path, "w") as out_f, tqdm(
-            total=total_layers, desc="Converting", unit="tensor"
-        ) as pbar:
-            self.convert_decoder_layers(
-                state_dict=state_dict,
-                convert_dict=convert_dict["decoder"],
-                out_f=out_f.create_group(DECODER_PREFIX),
-                pbar=pbar,
-            )
-            self.convert_encoder_layers(
-                state_dict=state_dict,
-                convert_dict=convert_dict["encoder"],
-                out_f=out_f.create_group(ENCODER_PREFIX),
-                pbar=pbar,
-            )
-            self.convert_non_transformer_layers(
-                state_dict=state_dict,
-                convert_dict=convert_dict["non-transformer"],
-                out_f=out_f,
-                pbar=pbar,
-            )
 
     def get_decoder_start_token_id(self) -> Optional[int]:
         """Get ID of decoder start token."""
@@ -487,6 +354,39 @@ class DecoderOnlyLoraConverter(AbstractConverter):
                 invalid_option=f"model_type={self.config.model_type} for LORA",
                 valid_options=list(MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP.keys()),
             )
+        if (
+            self.adapter_config.layers_pattern is not None
+            and len(self.adapter_config.layers_pattern) > 0
+        ):
+            raise NotSupportedCheckpointError(
+                invalid_option=f"layers_pattern={self.adapter_config.layers_pattern}",
+                valid_options=[None, [], ""],
+            )
+        if (
+            self.adapter_config.rank_pattern is not None
+            and len(self.adapter_config.rank_pattern) > 0
+        ):
+            raise NotSupportedCheckpointError(
+                invalid_option=f"rank_pattern={self.adapter_config.rank_pattern}",
+                valid_options=[None, {}],
+            )
+        if (
+            self.adapter_config.alpha_pattern is not None
+            and len(self.adapter_config.alpha_pattern) > 0
+        ):
+            raise NotSupportedCheckpointError(
+                invalid_option=f"alpha_pattern={self.adapter_config.alpha_pattern}",
+                valid_options=[None, {}],
+            )
+        if self.adapter_config.target_modules is None or set(
+            self.adapter_config.target_modules
+        ) != set(MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP[self.config.model_type]):
+            raise NotSupportedCheckpointError(
+                invalid_option=f"target_modules={self.adapter_config.target_modules} for LORA",
+                valid_options=[
+                    str(MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP[self.config.model_type])
+                ],
+            )
         if (self.adapter_config.layers_to_transform is not None) and (
             self.adapter_config != list(range(self.converter.decoder_layer_num))
         ):
@@ -498,13 +398,11 @@ class DecoderOnlyLoraConverter(AbstractConverter):
                 ],
             )
 
-    def get_convert_dict(
+    def get_convert_info_list(
         self,
-    ) -> Dict[str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]]:
+    ) -> List[ConvertInfo]:
         """Get convert dict for LoRA model."""
-        return {
-            "decoder": self.adapter_convert_dict,
-        }
+        return self.adapter_convert_info_list
 
     def _get_layers_to_transform(self) -> List[int]:
         layers_to_transform = cast(LoraConfig, self.adapter_config).layers_to_transform
@@ -517,18 +415,11 @@ class DecoderOnlyLoraConverter(AbstractConverter):
 
     def lora_weight_convert(
         self,
-        state_dict: Dict[str, torch.Tensor],
-        layer_prefix: str,
-        per_layer_postfixes: List[str],
-    ) -> np.ndarray:
+        params: List[torch.Tensor],
+    ) -> torch.Tensor:
         """Convert LoRA layer's weight to PeriFlow format."""
-        assert len(per_layer_postfixes) == 1
-        param = get_tensor_from_state_dict(
-            state_dict, layer_prefix + per_layer_postfixes[0]
-        ).transpose(0, 1)
-        return convert_tensor_to_np_array(
-            param=param, data_type=self.converter.data_type
-        )
+        assert len(params) == 1
+        return params[0].transpose(0, 1)
 
     def pre_convert(self, model: torch.nn.Module) -> torch.nn.Module:
         """Preprocess the adapter modules before converting.
@@ -542,30 +433,11 @@ class DecoderOnlyLoraConverter(AbstractConverter):
     def convert(  # pylint: disable=too-many-locals
         self,
         model: torch.nn.Module,
-        output_path: str,
-        convert_dict: Dict[
-            str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
-        ],
-    ) -> None:
+        convert_info_list: List[ConvertInfo],
+    ) -> Generator[Tuple[str, np.ndarray], None, None]:
         """Convert Lora adapter model's all layer to PeriFlow format."""
         model = self.pre_convert(model)
-        state_dict = model.state_dict()
-        layers_to_transform = self._get_layers_to_transform()
-        total_params = len(convert_dict["decoder"]) * len(layers_to_transform)
-
-        with h5py.File(output_path, "w") as out_f, tqdm(
-            total=total_params, desc="Converting", unit="tensor"
-        ) as pbar:
-            # TODO : need to support encoder-decoder modules.
-            out_group = out_f.create_group(DECODER_PREFIX)
-            for idx in layers_to_transform:
-                layer_prefix = f"{self.converter.decoder_layer_prefix}{idx}"
-                per_layer_out_ckpt = out_group.create_group(f"h_._{idx}")
-                per_lora_out_ckpt = per_layer_out_ckpt.create_group("lora")
-                for converted_param_name, convert_fn in convert_dict["decoder"].items():
-                    converted_params = convert_fn(state_dict, layer_prefix)
-                    per_lora_out_ckpt[converted_param_name] = converted_params
-                    pbar.update()
+        yield from self.converter.convert(model, convert_info_list)
 
     def get_attributes(self) -> Dict[str, Any]:
         """Get adapter checkpoint attributes."""
@@ -579,10 +451,10 @@ class DecoderOnlyLoraConverter(AbstractConverter):
 
     @property
     @abstractmethod
-    def adapter_convert_dict(
+    def adapter_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for LoRA modules of the model."""
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for LoRA modules of the model."""
 
 
 OneOfAdapterConverter = DecoderOnlyLoraConverter

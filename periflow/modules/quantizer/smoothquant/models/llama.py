@@ -46,9 +46,9 @@ class LlamaTFQuantResults(TFQuantResults):
 class SmoothQuantLlamaHook(SmoothQuantHook):
     """SmoothQuant Hook for LlamaForCausalLM."""
 
-    def __init__(self, converter: OneOfConverter):
+    def __init__(self, quant_config: SmoothQuantConfig, converter: OneOfConverter):
         """Initialize SmoothQuantLlamaHook."""
-        super().__init__(self.quant_config, converter)
+        super().__init__(quant_config, converter)
         config = cast(LlamaConfig, converter.config)
         self.num_attention_heads = config.num_attention_heads
         if config.num_key_value_heads is None:

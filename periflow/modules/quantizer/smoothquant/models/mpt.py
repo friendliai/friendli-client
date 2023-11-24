@@ -59,7 +59,16 @@ class SmoothQuantMPTHook(SmoothQuantHook):
             model.transformer.blocks  # type: ignore[union-attr, arg-type]
         ):
             self_attn = decoder_layer.attn
-            attn_weight_outdim = self_attn.Wqkv.weight.size(0)  # OutDim
+            q_outdim = (
+                self.converter.decoder_num_attention_heads
+                * self.converter.decoder_head_size
+            )
+            kv_outdim = (
+                self.converter.decoder_num_kv_attention_heads
+                * self.converter.decoder_head_size
+            )
+            qkv_outdim = self_attn.Wqkv.weight.size(0)
+            assert qkv_outdim == q_outdim + kv_outdim * 2
             fc1 = decoder_layer.ffn.up_proj
             fc2 = decoder_layer.ffn.down_proj
 
@@ -70,19 +79,19 @@ class SmoothQuantMPTHook(SmoothQuantHook):
                     self_attn.Wqkv.weight,
                     f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
                     0,
-                    attn_weight_outdim // 3,
+                    q_outdim,
                 ),
                 k=QuantInput(
                     self_attn.Wqkv.weight,
                     f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
-                    attn_weight_outdim // 3,
-                    attn_weight_outdim // 3 * 2,
+                    q_outdim,
+                    q_outdim + kv_outdim,
                 ),
                 v=QuantInput(
                     self_attn.Wqkv.weight,
                     f"{self.quantized_layer_prefix}{index}.attn.Wqkv",
-                    attn_weight_outdim // 3 * 2,
-                    attn_weight_outdim,
+                    q_outdim + kv_outdim,
+                    qkv_outdim,
                 ),
                 attn_fc=QuantInput(
                     self_attn.out_proj.weight,

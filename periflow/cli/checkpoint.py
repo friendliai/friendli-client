@@ -19,6 +19,7 @@ from periflow.enums import (
     CatalogImportMethod,
     CheckpointCategory,
     CheckpointDataType,
+    CheckpointFileType,
     StorageType,
 )
 from periflow.errors import (
@@ -692,7 +693,7 @@ def convert(
             "Directory path to save the converted checkpoint and related configuration "
             "files. Three files will be created in the directory: `model.h5`, "
             "`tokenizer.json`, and `attr.yaml`. "
-            "The `model.h5` is the converted checkpoint and can be renamed using "
+            "The `model.h5` or `model.safetensors` is the converted checkpoint and can be renamed using "
             "the `--output-model-filename` option. "
             "The `tokenizer.json` is the PeriFlow-compatible tokenizer file, which should "
             "be uploaded along with the checkpoint file to tokenize the model input "
@@ -712,9 +713,15 @@ def convert(
         False, "--dry-run", help="Only check conversion avaliability."
     ),
     output_model_file_name: str = typer.Option(
-        "model.h5",
+        None,
         "--output-model-filename",
-        help="Name of the converted checkpoint file.",
+        help="Name of the converted checkpoint file."
+        "The default file name is `model.h5` when `--output-ckpt-file-type` is `hdf5` or `model.safetensors` when `--output-ckpt-file-type` is `safetensors`.",
+    ),
+    output_ckpt_file_type: CheckpointFileType = typer.Option(
+        CheckpointFileType.HDF5,
+        "--output-ckpt-file-type",
+        help="File format of the converted checkpoint file.",
     ),
     output_attr_file_name: str = typer.Option(
         "attr.yaml",
@@ -741,7 +748,7 @@ def convert(
 
     :::caution
     The `pf checkpoint convert` is available only when the package is installed with
-    `pip install periflow-client[mllib]`.
+    `pip install "periflow-client[mllib]"`.
     :::
 
     ### Apply quantization
@@ -798,6 +805,15 @@ def convert(
     Currently, [AWQ](https://arxiv.org/abs/2306.00978) is the only supported quantization scheme.
     :::
 
+    :::info
+    AWQ is supported only for models with architecture listed as follows:
+
+    - `GPTNeoXForCausalLM`
+    - `GPTJForCausalLM`
+    - `LlamaForCausalLM`
+    - `MPTForCausalLM`
+    :::
+
     """
     try:
         from periflow.modules.converter.convert import (  # pylint: disable=import-outside-toplevel
@@ -829,6 +845,14 @@ def convert(
         else:
             quant_config = AWQConfig()
 
+    default_names = {
+        CheckpointFileType.HDF5: "model.h5",
+        CheckpointFileType.SAFETENSORS: "model.safetensors",
+    }
+    output_model_file_name = (
+        output_model_file_name or default_names[output_ckpt_file_type]
+    )
+
     model_output_path = os.path.join(output_dir, output_model_file_name)
     tokenizer_output_dir = output_dir
     attr_output_path = os.path.join(output_dir, output_attr_file_name)
@@ -838,6 +862,7 @@ def convert(
             model_name_or_path=model_name_or_path,
             model_output_path=model_output_path,
             data_type=data_type,
+            output_ckpt_file_type=output_ckpt_file_type,
             tokenizer_output_dir=tokenizer_output_dir,
             attr_output_path=attr_output_path,
             cache_dir=cache_dir,
@@ -906,12 +931,12 @@ def convert_adapter(
     The conversion process involves copying the original adapter checkpoint and
     transforming it into a checkpoint in the PeriFlow format (*.h5).
 
-    This function does not included in the `pf checkpoint convert` command. i.e.
+    This function does not include the `pf checkpoint convert` command. i.e.
     `pf checkpoint convert-adapter` only converts adapter's parameters, not backbone's.
 
     :::caution
     The `pf checkpoint convert-adapter` is available only when the package is installed with
-    `pip install periflow-client[mllib]`.
+    `pip install "periflow-client[mllib]"`.
     :::
 
     """
@@ -927,6 +952,16 @@ def convert_adapter(
             secho_error_and_exit(f"'{output_dir}' exists, but it is not a directory.")
         os.mkdir(output_dir)
 
+    # Engine cannot load a Safetensors Lora ckpt yet.
+    output_adapter_file_type = CheckpointFileType.HDF5
+    default_names = {
+        CheckpointFileType.HDF5: "adapter.h5",
+        CheckpointFileType.SAFETENSORS: "adapter.safetensors",
+    }
+    output_adapter_filename = (
+        output_adapter_filename or default_names[output_adapter_file_type]
+    )
+
     adapter_output_path = os.path.join(output_dir, output_adapter_filename)
     attr_output_path = os.path.join(output_dir, output_attr_filename)
 
@@ -936,6 +971,7 @@ def convert_adapter(
             adapter_output_path=adapter_output_path,
             adapter_attr_output_path=attr_output_path,
             data_type=data_type,
+            output_adapter_file_type=output_adapter_file_type,
             cache_dir=cache_dir,
             dry_run=dry_run,
         )

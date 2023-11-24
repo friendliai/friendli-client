@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Type
+from collections.abc import Generator
+from typing import Any, Dict, Iterator, List, Tuple, Type
 
 import datasets  # type: ignore[import]
 import huggingface_hub  # type: ignore[import]
@@ -17,8 +18,9 @@ from periflow.enums import (
     QuantDatasetFormat,  # TODO: move this to periflow/modules/converter/enums.py
 )
 from periflow.errors import NotSupportedQuantConfigError
-from periflow.modules.converter.base import OneOfConverter
+from periflow.modules.converter.base import DECODER_PREFIX, OneOfConverter
 from periflow.modules.converter.interface import ModelConversionInterface
+from periflow.modules.converter.schema import ConvertInfo
 from periflow.modules.quantizer.schema.config import CommonQuantConfig
 from periflow.modules.quantizer.schema.data import TFQuantInputs, TFQuantResults
 
@@ -58,17 +60,17 @@ class AbstractQuantHook(ABC):
 
     @property
     @abstractmethod
-    def quantized_convert_dict(
+    def quantized_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for quantized layers."""
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for quantized layers."""
 
     @property
     @abstractmethod
-    def modified_layers_convert_dict(
+    def modified_layers_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """Return the convert_dict for modified layers."""
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for modified layers."""
 
     @property
     def quantized_layer_prefix(self) -> str:
@@ -78,12 +80,15 @@ class AbstractQuantHook(ABC):
     @property
     def quantized_param_names(self) -> List[str]:
         """Return the parameter names of quantized layers."""
-        return [
-            "attn/c_attn/weight:0",
-            "attn/c_proj/weight:0",
-            "mlp/c_fc/weight:0",
-            "mlp/c_proj/weight:0",
-        ]
+        param_names = []
+        for i in range(self.converter.decoder_layer_num):
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            param_names.append(f"{converted_prefix}attn/c_attn/weight:0")
+            param_names.append(f"{converted_prefix}attn/c_proj/weight:0")
+            param_names.append(f"{converted_prefix}mlp/c_fc/weight:0")
+            param_names.append(f"{converted_prefix}mlp/c_proj/weight:0")
+
+        return param_names
 
 
 class AbstractQuantizer(ABC):
@@ -165,17 +170,22 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
                 valid_options=["cpu", "cuda"],
             ) from err
 
-    def get_convert_dict(
+    def get_convert_info_list(
         self,
-    ) -> Dict[str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]]:
-        """Return the convert_dict for the model."""
-        convert_dict = self.converter.get_convert_dict()
-        for param_name in self.hook.quantized_param_names:
-            del convert_dict["decoder"][param_name]
+    ) -> List[ConvertInfo]:
+        """Get List of the convert informations for the model."""
+        convert_info_list = self.converter.get_convert_info_list()
+        new_convert_info_list = []
+        for convert_info in convert_info_list:
+            if convert_info.converted_name in self.hook.quantized_param_names:
+                continue
+            new_convert_info_list.append(convert_info)
 
-        convert_dict["decoder"].update(self.hook.quantized_convert_dict)
-        convert_dict["decoder"].update(self.hook.modified_layers_convert_dict)
-        return convert_dict
+        return (
+            new_convert_info_list
+            + self.hook.quantized_convert_info_list
+            + self.hook.modified_layers_convert_info_list
+        )
 
     def get_attributes(self) -> Dict[str, Any]:
         """Return the attributes of the converted model."""
@@ -184,22 +194,18 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
     def convert(
         self,
         model: torch.nn.Module,
-        output_path: str,
-        convert_dict: Dict[
-            str, Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]
-        ],
-    ) -> None:
+        convert_info_list: List[ConvertInfo],
+    ) -> Generator[Tuple[str, np.ndarray], None, None]:
         """Convert Huggingface Model to PeriFlow format(.h5).
 
         Args:
             model (torch.nn.Module): Huggingface model.
-            output_path (str): Path to save the converted model.
             state_dict (Dict[str, torch.Tensor]):
                 Dictionary of mapping of tensor name to tensor
-            convert_dict (Dict[Callable[[Dict[str, torch.Tensor], str], np.ndarray]]):
+            convert_info_list (List[ConvertInfo]):
                 Dictionary of mapping converted params name to conversion functions.
 
         """
         self.pre_quantize(model)
         model = self.quantize(model)
-        self.converter.convert(model, output_path, convert_dict)
+        yield from self.converter.convert(model, convert_info_list)

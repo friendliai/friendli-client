@@ -49,6 +49,7 @@ model_arch_awq_hook_map: Dict[str, type[AWQHook]] = {
     "GPTNeoXForCausalLM": AWQGPTNeoXHook,
     "LlamaForCausalLM": AWQLlamaHook,
     "MPTForCausalLM": AWQMPTHook,
+    "MistralForCausalLM": AWQLlamaHook,
 }
 
 

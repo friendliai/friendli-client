@@ -25,7 +25,7 @@ class WeightOnlyQuantizedLinearLayer(torch.nn.Module):
         q_weight: torch.Tensor,
         weight_scale: torch.Tensor,
         zeros: torch.Tensor,
-        bias: Optional[torch.Tensor] = None,
+        bias: Optional[torch.nn.Parameter] = None,
     ):
         """Initialize the Weight Only Quantized Linear Layer."""
         super().__init__()
@@ -34,10 +34,7 @@ class WeightOnlyQuantizedLinearLayer(torch.nn.Module):
         self.weight_scale = torch.nn.Parameter(weight_scale)
         self.zeros = torch.nn.Parameter(zeros, requires_grad=False)
         self.weight = torch.nn.Parameter(q_weight, requires_grad=False)
-        if bias:
-            self.bias = torch.nn.Parameter(bias)
-        else:
-            self.register_parameter("bias", None)
+        self.register_parameter("bias", bias)
 
     @staticmethod
     def from_layer(
@@ -70,7 +67,7 @@ class WeightActQuantizedLinearLayer(torch.nn.Module):
         weight_scale: torch.Tensor,
         in_scale: torch.Tensor,
         out_scale: torch.Tensor,
-        bias: Optional[torch.Tensor] = None,
+        bias: Optional[torch.nn.Parameter] = None,
     ):
         """Initialize the Weight Only Quantized Linear Layer."""
         super().__init__()
@@ -80,10 +77,7 @@ class WeightActQuantizedLinearLayer(torch.nn.Module):
         self.out_scale = torch.nn.Parameter(out_scale)
         self.weight_scale = torch.nn.Parameter(weight_scale)
         self.weight = torch.nn.Parameter(q_weight, requires_grad=False)
-        if bias is None:
-            self.register_parameter("bias", None)
-        else:
-            self.bias = torch.nn.Parameter(bias)
+        self.register_parameter("bias", bias)
 
     @staticmethod
     def from_layer(

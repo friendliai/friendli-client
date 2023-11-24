@@ -4,147 +4,191 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Dict, List, cast
 
-import numpy as np
-import torch
-from transformers import PretrainedConfig  # type: ignore[import]
+from transformers import (  # type: ignore[import]
+    GenerationConfig,
+    MptConfig,
+    PretrainedConfig,
+)
 
+from periflow.enums import CheckpointDataType  # type: ignore[import]
 from periflow.errors import CheckpointConversionError, NotSupportedCheckpointError
 from periflow.logging import logger
 from periflow.modules.converter.base import DECODER_PREFIX, DecoderOnlyConverter
-from periflow.modules.converter.utils import nontype_partial
+from periflow.modules.converter.schema import ConvertInfo
 
 
-def safe_config_get(config: Union[Dict[str, Any], PretrainedConfig], key: str) -> Any:
-    """Safe getter from config.
+def safe_attn_config_get(attn_config: Dict[str, Any], key: str) -> Any:
+    """Safe getter from MptAttentionConfig.
 
-    This function is a temporary function because MPT is not merged into Hugging Face's upstream yet
-    (i.e., we cannot do `from transformers import MPTConfig`)
+    This function is a temporary function because MptAttentionConfig
+    is not supported `attn_type="grouped_query_attention"` yet.
     """
-    if isinstance(config, PretrainedConfig):
-        config = config.to_dict()  # type: ignore
+    if key not in attn_config:
+        raise CheckpointConversionError(
+            f"{key} does not exist in MptAttentionConfig {attn_config}"
+        )
 
-    if key not in config:
-        raise CheckpointConversionError(f"{key} does not exist in the config")
-
-    return config[key]
+    return attn_config[key]
 
 
 class MPTForCausalLMConverter(DecoderOnlyConverter):
     """MPTForCausalLM Architectures Converter Class."""
 
+    def __init__(
+        self,
+        config: PretrainedConfig,
+        generation_config: GenerationConfig | None,
+        data_type: CheckpointDataType,
+    ) -> None:
+        """Initialize MPTForCausalLMConverter."""
+        super().__init__(config, generation_config, data_type)
+        attn_config = cast(MptConfig, config).attn_config
+        if isinstance(attn_config, PretrainedConfig):
+            attn_config = attn_config.to_dict()  # type: ignore
+        self.attn_config = attn_config
+
     def check_config(self) -> None:
         """Check if MPT architectures' config can be converted to PeriFlow format."""
         super().check_config()
-        attn_config = safe_config_get(self.config, "attn_config")
 
-        if not safe_config_get(attn_config, "alibi"):
+        if not safe_attn_config_get(self.attn_config, "alibi"):
             raise NotSupportedCheckpointError(
-                invalid_option=f"'alibi={safe_config_get(attn_config, 'alibi')}'",
+                invalid_option=f"'alibi={safe_attn_config_get(self.attn_config, 'alibi')}'",
                 valid_options=[True],
             )
 
-        if safe_config_get(attn_config, "alibi_bias_max") != 8:
+        if safe_attn_config_get(self.attn_config, "alibi_bias_max") != 8:
             raise NotSupportedCheckpointError(
-                invalid_option=f"'alibi={safe_config_get(attn_config, 'alibi_bias_max')}'",
+                invalid_option=f"'alibi={safe_attn_config_get(self.attn_config, 'alibi_bias_max')}'",
                 valid_options=[8],
             )
 
-        if safe_config_get(attn_config, "attn_type") != "multihead_attention":
+        if safe_attn_config_get(self.attn_config, "attn_type") != "multihead_attention":
+            if (
+                safe_attn_config_get(self.attn_config, "attn_type")
+                == "grouped_query_attention"
+            ):
+                raise CheckpointConversionError(
+                    msg="MptAttentionConfig does not support `attn_type=`grouped_query_attention`` yet (as of transformers==4.35.2).",
+                )
             raise NotSupportedCheckpointError(
-                invalid_option=f"'attn_type={safe_config_get(attn_config, 'attn_type')}'",
+                invalid_option=f"'attn_type={safe_attn_config_get(self.attn_config, 'attn_type')}'",
                 valid_options=["multihead_attention"],
             )
 
-        if safe_config_get(attn_config, "prefix_lm"):
+        if safe_attn_config_get(self.attn_config, "prefix_lm"):
             raise NotSupportedCheckpointError(
-                invalid_option=f"'prefix_lm={safe_config_get(attn_config, 'prefix_lm')}'",
+                invalid_option=f"'prefix_lm={safe_attn_config_get(self.attn_config, 'prefix_lm')}'",
                 valid_options=[False],
             )
 
-        if safe_config_get(attn_config, "qk_ln"):
+        if safe_attn_config_get(self.attn_config, "qk_ln"):
             raise NotSupportedCheckpointError(
-                invalid_option=f"'qk_ln={safe_config_get(attn_config, 'qk_ln')}'",
+                invalid_option=f"'qk_ln={safe_attn_config_get(self.attn_config, 'qk_ln')}'",
                 valid_options=[False],
             )
 
-        if safe_config_get(attn_config, "softmax_scale") is not None:
+        if safe_attn_config_get(self.attn_config, "softmax_scale") is not None:
             raise NotSupportedCheckpointError(
-                invalid_option=f"'softmax_scale={safe_config_get(attn_config, 'softmax_scale')}'",
+                invalid_option=f"'softmax_scale={safe_attn_config_get(self.attn_config, 'softmax_scale')}'",
                 valid_options=[None],
             )
 
-        if safe_config_get(self.config, "expansion_ratio") != 4:
+        if cast(MptConfig, self.config).expansion_ratio != 4:
             raise NotSupportedCheckpointError(
                 invalid_option=(
-                    f"'expansion_ratio={safe_config_get(self.config, 'expansion_ratio')}'"
+                    f"'expansion_ratio={cast(MptConfig, self.config).expansion_ratio}'"
                 ),
                 valid_options=[4],
             )
 
-        if not safe_config_get(self.config, "no_bias"):
+        if not cast(MptConfig, self.config).no_bias:
             raise NotSupportedCheckpointError(
-                invalid_option=f"'no_bias={safe_config_get(self.config, 'no_bias')}'",
+                invalid_option=f"'no_bias={cast(MptConfig, self.config).no_bias}'",
                 valid_options=[True],
             )
 
-        if safe_config_get(self.config, "logit_scale") is not None:
+        if cast(MptConfig, self.config).logit_scale is not None:
             raise NotSupportedCheckpointError(
                 invalid_option=(
-                    f"'logit_scale={safe_config_get(self.config, 'logit_scale')}'"
+                    f"'logit_scale={cast(MptConfig, self.config).logit_scale}'"
                 ),
                 valid_options=[None],
             )
 
     @property
-    def decoder_convert_dict(
+    def decoder_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for transformer blocks in MPT."""
-        return {
-            "ln_1/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=[".norm_1.weight"],
-            ),
-            "ln_2/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=[".norm_2.weight"],
-            ),
-            "attn/c_attn/weight:0": nontype_partial(
-                self.qkv_weight_convert,
-                per_layer_postfixes=[".attn.Wqkv.weight"],
-            ),
-            "attn/c_proj/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".attn.out_proj.weight"],
-            ),
-            "mlp/c_fc/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".ffn.up_proj.weight"],
-            ),
-            "mlp/c_proj/weight:0": nontype_partial(
-                self.linear_weight_convert,
-                per_layer_postfixes=[".ffn.down_proj.weight"],
-            ),
-        }
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for transformer blocks in MPT."""
+        convert_info_list = []
+        for i in range(self.decoder_layer_num):
+            layer_prefix = f"{self.decoder_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}norm_1.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_1/gamma:0",
+                        convert_fn=self.ln_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}norm_2.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}ln_2/gamma:0",
+                        convert_fn=self.ln_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn.Wqkv.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/weight:0",
+                        convert_fn=self.qkv_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn.out_proj.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}attn/c_proj/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ffn.up_proj.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_fc/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}ffn.down_proj.weight"],
+                        data_type=self.data_type,
+                        converted_name=f"{converted_prefix}mlp/c_proj/weight:0",
+                        convert_fn=self.linear_weight_convert,
+                    ),
+                ]
+            )
+
+        return convert_info_list
 
     @property
-    def non_transformer_convert_dict(
+    def non_transformer_convert_info_list(
         self,
-    ) -> Dict[str, Callable[[Dict[str, torch.Tensor], str], np.ndarray]]:
-        """The convert_dict for non-transformer blocks in MPT."""
-        return {
-            "wte/weight:0": nontype_partial(
-                self.token_embed_weight_convert,
-                per_layer_postfixes=["transformer.wte.weight"],
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for non-transformer blocks in MPT."""
+        return [
+            ConvertInfo(
+                param_names=["transformer.wte.weight"],
+                data_type=self.data_type,
+                converted_name="wte/weight:0",
+                convert_fn=self.token_embed_weight_convert,
             ),
-            DECODER_PREFIX
-            + "/ln_f/gamma:0": nontype_partial(
-                self.ln_weight_convert,
-                per_layer_postfixes=["transformer.norm_f.weight"],
+            ConvertInfo(
+                param_names=["transformer.norm_f.weight"],
+                data_type=self.data_type,
+                converted_name=f"{DECODER_PREFIX}/ln_f/gamma:0",
+                convert_fn=self.ln_weight_convert,
             ),
-        }
+        ]
 
     def get_attributes(self) -> Dict[str, Any]:
         """Get checkpoint attributes."""
@@ -152,20 +196,19 @@ class MPTForCausalLMConverter(DecoderOnlyConverter):
             "The generated attributes set 'max_length' to %d, but you can change the "
             "'max_length' according to your needs. The MPT model does not rely on "
             "absolute position embeddings, allowing you to choose any suitable value.",
-            safe_config_get(self.config, "max_seq_len"),
+            cast(MptConfig, self.config).max_seq_len,
         )
-
-        attn_config = safe_config_get(self.config, "attn_config")
 
         attr = {
             "model_type": self.model_type,
             "dtype": self.data_type.value,
             "head_size": self.decoder_head_size,
             "num_heads": self.decoder_num_attention_heads,
+            "num_kv_heads": self.decoder_num_kv_attention_heads,
             "num_layers": self.decoder_layer_num,
-            "max_length": safe_config_get(self.config, "max_seq_len"),
-            "vocab_size": safe_config_get(self.config, "vocab_size"),
-            "clip_qkv": safe_config_get(attn_config, "clip_qkv") or 0.0,
+            "max_length": cast(MptConfig, self.config).max_seq_len,
+            "vocab_size": cast(MptConfig, self.config).vocab_size,
+            "clip_qkv": safe_attn_config_get(self.attn_config, "clip_qkv") or 0.0,
             "eos_token": self.get_eos_token_id() or "FILL ME",
         }
         return attr
@@ -182,25 +225,32 @@ class MPTForCausalLMConverter(DecoderOnlyConverter):
 
     @property
     def decoder_layer_num(self) -> int:
-        """The number of decoder layers in Falcon."""
-        return safe_config_get(self.config, "n_layers")
+        """The number of decoder layers in MPT."""
+        return cast(MptConfig, self.config).n_layers
 
     @property
     def decoder_hidden_size(self) -> int:
-        """The hidden size in Falcon."""
-        return safe_config_get(self.config, "d_model")
+        """The hidden size in MPT."""
+        return cast(MptConfig, self.config).d_model
 
     @property
     def decoder_num_attention_heads(self) -> int:
-        """The number of attention heads in Falcon."""
-        return safe_config_get(self.config, "n_heads")
+        """The number of attention heads in MPT."""
+        return cast(MptConfig, self.config).n_heads
 
     @property
     def decoder_num_kv_attention_heads(self) -> int:
-        """The number of key-value attention heads in Falcon."""
+        """The number of key-value attention heads in MPT."""
+        if "kv_n_heads" in self.attn_config:
+            return self.attn_config["kv_n_heads"]
         return self.decoder_num_attention_heads
 
     @property
     def decoder_head_size(self) -> int:
-        """The head size of Falcon."""
+        """The head size of MPT."""
         return self.decoder_hidden_size // self.decoder_num_attention_heads
+
+    @property
+    def decoder_ff_intermediate_size(self) -> int:
+        """The intermediate size of the linear layer in MPT MLP."""
+        return self.decoder_hidden_size * 4
