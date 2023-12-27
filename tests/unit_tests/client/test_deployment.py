@@ -10,20 +10,20 @@ from uuid import uuid4
 import pytest
 import requests_mock
 
-from periflow.client.deployment import (
+from friendli.client.deployment import (
     DeploymentClient,
     DeploymentEventClient,
     DeploymentMetricsClient,
     DeploymentReqRespClient,
     PFSProjectUsageClient,
 )
-from periflow.enums import DeploymentType
-from periflow.errors import APIError
+from friendli.enums import DeploymentType
+from friendli.errors import APIError
 
 
 @pytest.fixture
 def deployment_id() -> str:
-    return "periflow-deployment-05246a6e"
+    return "friendli-deployment-05246a6e"
 
 
 @pytest.fixture
@@ -63,9 +63,9 @@ def test_deployment_client_get_deployment(
             **deployment_client.url_kwargs,
             pk=1,
         ),
-        json={"id": "periflow-deployment-05246a6e"},
+        json={"id": "friendli-deployment-05246a6e"},
     )
-    assert deployment_client.get_deployment(1) == {"id": "periflow-deployment-05246a6e"}
+    assert deployment_client.get_deployment(1) == {"id": "friendli-deployment-05246a6e"}
 
     # Failed due to HTTP error
     requests_mock.get(
@@ -239,7 +239,7 @@ def test_deployment_usage_client(
     assert isinstance(project_usage_client, PFSProjectUsageClient)
 
     result = {
-        "periflow-deployment-05246a6e": {
+        "friendli-deployment-05246a6e": {
             "deployment_type": "dev",
             "duration": "13",
         }

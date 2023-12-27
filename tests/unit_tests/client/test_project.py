@@ -7,9 +7,9 @@ from __future__ import annotations
 import pytest
 import requests_mock
 
-from periflow.client.project import ProjectCredentialClient
-from periflow.enums import CredType
-from periflow.errors import APIError
+from friendli.client.project import ProjectCredentialClient
+from friendli.enums import CredType
+from friendli.errors import APIError
 
 
 @pytest.fixture

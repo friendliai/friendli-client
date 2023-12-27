@@ -10,9 +10,9 @@ from uuid import uuid4
 import pytest
 import requests_mock
 
-from periflow.client.credential import CredentialClient, CredentialTypeClient
-from periflow.enums import CredType
-from periflow.errors import APIError
+from friendli.client.credential import CredentialClient, CredentialTypeClient
+from friendli.enums import CredType
+from friendli.errors import APIError
 
 
 @pytest.fixture

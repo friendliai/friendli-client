@@ -1,0 +1,211 @@
+# Jinja2 template to validate GPT model in Friendli format.
+
+type: group
+decoder:
+  type: group
+  ln_f:
+    type: group
+    beta:0:
+      type: data
+      dtype: {{ dtype }}
+      shape:
+        - {{ hidden_size | int }}
+    gamma:0:
+      type: data
+      dtype: {{ dtype }}
+      shape:
+        - {{ hidden_size | int }}
+  h_._*:
+    type: repeat_group
+    range:
+      lo: 0
+      hi: {{ num_decoder_layers - 1 | int }}
+    attn:
+      type: group
+      c_attn:
+        type: group
+        bias:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size * 3 | int }}
+        smoothquant:
+          type: group
+          weight:0:
+            type: data
+            dtype: {{ q_dtype }}
+            shape:
+              - {{ hidden_size * 3 | int }}
+              - {{ hidden_size | int }}
+          q_weight_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int}}
+          k_weight_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int}}
+          v_weight_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int}}
+          q_out_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int}}
+          k_out_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int}}
+          v_out_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int}}
+          in_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int}}
+      c_proj:
+        type: group
+        bias:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+        smoothquant:
+          type: group
+          {% if attn_fc_smoothing %}
+          smoothing_vector:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int }}
+          {% endif %}          
+          weight:0:
+            type: data
+            dtype: {{ q_dtype }}
+            shape:
+              - {{ hidden_size | int }}
+              - {{ hidden_size | int }}
+          weight_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int }}
+          out_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int }}
+          in_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int }}
+    ln_*:
+      type: repeat_group
+      range:
+        lo: 1
+        hi: 2
+      beta:0:
+        type: data
+        dtype: {{ dtype }}
+        shape:
+          - {{ hidden_size | int }}
+      gamma:0:
+        type: data
+        dtype: {{ dtype }}
+        shape:
+          - {{ hidden_size | int }}
+    mlp:
+      type: group
+      c_fc:
+        type: group
+        bias:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size * 4 | int }}
+        smoothquant:
+          type: group
+          weight:0:
+            type: data
+            dtype: {{ q_dtype }}
+            shape:
+              - {{ hidden_size * 4 | int }}
+              - {{ hidden_size | int }}
+          weight_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int }}
+          out_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size * 4 | int }}
+          in_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int }}
+      c_proj:
+        type: group
+        bias:0:
+          type: data
+          dtype: {{ dtype }}
+          shape:
+            - {{ hidden_size | int }}
+        smoothquant:
+          type: group
+          {% if ff2_smoothing %}
+          smoothing_vector:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size * 4 | int }}
+          {% endif %}
+          weight:0:
+            type: data
+            dtype: {{ q_dtype }}
+            shape:
+              - {{ hidden_size | int }}
+              - {{ hidden_size * 4 | int }}
+          weight_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size * 4 | int }}
+          out_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size | int }}
+          in_scale:0:
+            type: data
+            dtype: float32
+            shape:
+              - {{ hidden_size * 4 | int }}
+  wpe:
+    type: group
+    weight:0:
+      type: data
+      dtype: {{ dtype }}
+      shape:
+        - {{ seq_len | int }}
+        - {{ hidden_size | int }}
+wte:
+  type: group
+  weight:0:
+    type: data
+    dtype: {{ dtype }}
+    shape:
+      - {{ vocab_size | int }}
+      - {{ hidden_size | int }}

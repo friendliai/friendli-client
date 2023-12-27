@@ -10,8 +10,8 @@ from uuid import uuid4
 import pytest
 import requests_mock
 
-from periflow.client.file import FileClient, GroupProjectFileClient
-from periflow.errors import APIError
+from friendli.client.file import FileClient, GroupProjectFileClient
+from friendli.errors import APIError
 
 
 @pytest.fixture

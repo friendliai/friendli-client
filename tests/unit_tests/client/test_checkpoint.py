@@ -14,14 +14,14 @@ from uuid import UUID, uuid4
 import pytest
 import requests_mock
 
-from periflow.client.checkpoint import (
+from friendli.client.checkpoint import (
     CheckpointClient,
     CheckpointFormClient,
     GroupProjectCheckpointClient,
 )
-from periflow.enums import CheckpointCategory, StorageType
-from periflow.errors import APIError
-from periflow.utils.transfer import S3_MULTIPART_CHUNK_SIZE, S3_MULTIPART_THRESHOLD
+from friendli.enums import CheckpointCategory, StorageType
+from friendli.errors import APIError
+from friendli.utils.transfer import S3_MULTIPART_CHUNK_SIZE, S3_MULTIPART_THRESHOLD
 
 
 @pytest.fixture

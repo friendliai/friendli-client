@@ -16,12 +16,12 @@ from azure.storage.blob import BlobServiceClient, ContainerClient
 from botocore.client import BaseClient
 from botocore.exceptions import ClientError
 
-from periflow.cloud.storage import (
+from friendli.cloud.storage import (
     AWSCloudStorageClient,
     AzureCloudStorageClient,
     build_storage_client,
 )
-from periflow.enums import StorageType
+from friendli.enums import StorageType
 
 
 @pytest.fixture

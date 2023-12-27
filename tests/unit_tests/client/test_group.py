@@ -10,8 +10,8 @@ from copy import deepcopy
 import pytest
 import requests_mock
 
-from periflow.client.group import GroupClient
-from periflow.errors import APIError
+from friendli.client.group import GroupClient
+from friendli.errors import APIError
 
 
 @pytest.fixture

@@ -22,10 +22,10 @@ from transformers import (
 )
 from transformers.models.mpt.configuration_mpt import MptAttentionConfig
 
-from periflow.enums import CheckpointDataType
-from periflow.modules.converter.base import OneOfConverter
-from periflow.modules.converter.maps import get_hf_converter_factory
-from periflow.modules.converter.utils import get_model_arch
+from friendli.enums import CheckpointDataType
+from friendli.modules.converter.base import OneOfConverter
+from friendli.modules.converter.maps import get_hf_converter_factory
+from friendli.modules.converter.utils import get_model_arch
 
 from tests.unit_tests.modules.helpers.utils import ModelConfig, get_param_specs
 
@@ -168,7 +168,7 @@ model_name_config_map = {
         max_position_embeddings=1024,
         relative_attention_num_buckets=32,  # fixed value for t5
     ),
-    "llama": MistralConfig(  # same as llama architecture
+    "mistral": MistralConfig(  # same as llama architecture
         architectures=["MistralForCausalLM"],
         hidden_act="silu",
         tie_word_embeddings=False,
@@ -190,8 +190,8 @@ def converter(model_config: AutoConfig) -> OneOfConverter:
 
 
 @pytest.fixture
-def spec_data(model_name: str, converter: OneOfConverter) -> Dict[str, Any]:
-    model_config = ModelConfig(
+def render_model_config(converter: OneOfConverter) -> ModelConfig:
+    return ModelConfig(
         dtype="float16",
         num_decoder_layers=converter.decoder_layer_num,
         hidden_size=converter.decoder_hidden_size,
@@ -202,5 +202,22 @@ def spec_data(model_name: str, converter: OneOfConverter) -> Dict[str, Any]:
         ff_intermediate_size=converter.decoder_ff_intermediate_size,
     )
 
-    param_specs = get_param_specs(model_name, model_config)
+
+@pytest.fixture
+def render_model_config(converter: OneOfConverter) -> ModelConfig:
+    return ModelConfig(
+        dtype="float16",
+        num_decoder_layers=converter.decoder_layer_num,
+        hidden_size=converter.decoder_hidden_size,
+        num_heads=converter.decoder_num_attention_heads,
+        num_kv_heads=converter.decoder_num_kv_attention_heads,
+        head_size=converter.decoder_head_size,
+        num_encoder_layers=converter.decoder_layer_num,  # same as decoder for test
+        ff_intermediate_size=converter.decoder_ff_intermediate_size,
+    )
+
+
+@pytest.fixture
+def spec_data(model_name: str, render_model_config: ModelConfig) -> Dict[str, Any]:
+    param_specs = get_param_specs(model_name, "models", render_model_config)
     return param_specs

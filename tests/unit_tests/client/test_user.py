@@ -11,14 +11,14 @@ from datetime import datetime
 import pytest
 import requests_mock
 
-from periflow.client.user import (
+from friendli.client.user import (
     UserAccessKeyClient,
     UserClient,
     UserGroupClient,
     UserMFAClient,
 )
-from periflow.enums import GroupRole, ProjectRole
-from periflow.errors import APIError
+from friendli.enums import GroupRole, ProjectRole
+from friendli.errors import APIError
 
 
 @pytest.fixture

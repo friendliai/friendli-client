@@ -12,9 +12,9 @@ import pytest
 import typer
 from _pytest.fixtures import SubRequest
 
-from periflow.configurator.deployment import DRCConfigurator
-from periflow.errors import InvalidConfigError
-from periflow.utils.testing import merge_dicts
+from friendli.configurator.deployment import DRCConfigurator
+from friendli.errors import InvalidConfigError
+from friendli.utils.testing import merge_dicts
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ class TestDRCConfigurator:
             or invalid_config
         ):
             ctx = pytest.raises(InvalidConfigError)
-        with TemporaryFile(prefix="periflow-cli-unittest", mode="r+") as f:
+        with TemporaryFile(prefix="friendli-cli-unittest", mode="r+") as f:
             json.dump(config, f)
             f.seek(0)
             configurator = DRCConfigurator.from_file(f)

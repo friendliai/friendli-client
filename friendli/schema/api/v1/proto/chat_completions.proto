@@ -1,0 +1,23 @@
+/*
+ * Copyright (c) 2023-present, FriendliAI Inc. All rights reserved.
+ */
+
+syntax = "proto3";
+
+message V1ChatCompletionsRequest {
+    message Message {
+        string content = 1;
+        string role = 2;
+    }
+
+    repeated Message messages = 1;
+    optional float frequency_penalty = 3;
+    optional int32 max_tokens = 5;
+    optional int32 n = 6;
+    optional float presence_penalty = 7;
+    repeated string stop = 8;
+    optional bool stream = 9;
+    optional float temperature = 10;
+    optional float top_p = 11;
+    optional int32 timeout_microseconds = 30;
+}

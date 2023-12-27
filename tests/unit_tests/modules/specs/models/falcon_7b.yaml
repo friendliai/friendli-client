@@ -1,4 +1,4 @@
-# Jinja2 template to validate Falcon 7B model in PeriFlow format.
+# Jinja2 template to validate Falcon 7B model in Friendli format.
 
 type: group
 decoder:

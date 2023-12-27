@@ -1,4 +1,4 @@
-# Jinja2 template to validate T5 (t5-v1_1) model in PeriFlow format.
+# Jinja2 template to validate T5 (t5-v1_1) model in Friendli format.
 
 type: group
 decoder:

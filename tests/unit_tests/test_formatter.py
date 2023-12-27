@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
-from periflow.formatter import (
+from friendli.formatter import (
     JSONFormatter,
     PanelFormatter,
     TableFormatter,

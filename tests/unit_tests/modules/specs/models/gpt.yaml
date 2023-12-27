@@ -1,4 +1,4 @@
-# Jinja2 template to validate GPT model in PeriFlow format.
+# Jinja2 template to validate GPT model in Friendli format.
 
 type: group
 decoder:

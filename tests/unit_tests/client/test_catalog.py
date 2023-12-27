@@ -12,9 +12,9 @@ from uuid import UUID, uuid4
 import pytest
 import requests_mock
 
-from periflow.client.catalog import CatalogClient
-from periflow.enums import CatalogImportMethod
-from periflow.errors import APIError
+from friendli.client.catalog import CatalogClient
+from friendli.enums import CatalogImportMethod
+from friendli.errors import APIError
 
 
 @pytest.fixture

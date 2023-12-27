@@ -1,0 +1,60 @@
+/*
+ * Copyright (c) 2023-present, FriendliAI Inc. All rights reserved.
+ */
+
+syntax = "proto3";
+
+message V1CompletionsRequest {
+    message TokenSequence {
+        repeated int32 tokens = 1;
+    }
+
+    enum BeamSearchType {
+        DETERMINISTIC = 0; // Use the standard beam search
+        STOCHASTIC = 1; // Stochastic beam search by Kool et al. (2019)
+        NAIVE_SAMPLING = 2; // Huggingface's beam sampling
+    }
+
+    optional bool stream = 1;
+    optional string prompt = 3;
+    repeated int32 tokens = 4;
+    optional int32 timeout_microseconds = 5;
+    optional int32 max_tokens = 6;
+    optional int32 max_total_tokens = 7;
+    optional int32 min_tokens = 8;
+    optional int32 min_total_tokens = 9;
+    optional int32 n = 10;
+    optional int32 num_beams = 11;
+    optional float length_penalty = 12;
+    optional bool early_stopping = 15;
+    optional int32 no_repeat_ngram = 17;
+    optional int32 encoder_no_repeat_ngram = 18;
+    optional float repetition_penalty = 19;
+    optional float encoder_repetition_penalty = 34;
+    optional float frequency_penalty = 53;
+    optional float presence_penalty = 54;
+    optional float temperature = 20;
+    optional int32 top_k = 21;
+    optional float top_p = 22;
+
+    repeated string stop = 23;
+    repeated TokenSequence stop_tokens = 24;
+
+    repeated uint64 seed = 26;
+
+    repeated int32 token_index_to_replace = 27;
+    repeated float embedding_to_replace = 28;
+
+    optional BeamSearchType beam_search_type = 29;
+    optional bool beam_compat_pre_normalization = 30;
+    optional bool beam_compat_no_post_normalization = 31;
+
+    repeated string bad_words = 32;
+    repeated TokenSequence bad_word_tokens = 33;
+
+    optional bool include_output_logits = 47;
+    optional bool include_output_logprobs = 50;
+    repeated int32 forced_output_tokens = 51;
+
+    repeated int32 eos_token = 46;
+}

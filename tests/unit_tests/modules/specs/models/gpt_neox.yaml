@@ -1,4 +1,4 @@
-# Jinja2 template to validate GPT-NeoX model in PeriFlow format.
+# Jinja2 template to validate GPT-NeoX model in Friendli format.
 
 type: group
 decoder:

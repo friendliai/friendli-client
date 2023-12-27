@@ -10,13 +10,13 @@ from string import Template
 import pytest
 import requests_mock
 
-import periflow
-from periflow.client.base import Client, URLTemplate
+import friendli
+from friendli.client.base import Client, URLTemplate
 
 
 @pytest.fixture
 def base_url() -> str:
-    return "https://test.periflow.com/"
+    return "https://test.friendli.com/"
 
 
 def test_url_template_render(base_url: str):
@@ -90,7 +90,7 @@ def test_client_service_base(
 
     client = TestClient(test_id=1)
 
-    periflow.api_key = "test-api-key"
+    friendli.api_key = "test-api-key"
     data = client.list(pagination=pagination)
     assert data == [{"data": "value"}]
 

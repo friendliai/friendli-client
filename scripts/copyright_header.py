@@ -39,7 +39,7 @@ def format_copyright_header(
                     continue
 
                 if not first_line_content:  # empty file
-                    first_line_content = header + "\n"
+                    new_content = header + "\n"
                 elif check_only:
                     typer.secho(
                         f"Invalid copyright header found in {file}!",
