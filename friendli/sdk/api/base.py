@@ -22,7 +22,7 @@ from friendli.errors import APIError, InvalidConfigError, NotFoundError
 from friendli.schema.api.v1.codegen.chat_completions_pb2 import V1ChatCompletionsRequest
 from friendli.schema.api.v1.codegen.completions_pb2 import V1CompletionsRequest
 from friendli.utils.request import DEFAULT_REQ_TIMEOUT
-from friendli.utils.url import get_baseurl
+from friendli.utils.url import get_host
 
 _GenerationLine = TypeVar("_GenerationLine", bound=BaseModel)
 
@@ -95,9 +95,9 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
             endpoint = deployment["endpoint"]
             if not endpoint:
                 raise NotFoundError("Active endpoint for the deployment is not found.")
-            self._endpoint = httpx.URL(get_baseurl(endpoint)).join(deployment_id)
+            self._host = httpx.URL(get_host(endpoint))
         elif endpoint is not None:
-            self._endpoint = httpx.URL(endpoint)
+            self._host = httpx.URL(endpoint)
 
     def _get_headers(self) -> Dict[str, Any]:
         content_type = (
@@ -147,9 +147,9 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
         if model is not None:
             path = model
         if self._deployment_id is not None:
-            path = os.path.join(path, self._deployment_id)
+            path = self._deployment_id
         path = os.path.join(path, self._api_path)
-        return self._endpoint.join(path)
+        return self._host.join(path)
 
     def _build_data(self, data: dict[str, Any]) -> bytes:
         if self._deployment_id is None:
@@ -183,7 +183,8 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
             response = self._client.send(request=request, stream=stream)
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            raise APIError(repr(response)) from exc
+            resp_content = response.read()
+            raise APIError(resp_content.decode()) from exc
 
         return response
 

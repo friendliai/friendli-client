@@ -3,10 +3,10 @@ Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 -->
 
 <p align="center">
-  <img src="https://docs.friendli.ai/img/logo.svg" width="80%" alt="system">
+  <img src="https://docs.friendli.ai/img/favicon.svg" width="30%" alt="Friendli Logo">
 </p>
 
-<h2><p align="center">Supercharge Generative AI Serving 🚀</p></h2>
+<h2><p align="center">Supercharge Generative AI Serving with Friendli 🚀</p></h2>
 
 <p align="center">
   <a href="https://github.com/friendliai/friendli-client/actions/workflows/ci.yaml">
@@ -57,12 +57,13 @@ Check out [Friendli Client Docs](https://docs.friendli.ai/) to learn more.
 pip install friendli-client
 ```
 
-If you have a Hugging Face checkpoint and want to convert it to a Friendli-compatible format with applying quantization, you need to install the package with the necessary machine learing library (`mllib`) dependencies.
-In this case, install the package with the following command:
-
-```sh
-pip install "friendli-client[mllib]"
-```
+> [!NOTE]
+> If you have a Hugging Face checkpoint and want to convert it to a Friendli-compatible format with applying quantization, you need to install the package with the necessary machine learing library (`mllib`) dependencies.
+> In this case, install the package with the following command:
+>
+> ```sh
+> pip install "friendli-client[mllib]"
+> ```
 
 ## Examples
 

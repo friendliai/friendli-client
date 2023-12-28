@@ -11,12 +11,12 @@ from typing_extensions import deprecated
 discuss_url = "https://discuss.friendli.ai/"
 
 
-def get_baseurl(url: str) -> str:
-    """Get a base of a URL."""
+def get_host(url: str) -> str:
+    """Get a host part of a URL."""
     parsed_url = urlparse(url)
     scheme = parsed_url.scheme
-    base = parsed_url.netloc
-    return f"{scheme}://{base}/"
+    netloc = parsed_url.netloc
+    return f"{scheme}://{netloc}/"
 
 
 class URLProvider:

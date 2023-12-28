@@ -89,7 +89,13 @@ def login(
         json={"username": email, "password": password},
         timeout=DEFAULT_REQ_TIMEOUT,
     )
-    resp = r.json()
+    try:
+        resp = r.json()
+    except requests.exceptions.JSONDecodeError:
+        if r.status_code != 200:
+            secho_error_and_exit(r.content.decode())
+        secho_error_and_exit("Invalid response format.")
+
     if "code" in resp and resp["code"] == "mfa_required":
         mfa_token = resp["mfaToken"]
         client = UserMFAClient()
