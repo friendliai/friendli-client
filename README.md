@@ -3,7 +3,7 @@ Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 -->
 
 <p align="center">
-  <img src="https://docs.friendli.ai/img/favicon.svg" width="30%" alt="Friendli Logo">
+  <img src="https://docs.friendli.ai/img/logo.svg" width="30%" alt="Friendli Logo">
 </p>
 
 <h2><p align="center">Supercharge Generative AI Serving with Friendli 🚀</p></h2>
@@ -26,30 +26,41 @@ Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
   </a>
 </p>
 
-Friendli engine is the fastest engine for serving generative AI models such as GPT-3. With Friendli Suite, a company can significantly reduce the cost and environmental impact of running its generative AI models. Users can use Friendli engine in a container and run it on the infrastructure they manage. They can also use our Friendli dedicated endpoint service to reduce overheads of running generative AI models themselves.
+Welcome to Friendli Suite, the ultimate solution for serving generative AI models. We offer three distinct options to cater to your specific needs, each designed to provide superior performance, cost-effectiveness, and ease of use.
 
 # Friendli Suite
 
-## High performance
+## 1. Friendli Serverless Endpoints
 
-Users can use Friendli to reduce serving costs and environmental consequences significantly. They can serve much higher traffic with the same number of GPUs—or serve the same amount of traffic with notably fewer GPUs. Friendli can serve 10x more throughput at the same level of latency.
+Imagine a playground for your AI dreams.
+Friendli Serverless Endpoint is just that - a simple, click-and-play interface that lets you access popular open-source models like Llama-2 and Stable Diffusion without any heavy lifting.
+Choose your model, enter your prompt or upload an image, and marvel at the generated text, code, or image outputs.
+With pay-per-token billing, this is ideal for exploration and experimentation.
+You can think of it as an AI sampler.
 
-## Diverse model and options support
+## 2. Friendli Dedicated Endpoints
 
-Friendli supports various language model architectures, embedding choices, and decoding options such as greedy decoding, top-k, top-p, and beam search. Friendli will support diffusion models as well in the near future, so stay tuned!
-Users can use Friendli in a container and run it by themselves, or they can use our cloud service. The cloud service supports the following features.
+Ready to take the reins and unleash the full potential of your own models?
+Friendli Dedicated Endpoint is for you.
+This service provides dedicated GPU resources in the cloud platform of your choice (AWS, GCP, Azure), letting you upload and run your custom generative AI models.
+Reserve the exact GPU you need (A10, A100 40G, A100 80G, etc.) and enjoy fine-grained control over your model settings.
+Pay-per-second billing makes it perfect for regular or resource-intensive workloads.
 
-## Effortless deployment
+## 3. Friendli Container
 
-Friendli dedicated endpoints provides an easy serving experience with a Command Line Interface (CLI) and a web interface. With just a few clicks, users can deploy their models to the infrastructure that they desire. Users can move their serving between different clouds such as Azure, AWS, and GCP, and still have the same seamless experience.
+Do you prefer the comfort and security of your own data center?
+Friendli Container is the solution.
+We provide the Friendli Engine within Docker containers that can be installed on your on-premise GPUs so your data stays within your own secure cluster.
+This option offers maximum control and security, ideal for advanced users or those with specific data privacy requirements.
 
-## Automatic load and fault management
-
-Friendli dedicated endpoints monitor the resources in use and requests (responses) being sent to (sent from) the currently deployed model, allowing users a more stable model serving experience. When the number of requests sent to the deployed model increases, it automatically assigns more resources (GPU VMs) to the model, while it reduces resource usage when there are not as many requests. Furthermore, if a certain resource malfunctions, it proceeds with recovery based on the monitoring results.
+> [!NOTE]
+>
+> ## The Friendli Engine: The Powerhouse Behind the Suite
+>
+> At the heart of each Friendli Suite offering lies the Friendli Engine, a patented, GPU-optimized serving engine.
+> This technological marvel is what enables Friendli Suite's superior performance and cost-effectiveness, featuring innovations like continuous batching (iteration batching) that significantly improve resource utilization compared to traditional LLM serving solutions.
 
 # 🕹️ Friendli Client
-
-Check out [Friendli Client Docs](https://docs.friendli.ai/) to learn more.
 
 ## Installation
 
@@ -65,100 +76,124 @@ pip install friendli-client
 > pip install "friendli-client[mllib]"
 > ```
 
-## Examples
+## Python SDK Examples
 
-This example shows how to create a deployment and send a completion API request to the created deployment with Python SDK.
+> [!IMPORTANT]
+> You must set `FRIENDLI_TOKEN` environment variable before initializing the client instance with `client = Friendli()`.
+> Alternatively, you can provide the value of your personal access token as the `token` argument when creating the client, like so:
+>
+> ```python
+> from friendli import Friendli
+> 
+> client = Friendli(token="YOUR PERSONAL ACCESS TOKEN")
+> ```
 
-```python
-import os
-from friendli import FriendliResource
-
-client = FriendliResource(
-    api_key=os.environ["FRIENDLI_API_KEY"],
-    project=os.environ["FRIENDLI_PROJECT"],
-)
-
-# Create a deployment at GCP asia-northest3 region wtih one A100 GPU.
-deployment = client.deployment.create(
-    checkpoint_id=os.environ["CHECKPOINT_ID"],
-    name="my-deployment",
-    cloud="gcp",
-    region="asia-northeast3",
-    gpu_type="a100",
-    num_gpus=1,
-)
-```
-
-When the deployment becomes the "Healthy" status and ready to process inference requests, you can generate a completion with:
+### Default
 
 ```python
 from friendli import Friendli
 
-client = Friendli(
-    api_key=os.environ["FRIENDLI_API_KEY"],
-    project=os.environ["FRIENDLI_PROJECT"],
-    deployment_id=os.environ["DEPLOYMENT_ID"],
+client = Friendli()
+
+chat_completion = client.chat.completions.create(
+    model="llama-2-13b-chat",
+    messages=[
+        {
+            "role": "user",
+            "content": "Tell me how to make a delicious pancake"
+        }
+    ],
+    stream=False,
 )
-
-# Generate a completion by sending an inference request to the deployment created above.
-completion = client.completions.create(
-    prompt="Python is a popular language for",
-    max_tokens=100,
-    top_p=0.8,
-    temperature=0.5,
-    no_repeat_ngram=3,
-)
-print(completion.choices[0].text)
-
-"""
->>> Example Output:
-
-web development. It is also used for a variety of other applications.
-Python can be used to create desktop applications, web applications and mobile applications as well.
-Python is one of the most popular languages for data science.
-Data scientists use Python to analyze data.
-The Python ecosystem is very diverse.
-There are many libraries that can help you with your Python projects.
-You can also find many Python tutorials online.
-"""
+print(chat_completion.choices[0].message.content)
 ```
 
-You can also do the same with CLI.
+### Streaming
+
+```python
+from friendli import Friendli
+
+client = Friendli()
+
+stream = client.chat.completions.create(
+    model="llama-2-13b-chat",
+    messages=[
+        {
+            "role": "user",
+            "content": "Tell me how to make a delicious pancake"
+        }
+    ]
+    stream=True,
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="")
+```
+
+### Async
+
+```python
+import asyncio
+from friendi import AsyncFriendli
+
+client = AsyncFriendli()
+
+
+async def main() -> None:
+    chat_completion = await client.chat.completions.create(
+        model="llama-2-13b-chat",
+        messages=[
+            {
+                "role": "user",
+                "content": "Tell me how to make a delicious pancake"
+            }
+        ]
+        stream=False,
+    )
+    print(chat_completion.choices[0].message.content)
+
+
+asyncio.run(main())
+```
+
+### Streaming (Async)
+
+```python
+import asyncio
+from friendi import AsyncFriendli
+
+client = AsyncFriendli()
+
+
+async def main() -> None:
+    stream = await client.chat.completions.create(
+        model="llama-2-13b-chat",
+        messages=[
+            {
+                "role": "user",
+                "content": "Tell me how to make a delicious pancake"
+            }
+        ]
+        stream=True,
+    )
+    async for chunk in stream:
+        print(chunk.choices[0].delta.content or "", end="")
+
+
+asyncio.run(main())
+```
+
+## CLI Examples
+
+You can also call the generation APIs directly with CLI.
 
 ```sh
-# Switch CLI context to target project
-friendli project switch my-project
-
-# Create a deployment
-friendli deployment create \
-  --checkpoint-id $YOUR_CHECKPOINT_ID \
-  --name my-deployment \
-  --cloud gcp \
-  --region asia-northeast3 \
-  --gpu-type a100 \
-  --num-gpus 1 \
-  --config-file config.yaml
+friendli api chat-completions create \
+  -g "user Tell me how to make a delicious pancake" \
+  -m llama-2-13b-chat
 ```
 
-When the deployment is ready, you can send a request with `curl`.
+For further information about the `friendli` command, run `friendli --help` in your terminal shell.
+This will provide you with a detailed list of available options and usage instructions.
 
-```sh
-# Send a inference request to the deployment.
-curl -X POST https://gcp-asia-northeast3.friendli.ai/$DEPLOYMENT_ID/v1/completions \
-  -d '{"prompt": "Python is a popular language for", "max_tokens": 100, "top_p": 0.8, "temperature": 0.5, "no_repeat_ngram": 3}'
-```
-
-The response will be like:
-
-```txt
-{
-   "choices": [
-      {
-         "index": 0,
-         "seed": 18337142367832222086,
-         "text": " web development. It is also used for a variety of other applications.\nPython can be used to create desktop applications, web applications and mobile applications as well.\nPython is one of the most popular languages for data science.\nData scientists use Python to analyze data.\nThe Python ecosystem is very diverse.\nThere are many libraries that can help you with your Python projects.\nYou can also find many Python tutorials online.
-         "tokens": [3644,8300,290,3992,2478,13,198,37906,318,6768,973,284,...]
-      }
-   ]
-}
-```
+> [!TIP]
+> **Check out our [official documentations](https://docs.periflow.ai/) to learn more!**

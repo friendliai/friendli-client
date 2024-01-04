@@ -115,7 +115,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
             # Set up Friendli context.
             client = FriendliResource(
-                api_key="YOUR_FRIENDLI_API_KEY",
+                token="YOUR_FRIENDLI_TOKEN",
                 project_name="my-project",
             )
 

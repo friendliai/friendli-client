@@ -12,23 +12,23 @@ from friendli.client.user import UserGroupClient, UserGroupProjectClient
 from friendli.errors import AuthorizationError
 
 
-def init(api_key: str, project: str) -> None:
+def init(token: str, project: str) -> None:
     """Setup Friendli authorization info.
 
     All Friendli APIs followed by this function will be executed with the API key,
-    provided in the `api_key` argument, and project context provided in the `project`
+    provided in the `token` argument, and project context provided in the `project`
     argument. If you call the Friendli APIs without calling this function, the context
     set by `friendli login` CLI command will be used.
 
     Args:
-        api_key (str): Friendli API key.
+        token (str): Friendli API key.
         project (str): Project name.
 
     Raises:
-        AuthorizationError: Raised if the API key, provided in the `api_key` argument, does not have permission to any organization or to the project provided in the `project` argument.
+        AuthorizationError: Raised if the API key, provided in the `token` argument, does not have permission to any organization or to the project provided in the `project` argument.
 
     """
-    friendli.api_key = api_key
+    friendli.token = token
 
     user_group_client = UserGroupClient()
 
@@ -38,7 +38,7 @@ def init(api_key: str, project: str) -> None:
         raise AuthorizationError(
             "Does have not permission to any organization."
         ) from exc
-    friendli.org_id = org["id"]
+    friendli.team_id = org["id"]
 
     user_group_project_client = UserGroupProjectClient()
     project_client = ProjectClient()

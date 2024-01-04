@@ -16,9 +16,9 @@ project_context_path = get_friendli_directory() / "project"
 
 def get_current_group_id() -> Optional[uuid.UUID]:
     """Get organization ID of the current context."""
-    if friendli.org_id:
+    if friendli.team_id:
         try:
-            return uuid.UUID(friendli.org_id)
+            return uuid.UUID(friendli.team_id)
         except ValueError as exc:
             raise ValueError("Invalid organization ID format") from exc
 

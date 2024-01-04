@@ -198,3 +198,19 @@ class QuantDatasetFormat(str, Enum):
     CSV = "csv"
     PARQUET = "parquet"
     TXT = "txt"
+
+
+class ChatCompletionsModel(str, Enum):
+    """Model choices for chat completions."""
+
+    LLAMA_2_13B_CHAT = "llama-2-13b-chat"
+    LLAMA_2_70B_CHAT = "llama-2-70b-chat"
+    MISTRAL_7B_INSTRUCT_V0_2 = "mistral-7b-instruct-v0-2"
+
+
+class CompletionsModel(str, Enum):
+    """Model choices for completions."""
+
+    LLAMA_2_13B = "llama-2-13b"
+    LLAMA_2_70B = "llama-2-70b"
+    MISTRAL_7B_V0_1 = "mistral-7b-v0-1"

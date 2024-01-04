@@ -11,16 +11,7 @@ import typer
 from requests import HTTPError, Response
 
 from friendli.auth import TokenType, clear_tokens, get_token, update_token
-from friendli.cli import (
-    catalog,
-    checkpoint,
-    credential,
-    deployment,
-    gpu,
-    group,
-    key,
-    project,
-)
+from friendli.cli import api, checkpoint
 from friendli.client.project import ProjectClient
 from friendli.client.user import UserClient, UserGroupClient, UserMFAClient
 from friendli.context import (
@@ -45,14 +36,16 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 
-app.add_typer(catalog.app, name="catalog", help="Manage catalog")
-app.add_typer(credential.app, name="credential", help="Manage credentials")
+# Cloud-related features are temporarily disabled until account system is integrated with Friendli suite.
+# app.add_typer(catalog.app, name="catalog", help="Manage catalog")
+# app.add_typer(credential.app, name="credential", help="Manage credentials")
+# app.add_typer(gpu.app, name="gpu", help="Manage GPUs")
+# app.add_typer(deployment.app, name="deployment", help="Manage deployments")
+# app.add_typer(project.app, name="project", help="Manage projects")
+# app.add_typer(group.app, name="org", help="Manage organizations")
+# app.add_typer(key.app, name="key", help="Manage api keys")
 app.add_typer(checkpoint.app, name="checkpoint", help="Manage checkpoints")
-app.add_typer(gpu.app, name="gpu", help="Manage GPUs")
-app.add_typer(deployment.app, name="deployment", help="Manage deployments")
-app.add_typer(project.app, name="project", help="Manage projects")
-app.add_typer(group.app, name="org", help="Manage organizations")
-app.add_typer(key.app, name="key", help="Manage api keys")
+app.add_typer(api.app, name="api", help="API call to endpoints")
 
 
 user_panel_formatter = PanelFormatter(
@@ -62,7 +55,7 @@ user_panel_formatter = PanelFormatter(
 )
 
 
-@app.command()
+# @app.command()
 @check_api
 def whoami():
     """Show my user info."""
@@ -75,7 +68,7 @@ def whoami():
     user_panel_formatter.render([info])
 
 
-@app.command()
+# @app.command()
 @check_api
 def login(
     email: str = typer.Option(..., prompt="Enter your email"),
@@ -129,14 +122,14 @@ def login(
     set_current_group_id(org_id)
 
 
-@app.command()
+# @app.command()
 def logout():
     """Sign out."""
     clear_tokens()
     typer.secho("Successfully signed out.", fg=typer.colors.BLUE)
 
 
-@app.command()
+# @app.command()
 @check_api
 def passwd(
     old_password: str = typer.Option(

@@ -41,28 +41,37 @@ token_path_map = {
 ResponseBody: TypeAlias = Union[Dict[str, Any], List[Dict[str, Any]], None]
 
 
-def get_auth_header(api_key: Optional[str] = None) -> Dict[str, Any]:
+def get_auth_header(
+    token: Optional[str] = None, team_id: Optional[str] = None
+) -> Dict[str, Any]:
     """Get authorization header.
 
     Returns:
         Dict[str, Any]: HTTP Authorization headers for the request.
 
     """
-    token: Optional[str]
+    token_: Optional[str]
 
-    if api_key is not None:
-        token = api_key
-    elif friendli.api_key:
-        token = friendli.api_key
+    if token is not None:
+        token_ = token
+    elif friendli.token:
+        token_ = friendli.token
     else:
-        token = get_token(TokenType.ACCESS)
+        token_ = get_token(TokenType.ACCESS)
 
-    if token is None:
+    if token_ is None:
         raise AuthTokenNotFoundError(
-            "Should set FRIENDLI_API_KEY environment variable or sign in with 'friendli login'."
+            "Should set FRIENDLI_TOKEN environment variable or sign in with 'friendli login'."
         )
 
-    return {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {token_}"}
+
+    if team_id is not None:
+        headers["X-Friendli-Team"] = team_id
+    elif friendli.team_id:
+        headers["X-Friendli-Team"] = friendli.team_id
+
+    return headers
 
 
 def get_token(token_type: TokenType) -> Union[str, None]:

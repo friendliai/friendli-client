@@ -15,7 +15,7 @@ from friendli.utils.url import URLProvider
 
 @pytest.fixture
 def patch_safe_request(requests_mock: requests_mock.Mocker):
-    friendli.api_key = "fake-api-key"
+    friendli.token = "fake-api-key"
     injector = get_injector()
     url_provider = injector.get(URLProvider)
     requests_mock.post(url_provider.get_web_backend_uri("/api/auth/cli/refresh_token"))

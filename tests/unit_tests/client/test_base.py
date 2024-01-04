@@ -90,7 +90,7 @@ def test_client_service_base(
 
     client = TestClient(test_id=1)
 
-    friendli.api_key = "test-api-key"
+    friendli.token = "test-api-key"
     data = client.list(pagination=pagination)
     assert data == [{"data": "value"}]
 

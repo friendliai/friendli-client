@@ -98,7 +98,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             # Set up Friendli context.
             client = FriendliResource(
-                api_key="YOUR_PERILFOW_API_KEY",
+                token="YOUR_FRIENDLI_TOKEN",
                 project_name="my-project",
             )
 
@@ -329,7 +329,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             # Set up Friendli context.
             client = FriendliResource(
-                api_key="YOUR_PERILFOW_API_KEY",
+                token="YOUR_FRIENDLI_TOKEN",
                 project_name="my-project",
             )
 
@@ -374,7 +374,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             # Set up Friendli context.
             client = FriendliResource(
-                api_key="YOUR_PERILFOW_API_KEY",
+                token="YOUR_FRIENDLI_TOKEN",
                 project_name="my-project",
             )
 
@@ -404,7 +404,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             # Set up Friendli context.
             client = FriendliResource(
-                api_key="YOUR_PERILFOW_API_KEY",
+                token="YOUR_FRIENDLI_TOKEN",
                 project_name="my-project",
             )
 
@@ -449,7 +449,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             # Set up Friendli context.
             client = FriendliResource(
-                api_key="YOUR_PERILFOW_API_KEY",
+                token="YOUR_FRIENDLI_TOKEN",
                 project_name="my-project",
             )
 
@@ -749,7 +749,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             # Set up Friendli context.
             client = FriendliResource(
-                api_key="YOUR_PERILFOW_API_KEY",
+                token="YOUR_FRIENDLI_TOKEN",
                 project_name="my-project",
             )
 
@@ -799,7 +799,7 @@ class Checkpoint(ResourceAPI[V1Checkpoint, UUID]):
 
             # Set up Friendli context.
             client = FriendliResource(
-                api_key="YOUR_PERILFOW_API_KEY",
+                token="YOUR_FRIENDLI_TOKEN",
                 project_name="my-project",
             )
 

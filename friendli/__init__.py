@@ -8,19 +8,18 @@ import os
 
 from friendli.di.injector import set_default_modules
 from friendli.di.modules import default_modules
-from friendli.sdk.client import AsyncFriendli, Friendli, FriendliResource
+from friendli.sdk.client import AsyncFriendli, Friendli
 
-api_key = os.environ.get("FRIENDLI_API_KEY")
-org_id = os.environ.get("FRIENDLI_ORG_ID")
+token = os.environ.get("FRIENDLI_TOKEN")
+team_id = os.environ.get("FRIENDLI_TEAM_ID")
 project_id = os.environ.get("FRIENDLI_PRJ_ID")
 
 set_default_modules(default_modules)
 
 __all__ = [
-    "api_key",
-    "org_id",
+    "token",
+    "team_id",
     "project_id",
     "AsyncFriendli",
     "Friendli",
-    "FriendliResource",
 ]

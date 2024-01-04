@@ -97,7 +97,7 @@ json_formatter = JSONFormatter(name="Attributes")
 tree_formatter = TreeFormatter(name="Files")
 
 
-@app.command()
+# @app.command()
 @check_api
 def list(
     source: Optional[CheckpointCategory] = typer.Option(
@@ -128,7 +128,7 @@ def list(
     table_formatter.render(ckpt_dicts)
 
 
-@app.command()
+# @app.command()
 @check_api
 def view(
     checkpoint_id: UUID = typer.Argument(
@@ -148,7 +148,7 @@ def view(
     tree_formatter.render(ckpt_dict["forms"][0]["files"])
 
 
-@app.command()
+# @app.command()
 @check_api
 def create(
     name: str = typer.Option(
@@ -349,7 +349,7 @@ def create(
     tree_formatter.render(ckpt_dict["forms"][0]["files"])
 
 
-@app.command()
+# @app.command()
 @check_api
 def delete(
     checkpoint_ids: List[UUID] = typer.Argument(
@@ -398,7 +398,7 @@ def delete(
     typer.secho("Checkpoints are deleted successfully!", fg=typer.colors.BLUE)
 
 
-@app.command()
+# @app.command()
 @check_api
 def download(
     checkpoint_id: UUID = typer.Argument(..., help="ID of checkpoint to download."),
@@ -423,7 +423,7 @@ def download(
         secho_error_and_exit(str(exc))
 
 
-@app.command()
+# @app.command()
 @check_api
 def upload(
     name: str = typer.Option(
@@ -598,7 +598,7 @@ def upload(
     tree_formatter.render(ckpt_dict["forms"][0]["files"])
 
 
-@app.command()
+# @app.command()
 @check_api
 def restore(
     checkpoint_id: UUID = typer.Argument(..., help="ID of checkpoint to restore.")
@@ -624,7 +624,7 @@ def restore(
     typer.secho(f"Checkpoint({checkpoint_id}) is successfully restored.")
 
 
-@app.command("import")
+# @app.command("import")
 @check_api
 def import_from_catalog(
     catalog_name: str = typer.Argument(
