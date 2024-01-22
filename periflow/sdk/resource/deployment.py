@@ -2,7 +2,7 @@
 
 """PeriFlow deployment SDK."""
 
-# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-locals, redefined-builtin
+# pylint: disable=line-too-long, arguments-differ, too-many-arguments, too-many-locals, too-many-branches, redefined-builtin
 
 from __future__ import annotations
 
@@ -52,6 +52,7 @@ from periflow.sdk.resource.base import ResourceAPI
 from periflow.utils.format import extract_datetime_part, extract_deployment_id_part
 from periflow.utils.maps import cloud_gpu_map, gpu_num_map
 from periflow.utils.transfer import (
+    MAX_CHAT_TEMPLATE_SIZE,
     MAX_DEFAULT_REQUEST_CONFIG_SIZE,
     ChunksizeAdjuster,
     DeferQueue,
@@ -76,6 +77,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
         deployment_type: DeploymentType = DeploymentType.PROD,
         description: Optional[str] = None,
         default_request_config: Optional[Dict[str, Any]] = None,
+        chat_template: Optional[str] = None,
         security_level: DeploymentSecurityLevel = DeploymentSecurityLevel.PUBLIC,
         logging: bool = False,
         min_replicas: int = 1,
@@ -95,6 +97,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             deployment_type (DeploymentType, optional): Type of deployment. Defaults to DeploymentType.PROD.
             description (Optional[str], optional): Optional long description for the deployment. Defaults to None.
             default_request_config (Optional[Dict[str, Any]], optional): Default request configuration (e.g., stop words, bad words). Defaults to None.
+            chat_template (Optional[str], optional): Chat template in Jinja2 format.
             security_level (DeploymentSecurityLevel, optional): Security level of deployment endpoint. Defaults to DeploymentSecurityLevel.PUBLIC.
             logging (bool, optional): When True, enables request-response logging for the deployment if it is set. Defaults to False.
             min_replicas (int, optional): The number of minimum replicas. Defaults to 1.
@@ -222,22 +225,22 @@ class Deployment(ResourceAPI[V1Deployment, str]):
             group_file_client = GroupProjectFileClient()
 
             with TemporaryDirectory() as dir:
-                drc_file_name = "drc.json"
-                drc_file_path = os.path.join(dir, drc_file_name)
-                with open(drc_file_path, "w", encoding="utf-8") as file:
+                chat_tpl_file_name = "drc.json"
+                chat_tpl_file_path = os.path.join(dir, chat_tpl_file_name)
+                with open(chat_tpl_file_path, "w", encoding="utf-8") as file:
                     json.dump(default_request_config, file)
 
-                file_size = os.stat(drc_file_path).st_size
+                file_size = os.stat(chat_tpl_file_path).st_size
                 if file_size > MAX_DEFAULT_REQUEST_CONFIG_SIZE:
                     raise EntityTooLargeError(
                         "The default request config size should be smaller than 1GiB."
                     )
 
                 file_info = {
-                    "name": drc_file_name,
-                    "path": drc_file_name,
+                    "name": chat_tpl_file_name,
+                    "path": chat_tpl_file_name,
                     "mtime": datetime.fromtimestamp(
-                        os.stat(drc_file_path).st_mtime, tz=tzlocal()
+                        os.stat(chat_tpl_file_path).st_mtime, tz=tzlocal()
                     ).isoformat(),
                     "size": file_size,
                 }
@@ -245,7 +248,7 @@ class Deployment(ResourceAPI[V1Deployment, str]):
 
                 upload_url = file_client.get_misc_file_upload_url(misc_file_id=file_id)
                 upload_task = UploadTask(
-                    path=drc_file_path, upload_url=AnyHttpUrl(upload_url)
+                    path=chat_tpl_file_path, upload_url=AnyHttpUrl(upload_url)
                 )
 
                 executor = ThreadPoolExecutor()
@@ -257,6 +260,49 @@ class Deployment(ResourceAPI[V1Deployment, str]):
                     upload_manager.upload_file(upload_task=upload_task)
                     file_client.make_misc_file_uploaded(misc_file_id=file_id)
                     config["orca_config"]["default_request_config_id"] = file_id
+                finally:
+                    executor.shutdown(wait=True)
+
+        if chat_template is not None:
+            file_client = FileClient()
+            group_file_client = GroupProjectFileClient()
+
+            with TemporaryDirectory() as dir:
+                chat_tpl_file_name = "chat_tpl.txt"
+                chat_tpl_file_path = os.path.join(dir, chat_tpl_file_name)
+                with open(chat_tpl_file_path, "w", encoding="utf-8") as file:
+                    file.write(chat_template)
+
+                file_size = os.stat(chat_tpl_file_path).st_size
+                if file_size > MAX_CHAT_TEMPLATE_SIZE:
+                    raise EntityTooLargeError(
+                        "The size of chat template should be smaller than 1MiB."
+                    )
+
+                file_info = {
+                    "name": chat_tpl_file_name,
+                    "path": chat_tpl_file_name,
+                    "mtime": datetime.fromtimestamp(
+                        os.stat(chat_tpl_file_path).st_mtime, tz=tzlocal()
+                    ).isoformat(),
+                    "size": file_size,
+                }
+                file_id = group_file_client.create_misc_file(file_info=file_info)["id"]
+
+                upload_url = file_client.get_misc_file_upload_url(misc_file_id=file_id)
+                upload_task = UploadTask(
+                    path=chat_tpl_file_path, upload_url=AnyHttpUrl(upload_url)
+                )
+
+                executor = ThreadPoolExecutor()
+                adjuster = ChunksizeAdjuster()
+                upload_manager = UploadManager(
+                    executor=executor, chunk_adjuster=adjuster
+                )
+                try:
+                    upload_manager.upload_file(upload_task=upload_task)
+                    file_client.make_misc_file_uploaded(misc_file_id=file_id)
+                    config["orca_config"]["chat_template_id"] = file_id
                 finally:
                     executor.shutdown(wait=True)
 

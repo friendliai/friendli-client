@@ -576,6 +576,8 @@ def create(
                 f"Error occurred while parsing default request config file... {e}"
             )
 
+    chat_template = config.pop("chat_template", None)
+
     try:
         deployment = DeploymentAPI.create(
             checkpoint_id=checkpoint_id,
@@ -588,6 +590,7 @@ def create(
             config=config,
             description=description,
             default_request_config=default_request_config,
+            chat_template=chat_template,
             security_level=security_level,
             logging=logging,
             min_replicas=min_replicas,
