@@ -83,13 +83,19 @@ def login(
     injector = get_injector()
     url_provider = injector.get(URLProvider)
     r = requests.post(
-        url_provider.get_training_uri("token/"),
-        data={"username": email, "password": password},
+        url_provider.get_web_backend_uri("/api/auth/cli/access_token"),
+        json={"username": email, "password": password},
         timeout=DEFAULT_REQ_TIMEOUT,
     )
-    resp = r.json()
+    try:
+        resp = r.json()
+    except requests.exceptions.JSONDecodeError:
+        if r.status_code != 200:
+            secho_error_and_exit(r.content.decode())
+        secho_error_and_exit("Invalid response format.")
+
     if "code" in resp and resp["code"] == "mfa_required":
-        mfa_token = resp["mfa_token"]
+        mfa_token = resp["mfaToken"]
         client = UserMFAClient()
         # TODO: MFA type currently defaults to totp, need changes when new options are added
         client.initiate_mfa(mfa_type="totp", mfa_token=mfa_token)
@@ -168,7 +174,7 @@ def _mfa_verify(_, code: str = typer.Option(..., prompt="Enter MFA Code")):
     mfa_type = "totp"
     username = f"mfa://{mfa_type}/{mfa_token}"
     r = requests.post(
-        url_provider.get_training_uri("token/"),
+        url_provider.get_web_backend_uri("/api/auth/cli/access_token"),
         data={"username": username, "password": code},
         timeout=DEFAULT_REQ_TIMEOUT,
     )
@@ -178,8 +184,8 @@ def _mfa_verify(_, code: str = typer.Option(..., prompt="Enter MFA Code")):
 def _handle_login_response(r: Response, mfa: bool):
     try:
         r.raise_for_status()
-        update_token(token_type=TokenType.ACCESS, token=r.json()["access_token"])
-        update_token(token_type=TokenType.REFRESH, token=r.json()["refresh_token"])
+        update_token(token_type=TokenType.ACCESS, token=r.json()["accessToken"])
+        update_token(token_type=TokenType.REFRESH, token=r.json()["refreshToken"])
 
         typer.echo("\n\nLogin success!")
         typer.echo("Welcome back to...")

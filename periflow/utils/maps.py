@@ -50,9 +50,9 @@ cloud_vm_map: Dict[CloudType, list[VMType]] = {
 
 
 cloud_gpu_map: Dict[CloudType, list[GpuType]] = {
-    CloudType.AWS: [GpuType.A10G],
-    CloudType.AZURE: [GpuType.A100_80G],
-    CloudType.GCP: [GpuType.A100],
+    CloudType.AWS: [GpuType.A10G, GpuType.A100],
+    CloudType.AZURE: [GpuType.A100, GpuType.A100_80G],
+    CloudType.GCP: [GpuType.A100, GpuType.A100_80G],
 }
 
 

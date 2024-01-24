@@ -27,11 +27,17 @@ class URLProvider:
     auth_url = ""
     meter_url = ""
     observatory_url = ""
+    web_backend_url = ""
 
     @classmethod
     def get_auth_uri(cls, path: str) -> str:
         """Get PFA URI."""
         return urljoin(cls.auth_url, path)
+
+    @classmethod
+    def get_web_backend_uri(cls, path: str) -> str:
+        """Get PF Web Backend API URI."""
+        return urljoin(cls.web_backend_url, path)
 
     @classmethod
     def get_training_uri(cls, path: str) -> str:
@@ -67,34 +73,37 @@ class URLProvider:
 class ProductionURLProvider(URLProvider):
     """Production service URL provider."""
 
-    training_url = "https://training.periflow.ai/api/"
-    training_ws_url = "wss://training-ws.periflow.ai/ws/"
-    registry_url = "https://modelregistry.periflow.ai/"
-    serving_url = "https://serving.periflow.ai/"
-    auth_url = "https://auth.periflow.ai/"
-    meter_url = "https://metering.periflow.ai/"
-    observatory_url = "https://observatory.periflow.ai/"
+    training_url = "https://training.friendli.ai/api/"
+    training_ws_url = "wss://training-ws.friendli.ai/ws/"
+    registry_url = "https://modelregistry.friendli.ai/"
+    serving_url = "https://serving.friendli.ai/"
+    auth_url = "https://auth.friendli.ai/"
+    meter_url = "https://metering.friendli.ai/"
+    observatory_url = "https://observatory.friendli.ai/"
+    web_backend_url = "https://cloud.friendli.ai/"
 
 
 class StagingURLProvider(URLProvider):
     """Staging service URL provider."""
 
-    training_url = "https://api-staging.friendli.ai/api/"
-    training_ws_url = "wss://api-ws-staging.friendli.ai/ws/"
-    registry_url = "https://pfmodelregistry-staging.friendli.ai/"
-    serving_url = "https://pfs-staging.friendli.ai/"
-    auth_url = "https://pfauth-staging.friendli.ai/"
+    training_url = "https://training-staging.friendli.ai/api/"
+    training_ws_url = "wss://training-ws-staging.friendli.ai/ws/"
+    registry_url = "https://modelregistry-staging.friendli.ai/"
+    serving_url = "https://serving-staging.friendli.ai/"
+    auth_url = "https://auth-staging.friendli.ai/"
     meter_url = "https://pfmeter-staging.friendli.ai/"
     observatory_url = "https://pfo-staging.friendli.ai/"
+    web_backend_url = "https://cloud-api-staging.friendli.ai/"
 
 
 class DevURLProvider(URLProvider):
     """Dev service URL provider."""
 
-    training_url = "https://api-dev.friendli.ai/api/"
-    training_ws_url = "wss://api-ws-dev.friendli.ai/ws/"
-    registry_url = "https://pfmodelregistry-dev.friendli.ai/"
-    serving_url = "https://pfs-dev.friendli.ai/"
-    auth_url = "https://pfauth-dev.friendli.ai/"
-    meter_url = "https://pfmeter-dev.friendli.ai/"
+    training_url = "https://training-dev.friendli.ai/api/"
+    training_ws_url = "wss://training-ws-dev.friendli.ai/ws/"
+    registry_url = "https://modelregistry-dev.friendli.ai/"
+    serving_url = "https://serving-dev.friendli.ai/"
+    auth_url = "https://auth-dev.friendli.ai/"
+    meter_url = "https://metering-dev.friendli.ai/"
     observatory_url = "https://pfo-dev.friendli.ai/"
+    web_backend_url = "https://cloud-api-dev.friendli.ai/"

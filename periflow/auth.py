@@ -106,8 +106,8 @@ def safe_request(func: Callable[..., requests.Response]) -> Callable[..., Any]:
             refresh_token = get_token(TokenType.REFRESH)
             if refresh_token is not None:
                 refresh_r = requests.post(
-                    url_provider.get_training_uri("token/refresh/"),
-                    data={"refresh_token": refresh_token},
+                    url_provider.get_web_backend_uri("/api/auth/cli/refresh_token"),
+                    json={"refresh_token": refresh_token},
                     timeout=DEFAULT_REQ_TIMEOUT,
                 )
                 try:
@@ -118,11 +118,11 @@ def safe_request(func: Callable[..., requests.Response]) -> Callable[..., Any]:
                     ) from exc
 
                 update_token(
-                    token_type=TokenType.ACCESS, token=refresh_r.json()["access_token"]
+                    token_type=TokenType.ACCESS, token=refresh_r.json()["accessToken"]
                 )
                 update_token(
                     token_type=TokenType.REFRESH,
-                    token=refresh_r.json()["refresh_token"],
+                    token=refresh_r.json()["refreshToken"],
                 )
                 # We need to restore file offset if we want to transfer file objects
                 if "files" in kwargs:
