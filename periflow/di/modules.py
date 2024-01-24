@@ -14,7 +14,7 @@ class URLModule(Module):
 
     def configure(self, binder: Binder) -> None:
         """Configures bindings for clients."""
-        binder.bind(url.URLProvider, to=url.DevURLProvider)  # type: ignore
+        binder.bind(url.URLProvider, to=url.ProductionURLProvider)  # type: ignore
 
 
 default_modules = [URLModule]
