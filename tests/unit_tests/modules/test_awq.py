@@ -19,7 +19,7 @@ from tests.unit_tests.modules.helpers.utils import (
     get_param_specs,
 )
 
-awq_models = ["gptj", "gpt_neox", "llama", "mpt", "mistral"]
+awq_models = ["gpt_j", "gpt_neox", "llama", "mpt", "mistral"]
 awq_model_name_config_map = {}
 for model_name, model_config in model_name_config_map.items():
     if model_name in awq_models:

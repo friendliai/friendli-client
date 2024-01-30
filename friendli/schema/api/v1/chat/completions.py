@@ -4,14 +4,10 @@
 
 from __future__ import annotations
 
-from typing import List, Literal, Optional, Union
+from typing import List, Optional
 
 from pydantic import BaseModel
-from typing_extensions import Required, TypeAlias, TypedDict
-
-ModelParam: TypeAlias = Union[
-    str, Literal["llama-2-13b-chat", "llama-2-70b-chat", "mistral-7b-instruct-v0-2"]
-]
+from typing_extensions import Required, TypedDict
 
 
 class MessageParam(TypedDict, total=False):

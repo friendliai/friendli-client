@@ -353,7 +353,6 @@ class AWQQuantizer(CommonQuantizer):
             tuple([*self.hook.get_linear_layer_types(), *inpsected_mod_types]),
         )
         awq_args = cast(AWQConfig, self.quant_config).awq_args
-
         for prev_ops, linear_tuples, module2inspect, module2inspect_name in cast(
             AWQHook, self.hook
         ).iter_inspect_modules(block):
@@ -362,10 +361,8 @@ class AWQQuantizer(CommonQuantizer):
 
             scales = search_module_scale(
                 module2inspect,
-                args_dict[module2inspect_name] if module2inspect_name else block_args,
-                kwargs_dict[module2inspect_name]
-                if module2inspect_name
-                else block_kwargs,
+                args_dict[module2inspect_name],
+                kwargs_dict[module2inspect_name],
                 linear_layers,
                 linear_inp,
                 awq_args.quant_group_size,
@@ -445,7 +442,7 @@ class AWQQuantizer(CommonQuantizer):
             )
 
         batched_samples = self.get_batched_samples()
-        model(batched_samples.to(self.quant_config.device))
+        model(batched_samples.to(self.quant_config.device), use_cache=False)
 
         for removable in removables:
             removable.remove()

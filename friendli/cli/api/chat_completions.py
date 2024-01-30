@@ -10,7 +10,6 @@ from typing import List, Optional
 
 import typer
 
-from friendli.enums import ChatCompletionsModel
 from friendli.schema.api.v1.chat.completions import MessageParam
 from friendli.sdk.client import Friendli
 from friendli.utils.decorator import check_api
@@ -34,7 +33,7 @@ def create(
             "A message in `ROLE CONTENT` format. Repeat this option to add multiple messages."
         ),
     ),
-    model: ChatCompletionsModel = typer.Option(
+    model: str = typer.Option(
         ...,
         "--model",
         "-m",
@@ -115,7 +114,7 @@ def create(
     if enable_stream:
         stream = client.chat.completions.create(
             stream=True,
-            model=model.value,
+            model=model,
             messages=_prepare_messages(messages),
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
@@ -132,7 +131,7 @@ def create(
     else:
         chat_completion = client.chat.completions.create(
             stream=False,
-            model=model.value,
+            model=model,
             messages=_prepare_messages(messages),
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,

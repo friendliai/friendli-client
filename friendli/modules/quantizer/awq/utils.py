@@ -85,7 +85,6 @@ def search_module_scale(
     """Search the AWQ scale for a module."""
     # pylint: disable=too-many-locals
     weight = torch.cat([_m.weight for _m in linears2scale], dim=0)  # type: ignore
-
     with torch.no_grad():
         org_out = module(*module_args, **module_kwargs)
         if isinstance(org_out, tuple):

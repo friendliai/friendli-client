@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 import pytest
+from peft import PeftConfig
 from transformers import (
     AutoConfig,
     BlenderbotConfig,
@@ -16,6 +17,7 @@ from transformers import (
     GPTNeoXConfig,
     LlamaConfig,
     MistralConfig,
+    MixtralConfig,
     MptConfig,
     OPTConfig,
     T5Config,
@@ -25,6 +27,7 @@ from transformers.models.mpt.configuration_mpt import MptAttentionConfig
 from friendli.enums import CheckpointDataType
 from friendli.modules.converter.base import OneOfConverter
 from friendli.modules.converter.maps import get_hf_converter_factory
+from friendli.modules.converter.models.mixtral import MixtralForCausalLMConverter
 from friendli.modules.converter.utils import get_model_arch
 
 from tests.unit_tests.modules.helpers.utils import ModelConfig, get_param_specs
@@ -178,6 +181,17 @@ model_name_config_map = {
         vocab_size=10000,
         max_position_embeddings=1024,
     ),
+    "mixtral": MixtralConfig(  # same as llama architecture
+        architectures=["MixtralForCausalLM"],
+        hidden_act="silu",
+        tie_word_embeddings=False,
+        rope_theta=10000.0,
+        rms_norm_eps=1e-5,
+        num_hidden_layers=1,
+        vocab_size=10000,
+        max_position_embeddings=1024,
+    ),
+    # TODO: add phi_msft
     # TODO: add mpt with grouped querry attention (e.g. replit-code)
 }
 
@@ -185,10 +199,11 @@ model_name_config_map = {
 @pytest.fixture
 def converter(model_config: AutoConfig) -> OneOfConverter:
     model_arch = get_model_arch(model_config)
-    _, converter = get_hf_converter_factory(model_arch)
-    return converter(model_config, None, CheckpointDataType.FP16)
+    _, converter_cls = get_hf_converter_factory(model_arch)
+    return converter_cls(model_config, None, CheckpointDataType.FP16)
 
 
+# TODO: add render_model_config per model
 @pytest.fixture
 def render_model_config(converter: OneOfConverter) -> ModelConfig:
     return ModelConfig(
@@ -200,20 +215,9 @@ def render_model_config(converter: OneOfConverter) -> ModelConfig:
         head_size=converter.decoder_head_size,
         num_encoder_layers=converter.decoder_layer_num,  # same as decoder for test
         ff_intermediate_size=converter.decoder_ff_intermediate_size,
-    )
-
-
-@pytest.fixture
-def render_model_config(converter: OneOfConverter) -> ModelConfig:
-    return ModelConfig(
-        dtype="float16",
-        num_decoder_layers=converter.decoder_layer_num,
-        hidden_size=converter.decoder_hidden_size,
-        num_heads=converter.decoder_num_attention_heads,
-        num_kv_heads=converter.decoder_num_kv_attention_heads,
-        head_size=converter.decoder_head_size,
-        num_encoder_layers=converter.decoder_layer_num,  # same as decoder for test
-        ff_intermediate_size=converter.decoder_ff_intermediate_size,
+        num_experts=converter.num_experts
+        if isinstance(converter, MixtralForCausalLMConverter)
+        else None,
     )
 
 

@@ -16,33 +16,29 @@ decoder:
           type: group
           weight:0:
             type: data
-            dtype: {{ dtype }}
+            dtype: {{ q_dtype }}
             shape:
-              - {{ hidden_size | int }}
               - {{ hidden_size * 3 | int }}
+              - {{ hidden_size | int }}
           scale:0:
             type: data
             dtype: {{ dtype }}
             shape:
-              - {{ (hidden_size // group_size) * 3 | int }}
-              - {{ hidden_size | int }}
+              - {{ hidden_size // group_size | int }}
+              - {{ hidden_size * 3 | int }}
           zero:0:
             type: data
             dtype: {{ dtype }}
             shape:
-              - {{ (hidden_size // group_size) * 3 | int }}
               - {{ hidden_size // group_size | int }}
+              - {{ hidden_size * 3 | int }}
       c_proj:
         type: group
         awq: 
           type: group
-          pre_scale:0:
-            type: data
-            dtype: float32
-            shape: {{ hidden_size | int }}
           weight:0:
             type: data
-            dtype: {{ dtype }}
+            dtype: {{ q_dtype }}
             shape:
               - {{ hidden_size | int }}
               - {{ hidden_size | int }}
@@ -81,13 +77,9 @@ decoder:
             - {{ hidden_size * 4 | int }}
         awq:
           type: group
-          pre_scale:0:
-            type: data
-            dtype: float32
-            shape: {{ hidden_size | int }}
           weight:0:
             type: data
-            dtype: {{ dtype }}
+            dtype: {{ q_dtype }}
             shape:
               - {{ hidden_size * 4 | int }}
               - {{ hidden_size | int }}
@@ -111,10 +103,15 @@ decoder:
           shape:
             - {{ hidden_size | int }}
         awq:
+          pre_scale:0:
+            type: data
+            dtype: float32
+            shape: 
+              - {{ hidden_size * 4 | int }}
           type: group
           weight:0:
             type: data
-            dtype: {{ dtype }}
+            dtype: {{ q_dtype }}
             shape:
               - {{ hidden_size | int }}
               - {{ hidden_size * 4 | int }}

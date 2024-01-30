@@ -15,7 +15,11 @@ from transformers import (  # type: ignore[import]
 from friendli.enums import CheckpointDataType  # type: ignore[import]
 from friendli.errors import CheckpointConversionError, NotSupportedCheckpointError
 from friendli.logging import logger
-from friendli.modules.converter.base import DECODER_PREFIX, DecoderOnlyConverter
+from friendli.modules.converter.base import (
+    DECODER_PREFIX,
+    DecoderOnlyConverter,
+    DecoderOnlyLoraConverter,
+)
 from friendli.modules.converter.schema import ConvertInfo
 
 
@@ -31,6 +35,42 @@ def safe_attn_config_get(attn_config: Dict[str, Any], key: str) -> Any:
         )
 
     return attn_config[key]
+
+
+class MptForCausalLMLoraConverter(DecoderOnlyLoraConverter):
+    """MptForCausalLM LoRA Converter Class."""
+
+    @property
+    def adapter_target_modules(self) -> List[str]:
+        """Return the target modules that LoRA applies to."""
+        return ["merged-qkv"]
+
+    @property
+    def adapter_convert_info_list(
+        self,
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for LoRA adapter modules in Mpt."""
+        convert_info_list = []
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.converter.decoder_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            convert_info_list.extend(
+                [
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn.Wqkv.lora_A.default.weight"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/lora/lora_A/weight:0",
+                        reshape_fn=self.lora_weight_reshape,
+                    ),
+                    ConvertInfo(
+                        param_names=[f"{layer_prefix}attn.Wqkv.lora_B.default.weight"],
+                        data_type=self.converter.data_type,
+                        converted_name=f"{converted_prefix}attn/c_attn/lora/lora_B/weight:0",
+                        reshape_fn=self.lora_weight_reshape,
+                    ),
+                ]
+            )
+        return convert_info_list
 
 
 class MPTForCausalLMConverter(DecoderOnlyConverter):

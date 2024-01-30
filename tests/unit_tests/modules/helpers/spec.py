@@ -153,6 +153,7 @@ class ModelSpecParser:
             except KeyError as exc:
                 raise InvalidSpecFormatError from exc
             res = {}
+
             for i in range(repeat_range.lo, repeat_range.hi + 1):
                 for child_name, child_spec in spec.items():
                     if child_name in ["type", "range"]:

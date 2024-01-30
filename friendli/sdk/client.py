@@ -9,6 +9,7 @@ from typing import Optional
 import friendli
 from friendli.sdk.api.chat.chat import AsyncChat, Chat
 from friendli.sdk.api.completions import AsyncCompletions, Completions
+from friendli.sdk.api.images.images import AsyncImages, Images
 
 SERVERLESS_ENDPOINT_URL = "https://inference.friendli.ai"
 
@@ -34,6 +35,7 @@ class Friendli(FriendliClientBase):
 
     completions: Completions
     chat: Chat
+    images: Images
 
     def __init__(
         self,
@@ -50,6 +52,7 @@ class Friendli(FriendliClientBase):
         endpoint = SERVERLESS_ENDPOINT_URL
         self.completions = Completions(endpoint=endpoint)
         self.chat = Chat(endpoint=endpoint)
+        self.images = Images(endpoint=endpoint)
 
 
 class AsyncFriendli(FriendliClientBase):
@@ -57,6 +60,7 @@ class AsyncFriendli(FriendliClientBase):
 
     completions: AsyncCompletions
     chat: AsyncChat
+    images: AsyncImages
 
     def __init__(
         self,
@@ -70,3 +74,4 @@ class AsyncFriendli(FriendliClientBase):
         endpoint = SERVERLESS_ENDPOINT_URL
         self.completions = AsyncCompletions(endpoint=endpoint)
         self.chat = AsyncChat(endpoint=endpoint)
+        self.images = AsyncImages(endpoint=endpoint)

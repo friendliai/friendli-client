@@ -98,7 +98,9 @@ class AWQGPTNeoXHook(AWQHook):
         ):
             qkv_weight = self.converter.qkv_weight_reshape(
                 [decoder_layer.attention.query_key_value.weight]
-            )
+            ).transpose(
+                0, 1
+            )  # [OutDim, InDim]
             attn_weight_outdim = qkv_weight.size(0)  # OutDim
 
             yield TFQuantInputs(

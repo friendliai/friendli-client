@@ -43,7 +43,7 @@ class AWQGPTJHook(AWQHook):
         self, block: torch.nn.Module
     ) -> Tuple[Type[torch.nn.Module], ...]:
         """Returns the type of linear layer (etc. qkv, linear layer) in transformer block."""
-        return (type(block.attn), type(block.mlp))
+        return (type(block.attn), type(block.mlp), type(block))
 
     def iter_inspect_modules(
         self,

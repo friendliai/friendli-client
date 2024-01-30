@@ -17,7 +17,6 @@ from friendli.schema.api.v1.completions import (
     BeamSearchType,
     Completion,
     CompletionLine,
-    ModelParam,
     TokenSequenceParam,
 )
 from friendli.sdk.api.base import (
@@ -40,6 +39,14 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         return "POST"
 
     @property
+    def _content_type(self) -> str:
+        return (
+            "application/json"
+            if self._deployment_id is None
+            else "application/protobuf"
+        )
+
+    @property
     def _request_pb_cls(self) -> Type[V1CompletionsRequest]:
         return V1CompletionsRequest
 
@@ -48,7 +55,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         self,
         *,
         stream: Literal[True],
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
         timeout_microseconds: Optional[int] = None,
@@ -91,7 +98,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         self,
         *,
         stream: Literal[False],
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
         timeout_microseconds: Optional[int] = None,
@@ -133,7 +140,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         self,
         *,
         stream: bool,
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
         timeout_microseconds: Optional[int] = None,
@@ -191,7 +198,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
 
         Args:
             stream (bool, optional): Whether to stream generation result. When set true, each token will be sent as server-sent events once generated. Not supported when using beam search.
-            model (Optional[ModelParam]): ID of the model to use. This argument should be set only for serverless endpoints.
+            model (Optional[str]): ID of the model to use. This argument should be set only for serverless endpoints.
             prompt (Optional[str], optional): The prompt (i.e., input text) to generate completion for. Either `prompt` or `tokens` field is required. Defaults to None.
             tokens (Optional[List[int]], optional): The tokenized prompt (i.e., input tokens). Either `prompt` or `tokens` field is required. Defaults to None.
             timeout_microseconds (Optional[int], optional): Request timeout. Gives the HTTP `429 Too Many Requests` response status code. Default behavior is no timeout. Defaults to None.
@@ -331,6 +338,14 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         return "POST"
 
     @property
+    def _content_type(self) -> str:
+        return (
+            "application/json"
+            if self._deployment_id is None
+            else "application/protobuf"
+        )
+
+    @property
     def _request_pb_cls(self) -> Type[V1CompletionsRequest]:
         return V1CompletionsRequest
 
@@ -339,7 +354,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         self,
         *,
         stream: Literal[True],
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
         timeout_microseconds: Optional[int] = None,
@@ -382,7 +397,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         self,
         *,
         stream: Literal[False],
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
         timeout_microseconds: Optional[int] = None,
@@ -424,7 +439,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         self,
         *,
         stream: bool = False,
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
         timeout_microseconds: Optional[int] = None,
@@ -464,7 +479,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
 
         Args:
             stream (bool, optional): Whether to stream generation result. When set true, each token will be sent as server-sent events once generated. Not supported when using beam search. Defaults to False.
-            model (Optional[ModelParam]): ID of the model to use. This argument should be set only for serverless endpoints.
+            model (Optional[str]): ID of the model to use. This argument should be set only for serverless endpoints.
             prompt (Optional[str], optional): The prompt (i.e., input text) to generate completion for. Either `prompt` or `tokens` field is required. Defaults to None.
             tokens (Optional[List[int]], optional): The tokenized prompt (i.e., input tokens). Either `prompt` or `tokens` field is required. Defaults to None.
             timeout_microseconds (Optional[int], optional): Request timeout. Gives the HTTP `429 Too Many Requests` response status code. Default behavior is no timeout. Defaults to None.

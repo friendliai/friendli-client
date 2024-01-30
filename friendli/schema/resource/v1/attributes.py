@@ -198,6 +198,22 @@ class V1MPTAttributes(V1CommonAttributes):
     num_kv_heads: Optional[int]
 
 
+class V1PhiAttributes(V1CommonAttributes):
+    """V1 Phi attributes schema."""
+
+    model_type: Literal["phi"]
+    head_size: int
+    rotary_dim: int
+    num_heads: int
+    num_kv_heads: int
+    num_layers: int
+    ff_intermediate_size: int
+    max_length: int
+    vocab_size: int
+    eos_token: int
+    rope_theta: Optional[float]
+
+
 V1CheckpointAttributes = Annotated[
     Union[
         V1BlenderbotAttributes,
@@ -212,6 +228,7 @@ V1CheckpointAttributes = Annotated[
         V1MPTAttributes,
         V1OPTAttributes,
         V1T5Attributes,
+        V1PhiAttributes,
     ],
     Field(discriminator="model_type"),
 ]

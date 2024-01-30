@@ -10,7 +10,6 @@ from typing import Optional
 
 import typer
 
-from friendli.enums import CompletionsModel
 from friendli.sdk.client import Friendli
 from friendli.utils.decorator import check_api
 
@@ -30,7 +29,7 @@ def create(
         "-p",
         help="The input text to generate completion for.",
     ),
-    model: CompletionsModel = typer.Option(
+    model: str = typer.Option(
         ...,
         "--model",
         "-m",

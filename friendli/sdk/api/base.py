@@ -21,6 +21,7 @@ from friendli.client.deployment import DeploymentClient
 from friendli.errors import APIError, InvalidConfigError, NotFoundError
 from friendli.schema.api.v1.codegen.chat_completions_pb2 import V1ChatCompletionsRequest
 from friendli.schema.api.v1.codegen.completions_pb2 import V1CompletionsRequest
+from friendli.schema.api.v1.codegen.text_to_image_pb2 import V1TextToImageRequest
 from friendli.utils.request import DEFAULT_REQ_TIMEOUT
 from friendli.utils.url import get_host
 
@@ -63,6 +64,7 @@ _ProtoMsgType = TypeVar(
     bound=Union[
         Type[V1CompletionsRequest],
         Type[V1ChatCompletionsRequest],
+        Type[V1TextToImageRequest],
     ],
 )
 
@@ -99,17 +101,6 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
         elif endpoint is not None:
             self._host = httpx.URL(endpoint)
 
-    def _get_headers(self) -> Dict[str, Any]:
-        content_type = (
-            "application/json"
-            if self._deployment_id is None
-            else "application/protobuf"
-        )
-        return {
-            "Content-Type": content_type,
-            **get_auth_header(),
-        }
-
     @property
     @abstractmethod
     def _api_path(self) -> str:
@@ -119,6 +110,11 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
     @abstractmethod
     def _method(self) -> str:
         """API call method."""
+
+    @property
+    @abstractmethod
+    def _content_type(self) -> str:
+        """Request content type."""
 
     @property
     @abstractmethod
@@ -137,7 +133,8 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
         return self._client.build_request(
             method=self._method,
             url=self._build_url(model),
-            content=self._build_data(data),
+            content=self._build_content(data),
+            files=self._build_files(data),
             headers=self._get_headers(),
             timeout=DEFAULT_REQ_TIMEOUT,
         )
@@ -151,7 +148,25 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
         path = os.path.join(path, self._api_path)
         return self._host.join(path)
 
-    def _build_data(self, data: dict[str, Any]) -> bytes:
+    def _get_headers(self) -> Dict[str, Any]:
+        return {
+            "Content-Type": self._content_type,
+            **get_auth_header(),
+        }
+
+    def _build_files(self, data: dict[str, Any]) -> dict[str, Any] | None:
+        if self._content_type.startswith("multipart/form-data"):
+            files = {}
+            for key, val in data.items():
+                if val is not None:
+                    files[key] = (None, val)
+            return files
+        return None
+
+    def _build_content(self, data: dict[str, Any]) -> bytes | None:
+        if self._content_type.startswith("multipart/form-data"):
+            return None
+
         if self._deployment_id is None:
             return json.dumps(data).encode()
 
@@ -179,14 +194,24 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
     ) -> httpx.Response:
         # TODO: Add retry / handle timeout and etc.
         request = self._build_request(data=data, model=model)
-        try:
-            response = self._client.send(request=request, stream=stream)
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            resp_content = response.read()
-            raise APIError(resp_content.decode()) from exc
+        response = self._client.send(request=request, stream=stream)
+        self._check_http_error(response)
 
         return response
+
+    def _check_http_error(self, response: httpx.Response) -> None:
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if response.status_code == 404:
+                raise APIError(
+                    "Endpoint is not found. This may be due to an invalid model name. "
+                    "See https://docs.periflow.ai/guides/serverless_endpoints/pricing "
+                    "to find out availble models."
+                ) from exc
+
+            resp_content = response.read()
+            raise APIError(resp_content.decode()) from exc
 
 
 class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
@@ -207,11 +232,21 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
     ) -> httpx.Response:
         # TODO: Add retry / handle timeout and etc.
         request = self._build_request(data=data, model=model)
-        try:
-            response = await self._client.send(request=request, stream=stream)
-            response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            resp_content = await response.aread()
-            raise APIError(resp_content.decode()) from exc
+        response = await self._client.send(request=request, stream=stream)
+        await self._check_http_error(response)
 
         return response
+
+    async def _check_http_error(self, response: httpx.Response) -> None:
+        try:
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            if response.status_code == 404:
+                raise APIError(
+                    "Endpoint is not found. This may be due to an invalid model name. "
+                    "See https://docs.periflow.ai/guides/serverless_endpoints/pricing "
+                    "to find out availble models."
+                ) from exc
+
+            resp_content = await response.aread()
+            raise APIError(resp_content.decode()) from exc

@@ -10,11 +10,15 @@ from unittest.mock import Mock
 import numpy as np
 import torch
 from accelerate import init_empty_weights
+from peft import PeftConfig, PeftModel
 from pydantic import BaseModel
 from transformers import PretrainedConfig
 
 from friendli.enums import CheckpointDataType
-from friendli.modules.converter.maps import get_hf_converter_factory
+from friendli.modules.converter.maps import (
+    get_adapter_converter_factory,
+    get_hf_converter_factory,
+)
 from friendli.modules.converter.utils import get_model_arch
 from friendli.modules.quantizer.awq.base import AWQQuantizer
 from friendli.modules.quantizer.layers import (
@@ -45,6 +49,13 @@ class ModelConfig(BaseModel):
     head_size: Optional[int] = None
     seq_len: Optional[int] = 1024
     vocab_size: Optional[int] = 10000
+    num_experts: Optional[int] = 8
+
+
+class LoraAdapterConfig(ModelConfig):
+    """Adjustable model config."""
+
+    lora_rank_dim: int
 
 
 class AWQModelConfig(ModelConfig):
@@ -78,7 +89,8 @@ def get_param_specs(
 ) -> Dict[str, ParamInfo]:
     file_path = f"{SPEC_PATH_PREFIX}{spec_folder}/{model_name}.yaml"
     template = Template.from_file(file_path)
-    rendered = template.render(**model_config.model_dump())
+    render_config = model_config.model_dump()
+    rendered = template.render(**render_config)
     assert isinstance(rendered, dict)
     parser = ModelSpecParser(model_spec=rendered)
     param_specs = parser.get_all_param_info()
@@ -92,6 +104,17 @@ def get_meta_model(
     model_factory, _ = get_hf_converter_factory(model_arch)
     with init_empty_weights():
         model = model_factory(config=model_config)
+    return model
+
+
+def get_meta_model_with_adapter(
+    model_config: PretrainedConfig, adapter_config: PeftConfig
+) -> torch.nn.Module:
+    model_arch = get_model_arch(model_config)
+    model_factory, _ = get_hf_converter_factory(model_arch)
+    with init_empty_weights():
+        model = model_factory(config=model_config)
+        PeftModel(model, adapter_config)
     return model
 
 

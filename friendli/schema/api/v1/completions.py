@@ -4,17 +4,12 @@
 
 from __future__ import annotations
 
-from typing import List, Literal, Union
+from typing import List, Literal
 
 from pydantic import BaseModel
 from typing_extensions import Required, TypeAlias, TypedDict
 
 BeamSearchType: TypeAlias = Literal["DETERMINISTIC", "STOCHASTIC", "NAIVE_SAMPLING"]
-
-
-ModelParam: TypeAlias = Union[
-    str, Literal["llama-2-13b", "llama-2-70b", "mistral-7b-v0-1"]
-]
 
 
 class TokenSequenceParam(TypedDict, total=False):

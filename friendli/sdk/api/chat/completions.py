@@ -16,7 +16,6 @@ from friendli.schema.api.v1.chat.completions import (
     ChatCompletion,
     ChatCompletionLine,
     MessageParam,
-    ModelParam,
 )
 from friendli.schema.api.v1.codegen.chat_completions_pb2 import V1ChatCompletionsRequest
 from friendli.sdk.api.base import (
@@ -39,6 +38,14 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         return "POST"
 
     @property
+    def _content_type(self) -> str:
+        return (
+            "application/json"
+            if self._deployment_id is None
+            else "application/protobuf"
+        )
+
+    @property
     def _request_pb_cls(self) -> Type[V1ChatCompletionsRequest]:
         return V1ChatCompletionsRequest
 
@@ -48,7 +55,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         *,
         messages: List[MessageParam],
         stream: Literal[True],
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
@@ -66,7 +73,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         *,
         messages: List[MessageParam],
         stream: Literal[False],
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
@@ -83,7 +90,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         *,
         messages: List[MessageParam],
         stream: bool,
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
@@ -98,7 +105,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         Args:
             messages (List[MessageParam]): A list of messages comprising the conversation so far.
             stream (bool, optional): Whether to stream generation result. When set true, each token will be sent as server-sent events once generated. Not supported when using beam search.
-            model (Optional[ModelParam]): ID of the model to use. This argument should be set only for serverless endpoints.
+            model (Optional[str]): Code of the model to use. This argument should be set only for serverless endpoints.
             frequency_penalty (Optional[float], optional): Number between -2.0 and 2.0. Positive values penalizes tokens that have been sampled, taking into account their frequency in the preceding text. This penalization diminishes the model's tendency to reproduce identical lines verbatim. Defaults to None.
             presence_penalty (Optional[float], optional): Number between -2.0 and 2.0. Positive values penalizes tokens that have been sampled at least once in the existing text. Defaults to None.
             max_tokens (Optional[int], optional): The maximum number of tokens to generate. The length of your input tokens plus `max_tokens` should not exceed the model's maximum length (e.g., 2048 for OpenAI GPT-3). Defaults to None.
@@ -143,6 +150,14 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         return "POST"
 
     @property
+    def _content_type(self) -> str:
+        return (
+            "application/json"
+            if self._deployment_id is None
+            else "application/protobuf"
+        )
+
+    @property
     def _request_pb_cls(self) -> Type[V1ChatCompletionsRequest]:
         return V1ChatCompletionsRequest
 
@@ -152,7 +167,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         *,
         messages: List[MessageParam],
         stream: Literal[True],
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
@@ -170,7 +185,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         *,
         messages: List[MessageParam],
         stream: Literal[False],
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
@@ -187,7 +202,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         *,
         messages: List[MessageParam],
         stream: bool,
-        model: Optional[ModelParam] = None,
+        model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
@@ -202,7 +217,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         Args:
             messages (List[MessageParam]): A list of messages comprising the conversation so far.
             stream (bool, optional): Whether to stream generation result. When set true, each token will be sent as server-sent events once generated. Not supported when using beam search.
-            model (Optional[ModelParam]): ID of the model to use. This argument should be set only for serverless endpoints.
+            model (Optional[str]): Code of the model to use. This argument should be set only for serverless endpoints.
             frequency_penalty (Optional[float], optional): Number between -2.0 and 2.0. Positive values penalizes tokens that have been sampled, taking into account their frequency in the preceding text. This penalization diminishes the model's tendency to reproduce identical lines verbatim. Defaults to None.
             presence_penalty (Optional[float], optional): Number between -2.0 and 2.0. Positive values penalizes tokens that have been sampled at least once in the existing text. Defaults to None.
             max_tokens (Optional[int], optional): The maximum number of tokens to generate. The length of your input tokens plus `max_tokens` should not exceed the model's maximum length (e.g., 2048 for OpenAI GPT-3). Defaults to None.

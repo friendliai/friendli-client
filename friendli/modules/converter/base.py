@@ -41,6 +41,7 @@ SUPPORTED_HEAD_SIZE = [64, 80, 96, 128, 256]
 MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP = {
     "gptj": ["q_proj", "v_proj"],
     "llama": ["q_proj", "v_proj"],
+    "mpt": ["Wqkv"],
 }
 
 ENCODER_PREFIX = "encoder"
@@ -446,8 +447,14 @@ class DecoderOnlyLoraConverter(AbstractConverter):
             "type": "lora",
             "alpha": self.adapter_config.lora_alpha,
             "rank": self.adapter_config.r,
+            "target-modules": self.adapter_target_modules,
             "ckpt-path": "FILL ME",
         }
+
+    @property
+    @abstractmethod
+    def adapter_target_modules(self) -> List[str]:
+        """Return the target modules that LoRA applies to."""
 
     @property
     @abstractmethod

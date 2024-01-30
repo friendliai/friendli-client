@@ -47,6 +47,11 @@ class LlamaForCausalLMLoraConverter(DecoderOnlyLoraConverter):
         return model
 
     @property
+    def adapter_target_modules(self) -> List[str]:
+        """Return the target modules that LoRA applies to."""
+        return ["query", "value"]
+
+    @property
     def adapter_convert_info_list(
         self,
     ) -> List[ConvertInfo]:

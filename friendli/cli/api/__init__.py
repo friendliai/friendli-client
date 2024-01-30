@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import typer
 
-from friendli.cli.api import chat_completions, completions
+from friendli.cli.api import chat_completions, completions, text_to_image
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -16,3 +16,4 @@ app = typer.Typer(
 
 app.add_typer(chat_completions.app, name="chat-completions", help="Chat completions.")
 app.add_typer(completions.app, name="completions", help="Text completions.")
+app.add_typer(text_to_image.app, name="text-to-image", help="Text-to-image.")
