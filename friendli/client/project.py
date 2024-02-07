@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-from string import Template
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -30,9 +29,9 @@ class ProjectClient(Client[UUID]):
     """Project client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_auth_uri("pf_project"))
+        return self.url_provider.get_auth_uri("pf_project")
 
     def get_project(self, pf_project_id: UUID) -> Dict[str, Any]:
         """Get project info."""
@@ -69,11 +68,9 @@ class ProjectCredentialClient(Client, ProjectRequestMixin):
         super().__init__(project_id=self.project_id, **kwargs)
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_auth_uri("pf_project/$project_id/credential")
-        )
+        return self.url_provider.get_auth_uri("pf_project/$project_id/credential")
 
     def list_credentials(
         self, cred_type: Optional[CredType] = None

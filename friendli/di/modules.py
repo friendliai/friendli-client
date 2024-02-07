@@ -6,15 +6,17 @@ from __future__ import annotations
 
 from injector import Binder, Module
 
+from friendli import settings
 from friendli.utils import url
 
 
-class URLModule(Module):
+class SettingsModule(Module):
     """Friendli client module."""
 
     def configure(self, binder: Binder) -> None:
         """Configures bindings for clients."""
         binder.bind(url.URLProvider, to=url.ProductionURLProvider)  # type: ignore
+        binder.bind(settings.Settings, to=settings.ProductionSettings)  # type: ignore
 
 
-default_modules = [URLModule]
+default_modules = [SettingsModule]

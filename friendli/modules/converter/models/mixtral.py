@@ -160,7 +160,7 @@ class MixtralForCausalLMConverter(LlamaForCausalLMConverter):
     @property
     def model_type(self) -> str:
         """Model type."""
-        return "mistral"
+        return "mixtral"
 
     @property
     def decoder_layer_num(self) -> int:

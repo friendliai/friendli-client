@@ -6,26 +6,18 @@
 
 from __future__ import annotations
 
-import requests
 import typer
-from requests import HTTPError, Response
 
-from friendli.auth import TokenType, clear_tokens, get_token, update_token
+import friendli
+from friendli.auth import TokenType, clear_tokens, update_token
 from friendli.cli import api, checkpoint
-from friendli.client.project import ProjectClient
-from friendli.client.user import UserClient, UserGroupClient, UserMFAClient
-from friendli.context import (
-    get_current_project_id,
-    project_context_path,
-    set_current_group_id,
-)
-from friendli.di.injector import get_injector
+from friendli.cli.login import oauth2_login, pwd_login
+from friendli.client.user import UserClient
 from friendli.errors import AuthTokenNotFoundError
 from friendli.formatter import PanelFormatter
+from friendli.graphql.user import UserGqlClient
 from friendli.utils.decorator import check_api
 from friendli.utils.format import secho_error_and_exit
-from friendli.utils.request import DEFAULT_REQ_TIMEOUT
-from friendli.utils.url import URLProvider
 from friendli.utils.version import get_installed_version
 
 app = typer.Typer(
@@ -60,7 +52,7 @@ user_panel_formatter = PanelFormatter(
 def whoami():
     """Show my user info."""
     try:
-        client = UserClient()
+        client = UserGqlClient()
         info = client.get_current_user_info()
     except AuthTokenNotFoundError as exc:
         secho_error_and_exit(str(exc))
@@ -71,55 +63,27 @@ def whoami():
 # @app.command()
 @check_api
 def login(
-    email: str = typer.Option(..., prompt="Enter your email"),
-    password: str = typer.Option(..., prompt="Enter your password", hide_input=True),
+    use_sso: bool = typer.Option(False, "--sso", help="Use SSO login."),
 ):
-    """Sign in."""
-    injector = get_injector()
-    url_provider = injector.get(URLProvider)
-    r = requests.post(
-        url_provider.get_web_backend_uri("/api/auth/cli/access_token"),
-        json={"username": email, "password": password},
-        timeout=DEFAULT_REQ_TIMEOUT,
-    )
-    try:
-        resp = r.json()
-    except requests.exceptions.JSONDecodeError:
-        if r.status_code != 200:
-            secho_error_and_exit(r.content.decode())
-        secho_error_and_exit("Invalid response format.")
+    """Sign in Friendli."""
+    if friendli.token:
+        typer.secho(
+            "You've already set the 'FRIENDLI_TOKEN' environment variable for "
+            "authentication, which takes precedence over the login session. Using both "
+            "methods of authentication simultaneously could lead to unexpected issues. "
+            "We suggest removing the 'FRIENDLI_TOKEN' environment variable if you "
+            "prefer to log in through the standard login session.",
+            fg=typer.colors.RED,
+        )
 
-    if "code" in resp and resp["code"] == "mfa_required":
-        mfa_token = resp["mfaToken"]
-        client = UserMFAClient()
-        # TODO: MFA type currently defaults to totp, need changes when new options are added
-        client.initiate_mfa(mfa_type="totp", mfa_token=mfa_token)
-        update_token(token_type=TokenType.MFA, token=mfa_token)
-        typer.run(_mfa_verify)
+    if use_sso:
+        access_token, refresh_token = oauth2_login()
     else:
-        _handle_login_response(r, False)
+        email = typer.prompt("Enter your email")
+        pwd = typer.prompt("Enter your password", hide_input=True)
+        access_token, refresh_token = pwd_login(email, pwd)
 
-    # Save user's organiztion context
-    project_client = ProjectClient()
-    user_group_client = UserGroupClient()
-
-    try:
-        org = user_group_client.get_group_info()
-    except IndexError:
-        secho_error_and_exit("You are not included in any organization.")
-    org_id = org["id"]
-
-    project_id = get_current_project_id()
-    if project_id is not None:
-        if project_client.check_project_membership(pf_project_id=project_id):
-            project_org_id = project_client.get_project(pf_project_id=project_id)[
-                "pf_group_id"
-            ]
-            if project_org_id != org_id:
-                project_context_path.unlink(missing_ok=True)
-        else:
-            project_context_path.unlink(missing_ok=True)
-    set_current_group_id(org_id)
+    _display_login_success(access_token, refresh_token)
 
 
 # @app.command()
@@ -163,42 +127,15 @@ def version():
     typer.echo(installed_version)
 
 
-def _mfa_verify(_, code: str = typer.Option(..., prompt="Enter MFA Code")):
-    injector = get_injector()
-    url_provider = injector.get(URLProvider)
+def _display_login_success(access_token: str, refresh_token: str):
+    update_token(token_type=TokenType.ACCESS, token=access_token)
+    update_token(token_type=TokenType.REFRESH, token=refresh_token)
 
-    mfa_token = get_token(TokenType.MFA)
-    # TODO: MFA type currently defaults to totp, need changes when new options are added
-    mfa_type = "totp"
-    username = f"mfa://{mfa_type}/{mfa_token}"
-    r = requests.post(
-        url_provider.get_web_backend_uri("/api/auth/cli/access_token"),
-        json={"username": username, "password": code},
-        timeout=DEFAULT_REQ_TIMEOUT,
-    )
-    _handle_login_response(r, True)
-
-
-def _handle_login_response(r: Response, mfa: bool):
-    try:
-        r.raise_for_status()
-        update_token(token_type=TokenType.ACCESS, token=r.json()["accessToken"])
-        update_token(token_type=TokenType.REFRESH, token=r.json()["refreshToken"])
-
-        typer.echo("\n\nLogin success!")
-        typer.echo("Welcome back to...")
-        typography = r"""
+    typography = r"""
  _____                         _  _
 |  ___|_  _(_) ___  _  __    _| || |(_)  
 | |__ | '__| |/ _ \| '__  \/ _  || || |
 |  __|| |  | |  __/| |  | | (_) || || |
 |_|   |_|  |_|\___||_|  |_|\___/ |_||_|
 """
-        typer.secho(typography, fg=typer.colors.BLUE)
-    except HTTPError:
-        if mfa:
-            secho_error_and_exit("Login failed... Invalid MFA Code.")
-        else:
-            secho_error_and_exit(
-                "Login failed... Please check your email and password."
-            )
+    typer.secho(f"\nLOGIN SUCCESS!\n{typography}", fg=typer.colors.BLUE)

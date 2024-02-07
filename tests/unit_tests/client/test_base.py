@@ -85,8 +85,8 @@ def test_client_service_base(
 
     class TestClient(Client[int]):
         @property
-        def url_path(self) -> Template:
-            return Template(url_pattern)
+        def url_path(self) -> str:
+            return url_pattern
 
     client = TestClient(test_id=1)
 

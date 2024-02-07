@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-from string import Template
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -30,9 +29,9 @@ class CatalogClient(
         super().__init__(**kwargs)
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_mr_uri("catalogs/"))
+        return self.url_provider.get_mr_uri("catalogs/")
 
     def get_catalog(self, catalog_id: UUID) -> Dict[str, Any]:
         """Get a public checkpoint in catalog."""

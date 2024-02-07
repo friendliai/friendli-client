@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-from string import Template
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -24,9 +23,9 @@ class CheckpointClient(Client[UUID]):
     """Checkpoint client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_mr_uri("models/"))
+        return self.url_provider.get_mr_uri("models/")
 
     def get_checkpoint(self, checkpoint_id: UUID) -> Dict[str, Any]:
         """Get a checkpoint info."""
@@ -57,9 +56,9 @@ class CheckpointFormClient(UploadableClient[UUID]):
     """Checkpoint form client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_mr_uri("model_forms/"))
+        return self.url_provider.get_mr_uri("model_forms/")
 
     def update_checkpoint_files(
         self,
@@ -89,11 +88,9 @@ class GroupProjectCheckpointClient(
         super().__init__(group_id=self.group_id, project_id=self.project_id, **kwargs)
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_mr_uri("orgs/$group_id/prjs/$project_id/models/")
-        )
+        return self.url_provider.get_mr_uri("orgs/$group_id/prjs/$project_id/models/")
 
     def list_checkpoints(
         self, category: Optional[CheckpointCategory], limit: int, deleted: bool

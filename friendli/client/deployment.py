@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from string import Template
 from typing import Any, Dict, List, Optional
 
 from friendli.client.base import Client, ProjectRequestMixin
@@ -15,9 +14,9 @@ class DeploymentClient(Client[str]):
     """Deployment client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_serving_uri("deployment/"))
+        return self.url_provider.get_serving_uri("deployment/")
 
     def get_deployment(self, deployment_id: str) -> Dict[str, Any]:
         """Get a deployment info."""
@@ -78,11 +77,9 @@ class DeploymentLogClient(Client[str]):
     """Deployment log client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_serving_uri("deployment/$deployment_id/log/")
-        )
+        return self.url_provider.get_serving_uri("deployment/$deployment_id/log/")
 
     def get_deployment_logs(self, replica_index: int) -> List[Dict[str, Any]]:
         """Get logs from a deployment."""
@@ -97,11 +94,9 @@ class DeploymentMetricsClient(Client):
     """Deployment metrics client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_serving_uri("deployment/$deployment_id/metrics/")
-        )
+        return self.url_provider.get_serving_uri("deployment/$deployment_id/metrics/")
 
     def get_metrics(
         self, start: datetime, end: datetime, time_window: int
@@ -123,11 +118,9 @@ class DeploymentEventClient(Client):
     """Deployment event client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_serving_uri("deployment/$deployment_id/event/")
-        )
+        return self.url_provider.get_serving_uri("deployment/$deployment_id/event/")
 
     def get_events(self) -> List[Dict[str, Any]]:
         """Get deployment events."""
@@ -141,12 +134,10 @@ class DeploymentReqRespClient(Client):
     """Deployment request-response client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_serving_uri(
-                "deployment/$deployment_id/req_resp/download/"
-            )
+        return self.url_provider.get_serving_uri(
+            "deployment/$deployment_id/req_resp/download/"
         )
 
     def get_download_urls(self, start: datetime, end: datetime) -> List[Dict[str, str]]:
@@ -171,11 +162,9 @@ class PFSProjectUsageClient(Client[str], ProjectRequestMixin):
         super().__init__(project_id=self.project_id, **kwargs)
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_serving_uri("usage/project/$project_id/duration")
-        )
+        return self.url_provider.get_serving_uri("usage/project/$project_id/duration")
 
     def get_project_deployment_durations(
         self,
@@ -198,9 +187,9 @@ class PFSVMClient(Client):
     """VM client for serving."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_serving_uri("vm/"))
+        return self.url_provider.get_serving_uri("vm/")
 
     def list_vms(self) -> List[Dict[str, Any]]:
         """List all VM info."""

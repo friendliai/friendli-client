@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from string import Template
 from typing import Any, Dict, Optional
 from uuid import UUID
 
@@ -18,9 +17,9 @@ class CredentialClient(Client[UUID]):
     """Credential client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_auth_uri("credential"))
+        return self.url_provider.get_auth_uri("credential")
 
     def get_credential(self, credential_id: UUID) -> Dict[str, Any]:
         """Get a credential info."""
@@ -62,11 +61,9 @@ class CredentialTypeClient(Client):
     """Credential type client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_training_uri("credential_type/")
-        )  # TODO: move this out of the training API
+        return self.url_provider.get_training_uri("credential_type/")
 
     def get_schema_by_type(self, cred_type: CredType) -> Optional[Dict[str, Any]]:
         """Get a credential JSON schema."""

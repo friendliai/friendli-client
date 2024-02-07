@@ -15,6 +15,7 @@ from typing_extensions import TypeAlias
 import friendli
 from friendli.di.injector import get_injector
 from friendli.errors import APIError, AuthorizationError, AuthTokenNotFoundError
+from friendli.logging import logger
 from friendli.utils.fs import get_friendli_directory
 from friendli.utils.request import DEFAULT_REQ_TIMEOUT, decode_http_err
 from friendli.utils.url import URLProvider
@@ -52,16 +53,30 @@ def get_auth_header(
     """
     token_: Optional[str]
 
+    token_from_cfg = get_token(TokenType.ACCESS)
+    token_from_env = friendli.token
+
     if token is not None:
         token_ = token
-    elif friendli.token:
-        token_ = friendli.token
+    elif token_from_env:
+        if token_from_cfg:
+            logger.warning(
+                "You've entered your login information in two places - through the "
+                "'FRIENDLI_TOKEN' environment variable and the 'friendli login' CLI "
+                "command. We will use the access token from the 'FRIENDLI_TOKEN' "
+                "environment variable and ignore the login session details. This might "
+                "lead to unexpected authorization errors. If you prefer to use the "
+                "login session instead, unset the 'FRIENDLI_TOKEN' environment "
+                "variable. If you don't want to see this warning again, run "
+                "'friendli logout' to remove the login session."
+            )
+        token_ = token_from_env
     else:
-        token_ = get_token(TokenType.ACCESS)
+        token_ = token_from_cfg
 
     if token_ is None:
         raise AuthTokenNotFoundError(
-            "Should set FRIENDLI_TOKEN environment variable or sign in with 'friendli login'."
+            "Should set 'FRIENDLI_TOKEN' environment variable or sign in with 'friendli login'."
         )
 
     headers = {"Authorization": f"Bearer {token_}"}

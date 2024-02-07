@@ -151,14 +151,14 @@ class Client(ABC, Generic[T], RequestInterface):
 
     def __init__(self, **kwargs):
         """Initialize client."""
-        injector = get_injector()
-        self.url_provider = injector.get(URLProvider)
-        self.url_template = URLTemplate(self.url_path)
+        self.injector = get_injector()
+        self.url_provider = self.injector.get(URLProvider)
+        self.url_template = URLTemplate(Template(self.url_path))
         self.url_kwargs = kwargs
 
     @property
     @abstractmethod
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """URL path template to render."""
 
     @property

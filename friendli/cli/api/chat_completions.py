@@ -58,6 +58,16 @@ def create(
         min=1,
         help="The maximum number of tokens to generate.",
     ),
+    stop: Optional[List[str]] = typer.Option(
+        None,
+        "--stop",
+        "-S",
+        help=(
+            "When one of the stop phrases appears in the generation result, the API "
+            "will stop generation. The stop phrases are excluded from the result. "
+            "Repeat this option to use multiple stop phrases."
+        ),
+    ),
     temperature: Optional[float] = typer.Option(
         None,
         "--temperature",
@@ -120,6 +130,7 @@ def create(
             presence_penalty=presence_penalty,
             max_tokens=max_tokens,
             n=n,
+            stop=stop,
             temperature=temperature,
             top_p=top_p,
         )
@@ -137,6 +148,7 @@ def create(
             presence_penalty=presence_penalty,
             max_tokens=max_tokens,
             n=n,
+            stop=stop,
             temperature=temperature,
             top_p=top_p,
         )

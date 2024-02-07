@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from string import Template
 from typing import Any, Dict, List
 
 from friendli.client.base import Client, GroupRequestMixin
@@ -18,9 +17,9 @@ class GroupClient(Client):
     """Organization client."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_auth_uri("pf_group"))
+        return self.url_provider.get_auth_uri("pf_group")
 
     def create_group(self, name: str) -> Dict[str, Any]:
         """Create a new organization."""
@@ -62,11 +61,9 @@ class GroupProjectClient(Client, GroupRequestMixin):
         super().__init__(pf_group_id=self.group_id, **kwargs)
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_auth_uri("pf_group/$pf_group_id/pf_project")
-        )
+        return self.url_provider.get_auth_uri("pf_group/$pf_group_id/pf_project")
 
     def create_project(self, name: str) -> Dict[str, Any]:
         """Create a new project in the organization."""

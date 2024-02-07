@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-from string import Template
 from typing import Any, Dict
 from uuid import UUID
 
@@ -20,9 +19,9 @@ class FileClient(Client[UUID]):
     """File client service."""
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(self.url_provider.get_mr_uri("files/"))
+        return self.url_provider.get_mr_uri("files/")
 
     def get_misc_file_upload_url(self, misc_file_id: UUID) -> str:
         """Get an URL to upload file.
@@ -77,11 +76,9 @@ class GroupProjectFileClient(
         super().__init__(group_id=self.group_id, project_id=self.project_id, **kwargs)
 
     @property
-    def url_path(self) -> Template:
+    def url_path(self) -> str:
         """Get an URL path."""
-        return Template(
-            self.url_provider.get_mr_uri("orgs/$group_id/prjs/$project_id/files/")
-        )
+        return self.url_provider.get_mr_uri("orgs/$group_id/prjs/$project_id/files/")
 
     def create_misc_file(self, file_info: Dict[str, Any]) -> Dict[str, Any]:
         """Request to create a misc file.
