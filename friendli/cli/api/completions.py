@@ -16,7 +16,7 @@ from friendli.utils.decorator import check_api
 app = typer.Typer(
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
-    add_completion=False,
+    add_completion=True,
 )
 
 

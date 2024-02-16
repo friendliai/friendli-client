@@ -11,10 +11,10 @@ from friendli.utils import url
 
 
 class SettingsModule(Module):
-    """Friendli client module."""
+    """Settings module."""
 
     def configure(self, binder: Binder) -> None:
-        """Configures bindings for clients."""
+        """Configures bindings for settings."""
         binder.bind(url.URLProvider, to=url.ProductionURLProvider)  # type: ignore
         binder.bind(settings.Settings, to=settings.ProductionSettings)  # type: ignore
 

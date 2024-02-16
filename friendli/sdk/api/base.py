@@ -17,13 +17,11 @@ from pydantic import BaseModel
 from typing_extensions import Self
 
 from friendli.auth import get_auth_header
-from friendli.client.deployment import DeploymentClient
-from friendli.errors import APIError, InvalidConfigError, NotFoundError
+from friendli.errors import APIError, InvalidConfigError
 from friendli.schema.api.v1.codegen.chat_completions_pb2 import V1ChatCompletionsRequest
 from friendli.schema.api.v1.codegen.completions_pb2 import V1CompletionsRequest
 from friendli.schema.api.v1.codegen.text_to_image_pb2 import V1TextToImageRequest
 from friendli.utils.request import DEFAULT_REQ_TIMEOUT
-from friendli.utils.url import get_host
 
 _GenerationLine = TypeVar("_GenerationLine", bound=BaseModel)
 
@@ -91,15 +89,19 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
                 "Only provide one between 'deployment_id' and 'endpoint'."
             )
 
-        if deployment_id is not None:
-            client = DeploymentClient()
-            deployment = client.get_deployment(deployment_id)
-            endpoint = deployment["endpoint"]
-            if not endpoint:
-                raise NotFoundError("Active endpoint for the deployment is not found.")
-            self._host = httpx.URL(get_host(endpoint))
-        elif endpoint is not None:
+        # if deployment_id is not None:
+        #     client = DeploymentGqlClient()
+        #     deployment = client.get_deployment(deployment_id)
+        #     endpoint = deployment["endpoint"]
+        #     if not endpoint:
+        #         raise NotFoundError("Active endpoint for the deployment is not found.")
+        #     self._host = httpx.URL(get_host(endpoint))
+        # elif endpoint is not None:
+        #     self._host = httpx.URL(endpoint)
+        if endpoint is not None:
             self._host = httpx.URL(endpoint)
+        else:
+            raise ValueError("endpoint is not configured.")
 
     @property
     @abstractmethod

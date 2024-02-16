@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "friendli-client"
-version = "1.2.1"
+version = "1.2.2"
 description = "Client of Friendli Suite."
 license = "Apache-2.0"
 authors = ["FriendliAI teams <eng@friendli.ai>"]
@@ -11,7 +11,7 @@ readme = "README.md"
 homepage = "https://friendli.ai/"
 repository = "https://github.com/friendliai/friendli-client"
 documentation = "https://docs.friendli.ai/"
-keywords = ["generative-ai", "serving", "llm"]
+keywords = ["generative-ai", "serving", "llm", "inference"]
 
 [tool.poetry.scripts]
 friendli = "friendli.cli:app"
@@ -39,7 +39,6 @@ azure-storage-blob = "^12.12.0"
 pathspec = "^0.9.0"
 boto3-stubs = "^1.26.90"
 mypy-boto3-s3 = "^1.26.163"
-ruamel-yaml = "^0.17.32"
 pydantic = {extras = ["email"], version = "^2.0.2"}
 transformers = { version = "4.36.2", optional = true }
 h5py = { version = "^3.9.0", optional = true }
@@ -50,9 +49,10 @@ injector = "^0.21.0"
 protobuf = "^4.24.2"
 types-protobuf = "^4.24.0.1"
 peft = { version = "0.6.0", optional = true }
-httpx = "^0.26.0"
-fastapi = "^0.109.2"
-uvicorn = "^0.27.0.post1"
+httpx = "^0.24.1"
+fastapi = "^0.104.0"
+uvicorn = "^0.23.2"
+gql = "^3.5.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -75,6 +75,7 @@ types-python-dateutil = "^2.8.19.13"
 types-requests = "^2.31.0.1"
 types-toml = "^0.10.8.6"
 types-tqdm = "^4.65.0.1"
+typer = "^0.9.0"
 
 [tool.poetry.extras]
 mllib = ["transformers", "h5py", "accelerate", "einops", "datasets", "peft"]

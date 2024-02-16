@@ -11,8 +11,8 @@ from friendli.di.modules import default_modules
 from friendli.sdk.client import AsyncFriendli, Friendli
 
 token = os.environ.get("FRIENDLI_TOKEN")
-team_id = os.environ.get("FRIENDLI_TEAM_ID")
-project_id = os.environ.get("FRIENDLI_PRJ_ID")
+team_id = os.environ.get("FRIENDLI_TEAM")
+project_id = os.environ.get("FRIENDLI_PROJECT")
 
 set_default_modules(default_modules)
 

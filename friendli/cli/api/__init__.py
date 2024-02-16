@@ -11,7 +11,7 @@ from friendli.cli.api import chat_completions, completions, text_to_image
 app = typer.Typer(
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
-    add_completion=False,
+    add_completion=True,
 )
 
 app.add_typer(chat_completions.app, name="chat-completions", help="Chat completions.")

@@ -18,7 +18,7 @@ from friendli.utils.format import secho_error_and_exit
 app = typer.Typer(
     no_args_is_help=True,
     context_settings={"help_option_names": ["-h", "--help"]},
-    add_completion=False,
+    add_completion=True,
 )
 
 

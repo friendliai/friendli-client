@@ -30,6 +30,11 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v3
+    - name: Delete unnecessary directories to secure disk capacity.
+      run: |
+        rm -rf /usr/share/dotnet
+        rm -rf /opt/ghc
+        rm -rf /opt/hostedtoolcache
     - name: Set up Python ${{ matrix.python-version }}
       id: setup-python
       uses: actions/setup-python@v4

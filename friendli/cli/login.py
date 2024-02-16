@@ -15,7 +15,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
-from friendli.client.login import LoginClient
+from friendli.client.http.login import LoginClient
 from friendli.di.injector import get_injector
 from friendli.utils.url import URLProvider
 

@@ -6,11 +6,11 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from friendli.client.base import Client
+from friendli.client.http.base import HttpClient
 from friendli.settings import Settings
 
 
-class LoginClient(Client):
+class LoginClient(HttpClient):
     """Login client."""
 
     @property

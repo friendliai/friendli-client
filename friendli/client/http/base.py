@@ -21,7 +21,7 @@ from requests.models import Response
 from urllib3.exceptions import ConnectTimeoutError, ReadTimeoutError
 
 from friendli.auth import get_auth_header, safe_request
-from friendli.context import get_current_group_id, get_current_project_id
+from friendli.context import get_current_project_id, get_current_team_id
 from friendli.di.injector import get_injector
 from friendli.errors import APIError, MaxRetriesExceededError
 from friendli.logging import logger
@@ -146,7 +146,7 @@ class RequestInterface:
         return items
 
 
-class Client(ABC, Generic[T], RequestInterface):
+class HttpClient(ABC, Generic[T], RequestInterface):
     """Base interface of client to Friendli system."""
 
     def __init__(self, **kwargs):
@@ -308,7 +308,7 @@ class GroupRequestMixin:
 
     def initialize_group(self):
         """Initialize organization settings."""
-        group_id = get_current_group_id()
+        group_id = get_current_team_id()
         if group_id is None:
             secho_error_and_exit("Organization is not set.")
         self.group_id = group_id  # type: ignore
@@ -327,7 +327,7 @@ class ProjectRequestMixin:
         self.project_id = project_id  # type: ignore
 
 
-class UploadableClient(Client[T], Generic[T]):
+class UploadableClient(HttpClient[T], Generic[T]):
     """Uploadable client."""
 
     def get_upload_urls(
