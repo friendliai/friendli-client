@@ -12,6 +12,7 @@ import yaml
 from friendli.formatter import PanelFormatter, TableFormatter
 from friendli.schema.config.deployment import DeploymentConfig
 from friendli.sdk.client import Friendli
+from friendli.utils.compat import model_dump, model_parse
 from friendli.utils.decorator import check_api
 
 app = typer.Typer(
@@ -105,7 +106,7 @@ def create(
     """Creates a deployment object by using model checkpoint."""
     client = Friendli()
     config_dict = yaml.safe_load(config_file)
-    config = DeploymentConfig.model_validate(config_dict)
+    config = model_parse(DeploymentConfig, config_dict)
 
     deployment = client.deployment.create(
         name=config.name,
@@ -115,7 +116,7 @@ def create(
         adapter_eids=config.adapters,
         launch_config=config.launch_config,
     )
-    deployment_panel.render(deployment.model_dump())
+    deployment_panel.render(model_dump(deployment))
 
 
 @app.command("list")
@@ -124,5 +125,5 @@ def list_deployments():
     """List deployments."""
     client = Friendli()
     deployments = client.deployment.list()
-    deployments_ = [deployment.model_dump() for deployment in iter(deployments)]
+    deployments_ = [model_dump(deployment) for deployment in iter(deployments)]
     deployment_table.render(deployments_)

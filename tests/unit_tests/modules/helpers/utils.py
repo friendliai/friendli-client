@@ -28,6 +28,7 @@ from friendli.modules.quantizer.layers import (
 from friendli.modules.quantizer.schema.config import AWQConfig
 from friendli.modules.quantizer.schema.data import QuantInput
 from friendli.modules.quantizer.smoothquant.base import SmoothQuantQuantizer
+from friendli.utils.compat import model_dump
 
 from tests.unit_tests.modules.helpers.spec import ModelSpecParser, ParamInfo, Template
 
@@ -89,7 +90,7 @@ def get_param_specs(
 ) -> Dict[str, ParamInfo]:
     file_path = f"{SPEC_PATH_PREFIX}{spec_folder}/{model_name}.yaml"
     template = Template.from_file(file_path)
-    render_config = model_config.model_dump()
+    render_config = model_dump(model_config)
     rendered = template.render(**render_config)
     assert isinstance(rendered, dict)
     parser = ModelSpecParser(model_spec=rendered)

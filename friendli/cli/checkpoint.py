@@ -20,6 +20,7 @@ from friendli.formatter import (
     TableFormatter,
     TreeFormatter,
 )
+from friendli.utils.compat import model_parse
 from friendli.utils.format import secho_error_and_exit
 
 app = typer.Typer(
@@ -236,8 +237,8 @@ def convert(
                 quant_config_dict = cast(dict, yaml.safe_load(quant_config_file.read()))
             except yaml.YAMLError as err:
                 secho_error_and_exit(f"Failed to load the quant config file: {err}")
-            quant_config = QuantConfig.model_validate(
-                {"config": quant_config_dict}
+            quant_config = model_parse(
+                QuantConfig, {"config": quant_config_dict}
             ).config
         else:
             quant_config = AWQConfig()

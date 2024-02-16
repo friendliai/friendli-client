@@ -16,6 +16,7 @@ from friendli.enums import (
     CheckpointStatus,
     CheckpointValidationStatus,
 )
+from friendli.utils.compat import PYDANTIC_V2
 
 
 class V1Catalog(BaseModel):
@@ -77,7 +78,8 @@ class V1CheckpointOwnership(BaseModel):
 class V1Checkpoint(BaseModel):
     """V1 checkpoint schema."""
 
-    model_config = ConfigDict(protected_namespaces=())
+    if PYDANTIC_V2:
+        model_config = ConfigDict(protected_namespaces=())  # type: ignore
 
     id: UUID
     user_id: UUID

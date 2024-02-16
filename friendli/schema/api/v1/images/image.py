@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from typing import List, Literal, Union
 
-from pydantic import AnyHttpUrl, Base64Bytes, BaseModel, Field
-from typing_extensions import TypeAlias
+from pydantic import AnyHttpUrl, BaseModel, Field
+from typing_extensions import Annotated, TypeAlias
 
 ImageResponseFormatParam: TypeAlias = Union[str, Literal["url", "png", "jpeg", "raw"]]
 
@@ -25,10 +25,15 @@ class ImageDataB64(BaseModel):
 
     format: Literal["png", "jpeg", "raw"]
     seed: int
-    b64_json: Base64Bytes
+    b64_json: str
+
+
+_ImageData = Annotated[
+    Union[ImageDataUrl, ImageDataB64], Field(..., discriminator="format")
+]
 
 
 class Image(BaseModel):
     """Image data."""
 
-    data: List[Union[ImageDataUrl, ImageDataB64]] = Field(..., discriminator="format")
+    data: List[_ImageData]

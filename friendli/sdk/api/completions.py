@@ -25,6 +25,7 @@ from friendli.sdk.api.base import (
     GenerationStream,
     ServingAPI,
 )
+from friendli.utils.compat import model_parse
 
 
 class Completions(ServingAPI[Type[V1CompletionsRequest]]):
@@ -323,7 +324,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
 
         if stream:
             return CompletionStream(response=response)
-        return Completion.model_validate(response.json())
+        return model_parse(Completion, response.json())
 
 
 class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
@@ -610,7 +611,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
 
         if stream:
             return AsyncCompletionStream(response=response)
-        return Completion.model_validate(response.json())
+        return model_parse(Completion, response.json())
 
 
 class CompletionStream(GenerationStream[CompletionLine]):
@@ -623,11 +624,11 @@ class CompletionStream(GenerationStream[CompletionLine]):
 
         parsed = json.loads(line.strip("data: "))
         try:
-            return CompletionLine.model_validate(parsed)
+            return model_parse(CompletionLine, parsed)
         except ValidationError as exc:
             try:
                 # The last iteration of the stream returns a response with `V1Completion` schema.
-                Completion.model_validate(parsed)
+                model_parse(Completion, parsed)
                 raise StopIteration from exc
             except ValidationError:
                 raise InvalidGenerationError(
@@ -649,11 +650,11 @@ class CompletionStream(GenerationStream[CompletionLine]):
                 parsed = json.loads(line.strip("data: "))
                 try:
                     # The last iteration of the stream returns a response with `V1Completion` schema.
-                    return Completion.model_validate(parsed)
+                    return model_parse(Completion, parsed)
                 except ValidationError as exc:
                     try:
                         # Skip the line response.
-                        CompletionLine.model_validate(parsed)
+                        model_parse(CompletionLine, parsed)
                     except ValidationError:
                         raise InvalidGenerationError(
                             f"Generation result has invalid schema: {str(exc)}"
@@ -671,11 +672,11 @@ class AsyncCompletionStream(AsyncGenerationStream[CompletionLine]):
 
         parsed = json.loads(line.strip("data: "))
         try:
-            return CompletionLine.model_validate(parsed)
+            return model_parse(CompletionLine, parsed)
         except ValidationError as exc:
             try:
                 # The last iteration of the stream returns a response with `V1Completion` schema.
-                Completion.model_validate(parsed)
+                model_parse(Completion, parsed)
                 raise StopAsyncIteration from exc
             except ValidationError:
                 raise InvalidGenerationError(
@@ -697,11 +698,11 @@ class AsyncCompletionStream(AsyncGenerationStream[CompletionLine]):
                 parsed = json.loads(line.strip("data: "))
                 try:
                     # The last iteration of the stream returns a response with `V1Completion` schema.
-                    return Completion.model_validate(parsed)
+                    return model_parse(Completion, parsed)
                 except ValidationError as exc:
                     try:
                         # Skip the line response.
-                        CompletionLine.model_validate(parsed)
+                        model_parse(CompletionLine, parsed)
                     except ValidationError:
                         raise InvalidGenerationError(
                             f"Generation result has invalid schema: {str(exc)}"

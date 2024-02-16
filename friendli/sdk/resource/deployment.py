@@ -44,7 +44,7 @@ class DeploymentAPI(ResourceAPI[DeploymentGqlClient, Deployment, str]):
             adapter_eids=adapter_eids or [],
             launch_config=launch_config or {},
         )
-        deployment = self._model_validate(data)
+        deployment = self._model_parse(data)
 
         return deployment
 
@@ -55,5 +55,5 @@ class DeploymentAPI(ResourceAPI[DeploymentGqlClient, Deployment, str]):
     def list(self) -> List[Deployment]:
         """List deployments."""
         data = self.client.get_deployments(project_eid=self._get_project_id())
-        deployments = self._model_validate(data)
+        deployments = self._model_parse(data)
         return deployments

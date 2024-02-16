@@ -16,6 +16,7 @@ from injector import inject
 from friendli.client.graphql.base import GqlClient
 from friendli.context import get_current_project_id, get_current_team_id
 from friendli.errors import AuthorizationError
+from friendli.utils.compat import model_parse
 
 _Resource = TypeVar("_Resource", bound=pydantic.BaseModel)
 _ResourceId = TypeVar("_ResourceId")
@@ -47,21 +48,19 @@ class ResourceAPI(ABC, Generic[_Client, _Resource, _ResourceId]):
         """Lists reousrces."""
 
     @overload
-    def _model_validate(self, data: Dict[str, Any]) -> _Resource:
+    def _model_parse(self, data: Dict[str, Any]) -> _Resource:
         ...
 
     @overload
-    def _model_validate(self, data: List[Dict[str, Any]]) -> List[_Resource]:
+    def _model_parse(self, data: List[Dict[str, Any]]) -> List[_Resource]:
         ...
 
-    def _model_validate(
+    def _model_parse(
         self, data: Union[Dict[str, Any], List[Dict[str, Any]]]
     ) -> Union[_Resource, List[_Resource]]:
         if isinstance(data, list):
-            return [
-                self._resource_model.model_validate(entry["node"]) for entry in data
-            ]
-        return self._resource_model.model_validate(data)
+            return [model_parse(self._resource_model, entry["node"]) for entry in data]
+        return model_parse(self._resource_model, data)
 
     def _get_project_id(self) -> str:
         project_id = get_current_project_id()

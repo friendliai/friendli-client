@@ -13,6 +13,8 @@ import yaml
 from jinja2.environment import Template as JinjaTemplate
 from pydantic import BaseModel
 
+from friendli.utils.compat import model_parse
+
 
 class InvalidSpecFormatError(Exception):
     """Invalid model spec format  that can be handled by users."""
@@ -149,7 +151,7 @@ class ModelSpecParser:
             return res
         if node_type == SpecNodeType.REPEAT_GROUP:
             try:
-                repeat_range = RepeatRange.model_validate(spec["range"])  # type: ignore
+                repeat_range = model_parse(RepeatRange, spec["range"])  # type: ignore
             except KeyError as exc:
                 raise InvalidSpecFormatError from exc
             res = {}

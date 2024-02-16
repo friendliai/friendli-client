@@ -10,12 +10,16 @@ from pydantic import BaseModel, ConfigDict, Extra, Field
 from typing_extensions import Annotated
 
 from friendli.enums import CheckpointDataType, QuantMode
+from friendli.utils.compat import PYDANTIC_V2
 
 
 class V1CommonAttributes(BaseModel):
     """V1 checkpoint attributes schema."""
 
-    model_config = ConfigDict(protected_namespaces=(), extra=Extra.forbid)
+    if PYDANTIC_V2:
+        model_config = ConfigDict(protected_namespaces=(), extra=Extra.forbid)  # type: ignore
+    else:
+        model_config = ConfigDict(extra=Extra.forbid)
 
     dtype: CheckpointDataType
     quant_scheme: Optional[QuantMode] = None

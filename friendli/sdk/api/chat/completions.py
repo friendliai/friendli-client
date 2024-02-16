@@ -24,6 +24,7 @@ from friendli.sdk.api.base import (
     GenerationStream,
     ServingAPI,
 )
+from friendli.utils.compat import model_parse
 
 
 class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
@@ -135,7 +136,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
 
         if stream:
             return ChatCompletionStream(response=response)
-        return ChatCompletion.model_validate(response.json())
+        return model_parse(ChatCompletion, response.json())
 
 
 class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
@@ -247,7 +248,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
 
         if stream:
             return AsyncChatCompletionStream(response=response)
-        return ChatCompletion.model_validate(response.json())
+        return model_parse(ChatCompletion, response.json())
 
 
 class ChatCompletionStream(GenerationStream[ChatCompletionLine]):
@@ -264,7 +265,7 @@ class ChatCompletionStream(GenerationStream[ChatCompletionLine]):
         parsed = json.loads(data)
 
         try:
-            return ChatCompletionLine.model_validate(parsed)
+            return model_parse(ChatCompletionLine, parsed)
         except ValidationError as exc:
             raise InvalidGenerationError(
                 f"Generation result has invalid schema: {str(exc)}"
@@ -285,7 +286,7 @@ class AsyncChatCompletionStream(AsyncGenerationStream[ChatCompletionLine]):
         parsed = json.loads(data)
 
         try:
-            return ChatCompletionLine.model_validate(parsed)
+            return model_parse(ChatCompletionLine, parsed)
         except ValidationError as exc:
             raise InvalidGenerationError(
                 f"Generation result has invalid schema: {str(exc)}"

@@ -12,6 +12,7 @@ import typer
 
 from friendli.enums import ResponseFormat
 from friendli.sdk.client import Friendli
+from friendli.utils.compat import model_dump
 from friendli.utils.decorator import check_api
 
 app = typer.Typer(
@@ -106,4 +107,4 @@ def create(
         seed=seed,
         response_format=response_format,
     )
-    typer.echo(image.model_dump())
+    typer.echo(model_dump(image))

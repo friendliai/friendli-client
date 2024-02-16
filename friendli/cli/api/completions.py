@@ -11,6 +11,7 @@ from typing import List, Optional
 import typer
 
 from friendli.sdk.client import Friendli
+from friendli.utils.compat import model_dump
 from friendli.utils.decorator import check_api
 
 app = typer.Typer(
@@ -129,7 +130,7 @@ def create(
         )
         for chunk in stream:
             if n is not None and n > 1:
-                typer.echo(chunk.model_dump())
+                typer.echo(model_dump(chunk))
             else:
                 typer.echo(chunk.text, nl=False)
     else:
@@ -145,4 +146,4 @@ def create(
             temperature=temperature,
             top_p=top_p,
         )
-        typer.echo(completion.model_dump())
+        typer.echo(model_dump(completion))

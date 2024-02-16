@@ -20,6 +20,7 @@ from friendli.errors import (
     NotSupportedError,
 )
 from friendli.schema.resource.v1.attributes import V1AttributesValidationModel
+from friendli.utils.compat import model_parse
 from friendli.utils.format import secho_error_and_exit
 from friendli.utils.version import (
     FRIENDLI_PACKAGE_NAME,
@@ -87,7 +88,7 @@ def check_package_version() -> None:
 def validate_checkpoint_attributes(attr: Dict[str, Any]) -> None:
     """Validate checkpoint attributes schema."""
     try:
-        V1AttributesValidationModel.model_validate({"attr": attr})
+        model_parse(V1AttributesValidationModel, {"attr": attr})
     except ValidationError as exc:
         msgs = []
         for error in exc.errors():

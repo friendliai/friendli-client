@@ -36,6 +36,7 @@ from friendli.schema.resource.v1.transfer import (
     UploadedPartETag,
     UploadTask,
 )
+from friendli.utils.compat import model_dump
 from friendli.utils.fs import get_file_size, storage_path_to_local_path
 from friendli.utils.request import DEFAULT_REQ_TIMEOUT
 
@@ -340,7 +341,7 @@ class UploadManager:
                     )
                     for fut in done:
                         part_etag = fut.result()
-                        uploaded_part_etags.append(part_etag.model_dump())
+                        uploaded_part_etags.append(model_dump(part_etag))
                 complete_callback(
                     upload_task.path, upload_task.upload_id, uploaded_part_etags
                 )

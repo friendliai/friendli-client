@@ -12,6 +12,7 @@ import typer
 
 from friendli.schema.api.v1.chat.completions import MessageParam
 from friendli.sdk.client import Friendli
+from friendli.utils.compat import model_dump
 from friendli.utils.decorator import check_api
 from friendli.utils.format import secho_error_and_exit
 
@@ -136,7 +137,7 @@ def create(
         )
         for chunk in stream:
             if n is not None and n > 1:
-                typer.echo(chunk.model_dump())
+                typer.echo(model_dump(chunk))
             else:
                 typer.echo(chunk.choices[0].delta.content or "", nl=False)
     else:
@@ -152,7 +153,7 @@ def create(
             temperature=temperature,
             top_p=top_p,
         )
-        typer.echo(chat_completion.model_dump())
+        typer.echo(model_dump(chat_completion))
 
 
 def _prepare_messages(messages: List[str]) -> List[MessageParam]:

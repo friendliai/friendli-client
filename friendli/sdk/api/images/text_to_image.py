@@ -12,6 +12,7 @@ from typing import Optional, Type
 from friendli.schema.api.v1.codegen.text_to_image_pb2 import V1TextToImageRequest
 from friendli.schema.api.v1.images.image import Image, ImageResponseFormatParam
 from friendli.sdk.api.base import AsyncServingAPI, ServingAPI
+from friendli.utils.compat import model_parse
 
 
 class TextToImage(ServingAPI[Type[V1TextToImageRequest]]):
@@ -73,7 +74,7 @@ class TextToImage(ServingAPI[Type[V1TextToImageRequest]]):
         }
         response = self._request(data=request_dict, stream=False, model=model)
 
-        return Image.model_validate(response.json())
+        return model_parse(Image, response.json())
 
 
 class AsyncTextToImage(AsyncServingAPI[Type[V1TextToImageRequest]]):
@@ -135,4 +136,4 @@ class AsyncTextToImage(AsyncServingAPI[Type[V1TextToImageRequest]]):
         }
         response = await self._request(data=request_dict, stream=False, model=model)
 
-        return Image.model_validate(response.json())
+        return model_parse(Image, response.json())
