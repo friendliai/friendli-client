@@ -75,6 +75,7 @@ class V1GPTJAttributes(V1CommonAttributes):
     max_length: int
     vocab_size: int
     eos_token: int
+    rope_theta: Optional[float]
 
 
 class V1GPTNeoXAttributes(V1CommonAttributes):
@@ -88,6 +89,7 @@ class V1GPTNeoXAttributes(V1CommonAttributes):
     max_length: int
     vocab_size: int
     eos_token: int
+    rope_theta: Optional[float]
 
 
 class V1GPTNeoXHFAttributes(V1CommonAttributes):
@@ -101,6 +103,7 @@ class V1GPTNeoXHFAttributes(V1CommonAttributes):
     max_length: int
     vocab_size: int
     eos_token: int
+    rope_theta: Optional[float]
 
 
 class V1LlamaAttributes(V1CommonAttributes):
@@ -116,6 +119,7 @@ class V1LlamaAttributes(V1CommonAttributes):
     max_length: int
     vocab_size: int
     eos_token: int
+    rope_theta: Optional[float]
 
 
 class V1MistralAttributes(V1CommonAttributes):
@@ -177,6 +181,7 @@ class V1FalconAttributes(V1CommonAttributes):
     vocab_size: int
     eos_token: int
     rotary_dim: int
+    rope_theta: Optional[float]
 
 
 class V1MPTAttributes(V1CommonAttributes):
