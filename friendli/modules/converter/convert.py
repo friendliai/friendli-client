@@ -9,7 +9,7 @@ from typing import Optional
 import yaml
 from peft import PeftModel  # type: ignore[import] # pylint: disable=import-error
 
-from friendli.enums import CheckpointDataType, CheckpointFileType
+from friendli.enums import CheckpointFileType, ModelDataType
 from friendli.errors import TokenizerNotFoundError
 from friendli.logging import logger
 from friendli.modules.converter.saver import get_saver
@@ -40,7 +40,7 @@ from friendli.modules.quantizer.schema.config import OneOfQuantConfig
 def convert_checkpoint(  # pylint: disable=too-many-locals
     model_name_or_path: str,
     model_output_path: str,
-    data_type: CheckpointDataType,
+    data_type: ModelDataType,
     output_ckpt_file_type: CheckpointFileType,
     *,
     tokenizer_output_dir: Optional[str] = None,
@@ -143,7 +143,7 @@ def convert_adapter_checkpoint(  # pylint: disable=too-many-locals
     adapter_name_or_path: str,
     adapter_output_path: str,
     adapter_attr_output_path: str,
-    data_type: CheckpointDataType,
+    data_type: ModelDataType,
     output_adapter_file_type: CheckpointFileType,
     cache_dir: Optional[str],
     dry_run: bool = False,

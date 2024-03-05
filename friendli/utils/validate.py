@@ -12,42 +12,15 @@ from typing import Any, Dict, Optional, Type
 import typer
 from pydantic import ValidationError
 
-from friendli.cloud.storage import cloud_region_map, storage_region_map
-from friendli.enums import CloudType, StorageType
-from friendli.errors import (
-    InvalidAttributesError,
-    InvalidConfigError,
-    NotSupportedError,
-)
+from friendli.errors import InvalidAttributesError, InvalidConfigError
 from friendli.schema.resource.v1.attributes import V1AttributesValidationModel
 from friendli.utils.compat import model_parse
-from friendli.utils.format import secho_error_and_exit
 from friendli.utils.version import (
     FRIENDLI_PACKAGE_NAME,
     get_installed_version,
     get_latest_version,
     is_latest_version,
 )
-
-
-def validate_storage_region(vendor: StorageType, region: str) -> None:
-    """Validation the cloud storage availability region."""
-    available_regions = storage_region_map[vendor]
-    if region not in available_regions:
-        raise InvalidConfigError(
-            f"'{region}' is not supported region for {vendor}. "
-            f"Please choose another one in {available_regions}."
-        )
-
-
-def validate_cloud_region(vendor: CloudType, region: str) -> None:
-    """Validate the cloud availability region."""
-    available_regions = cloud_region_map[vendor]
-    if region not in available_regions:
-        secho_error_and_exit(
-            f"'{region}' is not a supported region for {vendor}. "
-            f"Please choose another one in {available_regions}."
-        )
 
 
 def validate_datetime_format(datetime_str: Optional[str]) -> Optional[str]:
@@ -62,14 +35,6 @@ def validate_datetime_format(datetime_str: Optional[str]) -> Optional[str]:
             "The datetime format should be {YYYY}-{MM}-{DD}T{HH}:{MM}:{SS}"
         ) from exc
     return datetime_str
-
-
-def validate_cloud_storage_type(val: StorageType) -> None:
-    """Validate the cloud storage type."""
-    if val == StorageType.FAI:
-        raise NotSupportedError(
-            "Checkpoint creation with FAI storage is not supported now."
-        )
 
 
 def check_package_version() -> None:

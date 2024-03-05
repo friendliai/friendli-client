@@ -9,7 +9,7 @@ from typing import Literal, Optional, Union
 from pydantic import BaseModel, ConfigDict, Extra, Field
 from typing_extensions import Annotated
 
-from friendli.enums import CheckpointDataType, QuantMode
+from friendli.enums import ModelDataType, QuantMode
 from friendli.utils.compat import PYDANTIC_V2
 
 
@@ -21,7 +21,7 @@ class V1CommonAttributes(BaseModel):
     else:
         model_config = ConfigDict(extra=Extra.forbid)
 
-    dtype: CheckpointDataType
+    dtype: ModelDataType
     quant_scheme: Optional[QuantMode] = None
     quant_group_size: Optional[int] = None
     quant_bit: Optional[int] = None

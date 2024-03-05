@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterator, List, Tuple, cast
 import datasets  # type: ignore[import]
 import torch
 
-from friendli.enums import CheckpointDataType
+from friendli.enums import ModelDataType
 from friendli.errors import NotSupportedQuantConfigError
 from friendli.modules.converter.base import DECODER_PREFIX
 from friendli.modules.converter.interface import ModelConversionInterface
@@ -192,7 +192,7 @@ class SmoothQuantHook(AbstractQuantHook):
                 new_layer_convert_info_list.append(
                     ConvertInfo(
                         param_names=[f"{layer_prefix}attn_fc_pre_smoother.scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_proj/smoothquant/smoothing_vector:0",  # pylint: disable=line-too-long
                         reshape_fn=scale_reshape,
                     )
@@ -201,7 +201,7 @@ class SmoothQuantHook(AbstractQuantHook):
                 new_layer_convert_info_list.append(
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff2_pre_smoother.scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/smoothing_vector:0",  # pylint: disable=line-too-long
                         reshape_fn=scale_reshape,
                     )
@@ -222,97 +222,97 @@ class SmoothQuantHook(AbstractQuantHook):
                 [
                     ConvertInfo(
                         param_names=[f"{layer_prefix}q.weight_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_attn/smoothquant/q_weight_scale:0",  # pylint: disable=line-too-long
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}k.weight_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_attn/smoothquant/k_weight_scale:0",  # pylint: disable=line-too-long
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}v.weight_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_attn/smoothquant/v_weight_scale:0",  # pylint: disable=line-too-long
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}q.out_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_attn/smoothquant/q_out_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}k.out_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_attn/smoothquant/k_out_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}v.out_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_attn/smoothquant/v_out_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}q.in_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_attn/smoothquant/in_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}attn_fc.weight_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_proj/smoothquant/weight_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}attn_fc.out_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_proj/smoothquant/out_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}attn_fc.in_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}attn/c_proj/smoothquant/in_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff1.weight_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}mlp/c_fc/smoothquant/weight_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff1.out_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}mlp/c_fc/smoothquant/out_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff1.in_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}mlp/c_fc/smoothquant/in_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff2.weight_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/weight_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff2.out_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/out_scale:0",
                         reshape_fn=scale_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff2.in_scale"],
-                        data_type=CheckpointDataType.FP32,
+                        data_type=ModelDataType.FP32,
                         converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/in_scale:0",
                         reshape_fn=scale_reshape,
                     ),
@@ -322,25 +322,25 @@ class SmoothQuantHook(AbstractQuantHook):
                             f"{layer_prefix}k.weight",
                             f"{layer_prefix}v.weight",
                         ],
-                        data_type=CheckpointDataType.INT8,
+                        data_type=ModelDataType.INT8,
                         converted_name=f"{converted_prefix}attn/c_attn/smoothquant/weight:0",
                         reshape_fn=quantized_qkv_weight_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}attn_fc.weight"],
-                        data_type=CheckpointDataType.INT8,
+                        data_type=ModelDataType.INT8,
                         converted_name=f"{converted_prefix}attn/c_proj/smoothquant/weight:0",
                         reshape_fn=quantized_linear_weight_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff1.weight"],
-                        data_type=CheckpointDataType.INT8,
+                        data_type=ModelDataType.INT8,
                         converted_name=f"{converted_prefix}mlp/c_fc/smoothquant/weight:0",
                         reshape_fn=quantized_linear_weight_reshape,
                     ),
                     ConvertInfo(
                         param_names=[f"{layer_prefix}ff2.weight"],
-                        data_type=CheckpointDataType.INT8,
+                        data_type=ModelDataType.INT8,
                         converted_name=f"{converted_prefix}mlp/c_proj/smoothquant/weight:0",
                         reshape_fn=quantized_linear_weight_reshape,
                     ),

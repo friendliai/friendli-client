@@ -12,7 +12,7 @@ from transformers import (  # type: ignore[import]
     PretrainedConfig,
 )
 
-from friendli.enums import CheckpointDataType  # type: ignore[import]
+from friendli.enums import ModelDataType  # type: ignore[import]
 from friendli.errors import CheckpointConversionError, NotSupportedCheckpointError
 from friendli.logging import logger
 from friendli.modules.converter.base import (
@@ -41,9 +41,15 @@ class MptForCausalLMLoraConverter(DecoderOnlyLoraConverter):
     """MptForCausalLM LoRA Converter Class."""
 
     @property
-    def adapter_target_modules(self) -> List[str]:
-        """Return the target modules that LoRA applies to."""
-        return ["merged-qkv"]
+    def adapter_target_module_map(self) -> Dict[str, str]:
+        """Return the dictionary that maps Hugging Face's module name to Friendli's module name."""
+        return {
+            "Wqkv": "merged-qkv",
+            "out_proj": "attn_fc",
+            "up_proj": "ff1",
+            "down_proj": "ff2",
+            "wte": "wte",
+        }
 
     @property
     def adapter_convert_info_list(
@@ -51,25 +57,120 @@ class MptForCausalLMLoraConverter(DecoderOnlyLoraConverter):
     ) -> List[ConvertInfo]:
         """The list of conversion informations for LoRA adapter modules in Mpt."""
         convert_info_list = []
-        for i in range(self.converter.decoder_layer_num):
-            layer_prefix = f"{self.converter.decoder_layer_prefix}{i}."
-            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+        target_modules = self.adapter_target_modules
+
+        # Non-transformer modules
+        if "wte" in target_modules:
             convert_info_list.extend(
                 [
                     ConvertInfo(
-                        param_names=[f"{layer_prefix}attn.Wqkv.lora_A.default.weight"],
+                        param_names=["transformer.wte.lora_embedding_A.default"],
                         data_type=self.converter.data_type,
-                        converted_name=f"{converted_prefix}attn/c_attn/lora/lora_A/weight:0",
+                        converted_name="wte/lora/lora_A/weight:0",
                         reshape_fn=self.lora_weight_reshape,
                     ),
                     ConvertInfo(
-                        param_names=[f"{layer_prefix}attn.Wqkv.lora_B.default.weight"],
+                        param_names=["transformer.wte.lora_embedding_B.default"],
                         data_type=self.converter.data_type,
-                        converted_name=f"{converted_prefix}attn/c_attn/lora/lora_B/weight:0",
+                        converted_name="wte/lora/lora_B/weight:0",
                         reshape_fn=self.lora_weight_reshape,
                     ),
                 ]
             )
+
+        # Transformer modules
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.converter.decoder_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+
+            if "merged-qkv" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}attn.Wqkv.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_attn/lora/lora_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}attn.Wqkv.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_attn/lora/lora_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "attn_fc" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}attn.out_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_proj/lora/lora_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}attn.out_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_proj/lora/lora_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "ff1" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.up_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_fc/lora/lora_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.up_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_fc/lora/lora_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "ff2" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.down_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_proj/lora/lora_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.down_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_proj/lora/lora_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
         return convert_info_list
 
 
@@ -80,7 +181,7 @@ class MPTForCausalLMConverter(DecoderOnlyConverter):
         self,
         config: PretrainedConfig,
         generation_config: GenerationConfig | None,
-        data_type: CheckpointDataType,
+        data_type: ModelDataType,
     ) -> None:
         """Initialize MPTForCausalLMConverter."""
         super().__init__(config, generation_config, data_type)

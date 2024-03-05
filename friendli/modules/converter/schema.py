@@ -9,7 +9,7 @@ from typing import Callable, List
 
 import torch
 
-from friendli.enums import CheckpointDataType
+from friendli.enums import ModelDataType
 
 
 @dataclass
@@ -25,6 +25,6 @@ class ConvertInfo:
     """
 
     param_names: List[str]
-    data_type: CheckpointDataType
+    data_type: ModelDataType
     converted_name: str
     reshape_fn: Callable[[List[torch.Tensor]], torch.Tensor]

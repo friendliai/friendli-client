@@ -9,7 +9,7 @@ from typing import Any, Dict, List, cast
 import torch
 from transformers import T5Config  # type: ignore[import]
 
-from friendli.enums import CheckpointDataType
+from friendli.enums import ModelDataType
 from friendli.errors import CheckpointConversionError, NotSupportedCheckpointError
 from friendli.logging import logger
 from friendli.modules.converter.base import (
@@ -340,7 +340,7 @@ class T5Converter(EncoderDecoderConverter):
                 param_names=[
                     "encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"
                 ],
-                data_type=CheckpointDataType.FP32,
+                data_type=ModelDataType.FP32,
                 converted_name=f"{ENCODER_PREFIX}/wpe/weight:0",
                 reshape_fn=self.pos_embed_weight_reshape,
             ),
@@ -348,7 +348,7 @@ class T5Converter(EncoderDecoderConverter):
                 param_names=[
                     "decoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight"
                 ],
-                data_type=CheckpointDataType.FP32,
+                data_type=ModelDataType.FP32,
                 converted_name=f"{DECODER_PREFIX}/wpe/weight:0",
                 reshape_fn=self.pos_embed_weight_reshape,
             ),

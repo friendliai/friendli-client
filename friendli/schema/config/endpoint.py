@@ -1,6 +1,6 @@
 # Copyright (c) 2024-present, FriendliAI Inc. All rights reserved.
 
-"""Schema of Deployment Config."""
+"""Schema of Endpoint Config."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ class GpuConfig(pydantic.BaseModel):
     count: int
 
 
-class DeploymentConfig(pydantic.BaseModel):
-    """Deployment config."""
+class EndpointConfig(pydantic.BaseModel):
+    """Endpoint config."""
 
     name: str
     gpu: GpuConfig

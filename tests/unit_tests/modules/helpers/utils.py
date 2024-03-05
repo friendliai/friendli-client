@@ -14,7 +14,7 @@ from peft import PeftConfig, PeftModel
 from pydantic import BaseModel
 from transformers import PretrainedConfig
 
-from friendli.enums import CheckpointDataType
+from friendli.enums import ModelDataType
 from friendli.modules.converter.maps import (
     get_adapter_converter_factory,
     get_hf_converter_factory,
@@ -74,12 +74,12 @@ class SmoothQuantModelConfig(ModelConfig):
     q_dtype: str = "int8"
 
 
-def get_numpy_data_type(data_type: CheckpointDataType) -> np.dtype:
-    if data_type == CheckpointDataType.FP32:
+def get_numpy_data_type(data_type: ModelDataType) -> np.dtype:
+    if data_type == ModelDataType.FP32:
         return np.float32
-    elif data_type == CheckpointDataType.FP16:
+    elif data_type == ModelDataType.FP16:
         return np.float16
-    elif data_type == CheckpointDataType.BF16:
+    elif data_type == ModelDataType.BF16:
         return np.uint32
     else:
         return np.int8

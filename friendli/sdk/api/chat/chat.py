@@ -18,13 +18,17 @@ class Chat:
 
     def __init__(
         self,
-        deployment_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        base_url: str,
+        endpoint_id: Optional[str] = None,
+        use_protobuf: bool = False,
         client: Optional[httpx.Client] = None,
     ) -> None:
         """Initializes Chat."""
         self.completions = Completions(
-            deployment_id=deployment_id, endpoint=endpoint, client=client
+            base_url=base_url,
+            endpoint_id=endpoint_id,
+            use_protobuf=use_protobuf,
+            client=client,
         )
 
 
@@ -35,11 +39,15 @@ class AsyncChat:
 
     def __init__(
         self,
-        deployment_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        base_url: str,
+        endpoint_id: Optional[str] = None,
+        use_protobuf: bool = False,
         client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         """Initializes AsyncChat."""
         self.completions = AsyncCompletions(
-            deployment_id=deployment_id, endpoint=endpoint, client=client
+            base_url=base_url,
+            endpoint_id=endpoint_id,
+            use_protobuf=use_protobuf,
+            client=client,
         )

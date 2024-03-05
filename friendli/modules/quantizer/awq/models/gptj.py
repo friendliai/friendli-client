@@ -10,7 +10,7 @@ from typing import Iterator, List, Tuple, Type
 
 import torch
 
-from friendli.enums import CheckpointDataType
+from friendli.enums import ModelDataType
 from friendli.modules.converter.base import DECODER_PREFIX
 from friendli.modules.converter.schema import ConvertInfo
 from friendli.modules.quantizer.awq.base import AWQHook
@@ -150,7 +150,7 @@ class AWQGPTJHook(AWQHook):
             convert_info_list.append(
                 ConvertInfo(
                     param_names=[f"{layer_prefix}mlp.ff2_scaler.scale"],
-                    data_type=CheckpointDataType.FP32,
+                    data_type=ModelDataType.FP32,
                     converted_name=f"{converted_prefix}mlp/c_proj/awq/pre_scale:0",
                     reshape_fn=scale_reshape,
                 )

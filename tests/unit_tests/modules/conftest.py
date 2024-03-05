@@ -24,7 +24,7 @@ from transformers import (
 )
 from transformers.models.mpt.configuration_mpt import MptAttentionConfig
 
-from friendli.enums import CheckpointDataType
+from friendli.enums import ModelDataType
 from friendli.modules.converter.base import OneOfConverter
 from friendli.modules.converter.maps import get_hf_converter_factory
 from friendli.modules.converter.models.mixtral import MixtralForCausalLMConverter
@@ -200,7 +200,7 @@ model_name_config_map = {
 def converter(model_config: AutoConfig) -> OneOfConverter:
     model_arch = get_model_arch(model_config)
     _, converter_cls = get_hf_converter_factory(model_arch)
-    return converter_cls(model_config, None, CheckpointDataType.FP16)
+    return converter_cls(model_config, None, ModelDataType.FP16)
 
 
 # TODO: add render_model_config per model

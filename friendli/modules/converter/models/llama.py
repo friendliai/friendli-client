@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, cast
+from typing import Any, Dict, Iterable, List, Set, cast
 
 import torch
 from transformers import LlamaConfig, LlamaForCausalLM  # type: ignore[import]
@@ -47,9 +47,18 @@ class LlamaForCausalLMLoraConverter(DecoderOnlyLoraConverter):
         return model
 
     @property
-    def adapter_target_modules(self) -> List[str]:
-        """Return the target modules that LoRA applies to."""
-        return ["query", "value"]
+    def adapter_target_module_map(self) -> Dict[str, str]:
+        """Return the dictionary that maps Hugging Face's module name to Friendli's module name."""
+        return {
+            "q_proj": "query",
+            "k_proj": "key",
+            "v_proj": "value",
+            "o_proj": "attn_fc",
+            "up_proj": "ff1",
+            "gate_proj": "ff_gate",
+            "down_proj": "ff2",
+            "embed_tokens": "wte",
+        }
 
     @property
     def adapter_convert_info_list(
@@ -57,45 +66,187 @@ class LlamaForCausalLMLoraConverter(DecoderOnlyLoraConverter):
     ) -> List[ConvertInfo]:
         """The list of conversion informations for LoRA adapter modules in Llama."""
         convert_info_list = []
-        for i in range(self.converter.decoder_layer_num):
-            layer_prefix = f"{self.converter.decoder_layer_prefix}{i}."
-            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/lora/"
+        target_modules = self.adapter_target_modules
+
+        # Non-transformer modules
+        if "wte" in target_modules:
             convert_info_list.extend(
                 [
                     ConvertInfo(
-                        param_names=[
-                            f"{layer_prefix}self_attn.q_proj.lora_A.default.weight"
-                        ],
+                        param_names=["model.embed_tokens.lora_embedding_A.default"],
                         data_type=self.converter.data_type,
-                        converted_name=f"{converted_prefix}query_A/weight:0",
+                        converted_name="wte/lora/lora_A/weight:0",
                         reshape_fn=self.lora_weight_reshape,
                     ),
                     ConvertInfo(
-                        param_names=[
-                            f"{layer_prefix}self_attn.q_proj.lora_B.default.weight"
-                        ],
+                        param_names=["model.embed_tokens.lora_embedding_B.default"],
                         data_type=self.converter.data_type,
-                        converted_name=f"{converted_prefix}query_B/weight:0",
-                        reshape_fn=self.lora_weight_reshape,
-                    ),
-                    ConvertInfo(
-                        param_names=[
-                            f"{layer_prefix}self_attn.v_proj.lora_A.default.weight"
-                        ],
-                        data_type=self.converter.data_type,
-                        converted_name=f"{converted_prefix}value_A/weight:0",
-                        reshape_fn=self.lora_weight_reshape,
-                    ),
-                    ConvertInfo(
-                        param_names=[
-                            f"{layer_prefix}self_attn.v_proj.lora_B.default.weight"
-                        ],
-                        data_type=self.converter.data_type,
-                        converted_name=f"{converted_prefix}value_B/weight:0",
+                        converted_name="wte/lora/lora_B/weight:0",
                         reshape_fn=self.lora_weight_reshape,
                     ),
                 ]
             )
+
+        # Transformer modules
+        for i in range(self.converter.decoder_layer_num):
+            layer_prefix = f"{self.converter.decoder_layer_prefix}{i}."
+            converted_prefix = f"{DECODER_PREFIX}/h_._{i}/"
+            assert self.adapter_config.target_modules is not None
+
+            if "query" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}self_attn.q_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_attn/lora/query_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}self_attn.q_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_attn/lora/query_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "key" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}self_attn.k_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_attn/lora/key_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}self_attn.k_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_attn/lora/key_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "value" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}self_attn.v_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_attn/lora/value_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}self_attn.v_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_attn/lora/value_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "attn_fc" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}self_attn.o_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_proj/lora/lora_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}self_attn.o_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}attn/c_proj/lora/lora_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "ff1" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.up_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_fc/lora/lora_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.up_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_fc/lora/lora_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "ff_gate" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.gate_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_gate/lora/lora_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.gate_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_gate/lora/lora_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
+            if "ff2" in target_modules:
+                convert_info_list.extend(
+                    [
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.down_proj.lora_A.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_proj/lora/lora_A/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                        ConvertInfo(
+                            param_names=[
+                                f"{layer_prefix}mlp.down_proj.lora_B.default.weight"
+                            ],
+                            data_type=self.converter.data_type,
+                            converted_name=f"{converted_prefix}mlp/c_proj/lora/lora_B/weight:0",
+                            reshape_fn=self.lora_weight_reshape,
+                        ),
+                    ]
+                )
+
         return convert_info_list
 
 

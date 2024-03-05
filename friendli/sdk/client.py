@@ -7,14 +7,15 @@ from __future__ import annotations
 from typing import Optional
 
 import friendli
-from friendli.client.graphql.base import get_default_gql_client
-from friendli.client.graphql.deployment import DeploymentGqlClient
+from friendli.client.graphql.endpoint import EndpointGqlClient
+from friendli.client.graphql.model import ModelGqlClient
 from friendli.sdk.api.chat.chat import AsyncChat, Chat
 from friendli.sdk.api.completions import AsyncCompletions, Completions
 from friendli.sdk.api.images.images import AsyncImages, Images
-from friendli.sdk.resource.deployment import DeploymentAPI
+from friendli.sdk.resource.endpoint import EndpointApi
+from friendli.sdk.resource.model import ModelApi
 
-SERVERLESS_ENDPOINT_URL = "https://inference.friendli.ai"
+INFERENCE_ENDPOINT_URL = "https://inference.friendli.ai"
 
 
 class FriendliClientBase:
@@ -26,6 +27,9 @@ class FriendliClientBase:
         token: Optional[str] = None,
         team_id: Optional[str] = None,
         project_id: Optional[str] = None,
+        endpoint_id: Optional[str] = None,
+        base_url: Optional[str] = None,
+        use_protobuf: bool = False,
     ):
         """Initializes FriendliClientBase."""
         if token is not None:
@@ -34,6 +38,9 @@ class FriendliClientBase:
             friendli.team_id = team_id
         if project_id is not None:
             friendli.project_id = project_id
+        self._endpoint_id = endpoint_id
+        self._base_url = base_url
+        self._use_protobuf = use_protobuf
 
 
 class Friendli(FriendliClientBase):
@@ -42,7 +49,8 @@ class Friendli(FriendliClientBase):
     completions: Completions
     chat: Chat
     images: Images
-    deployment: DeploymentAPI
+    endpoint: EndpointApi
+    model: ModelApi
 
     def __init__(
         self,
@@ -50,18 +58,33 @@ class Friendli(FriendliClientBase):
         token: Optional[str] = None,
         team_id: Optional[str] = None,
         project_id: Optional[str] = None,
+        endpoint_id: Optional[str] = None,
+        base_url: Optional[str] = None,
+        use_protobuf: bool = False,
     ):
         """Initializes Friendli."""
-        super().__init__(token=token, team_id=team_id, project_id=project_id)
+        super().__init__(
+            token=token,
+            team_id=team_id,
+            project_id=project_id,
+            endpoint_id=endpoint_id,
+            base_url=base_url,
+            use_protobuf=use_protobuf,
+        )
 
-        endpoint = SERVERLESS_ENDPOINT_URL
-        self.completions = Completions(endpoint=endpoint)
-        self.chat = Chat(endpoint=endpoint)
-        self.images = Images(endpoint=endpoint)
+        base_url = base_url or INFERENCE_ENDPOINT_URL
+        self.completions = Completions(
+            base_url=base_url, endpoint_id=self._endpoint_id, use_protobuf=use_protobuf
+        )
+        self.chat = Chat(
+            base_url=base_url, endpoint_id=self._endpoint_id, use_protobuf=use_protobuf
+        )
+        self.images = Images(base_url=base_url, endpoint_id=self._endpoint_id)
 
-        gql_client = get_default_gql_client()
-        deployment_client = DeploymentGqlClient(client=gql_client)
-        self.deployment = DeploymentAPI(client=deployment_client)
+        endpoint_client = EndpointGqlClient()
+        model_client = ModelGqlClient()
+        self.endpoint = EndpointApi(client=endpoint_client)
+        self.model = ModelApi(client=model_client)
 
 
 class AsyncFriendli(FriendliClientBase):
@@ -76,11 +99,26 @@ class AsyncFriendli(FriendliClientBase):
         *,
         token: Optional[str] = None,
         team_id: Optional[str] = None,
+        project_id: Optional[str] = None,
+        endpoint_id: Optional[str] = None,
+        base_url: Optional[str] = None,
+        use_protobuf: bool = False,
     ):
         """Initializes AsyncFriendli."""
-        super().__init__(token=token, team_id=team_id)
+        super().__init__(
+            token=token,
+            team_id=team_id,
+            project_id=project_id,
+            endpoint_id=endpoint_id,
+            base_url=base_url,
+            use_protobuf=use_protobuf,
+        )
 
-        endpoint = SERVERLESS_ENDPOINT_URL
-        self.completions = AsyncCompletions(endpoint=endpoint)
-        self.chat = AsyncChat(endpoint=endpoint)
-        self.images = AsyncImages(endpoint=endpoint)
+        base_url = base_url or INFERENCE_ENDPOINT_URL
+        self.completions = AsyncCompletions(
+            base_url=base_url, endpoint_id=self._endpoint_id, use_protobuf=use_protobuf
+        )
+        self.chat = AsyncChat(
+            base_url=base_url, endpoint_id=self._endpoint_id, use_protobuf=use_protobuf
+        )
+        self.images = AsyncImages(base_url=base_url, endpoint_id=self._endpoint_id)

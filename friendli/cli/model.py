@@ -12,15 +12,12 @@ from typing import Optional, cast
 import typer
 import yaml
 
-from friendli.enums import CheckpointDataType, CheckpointFileType
+from friendli.enums import CheckpointFileType, ModelDataType
 from friendli.errors import CheckpointConversionError, InvalidConfigError, NotFoundError
-from friendli.formatter import (
-    JSONFormatter,
-    PanelFormatter,
-    TableFormatter,
-    TreeFormatter,
-)
-from friendli.utils.compat import model_parse
+from friendli.formatter import TableFormatter
+from friendli.sdk.client import Friendli
+from friendli.utils.compat import model_dump, model_parse
+from friendli.utils.decorator import check_api
 from friendli.utils.format import secho_error_and_exit
 
 app = typer.Typer(
@@ -30,49 +27,26 @@ app = typer.Typer(
 )
 
 table_formatter = TableFormatter(
-    name="Checkpoints",
+    name="Models",
     fields=[
         "id",
         "name",
-        "model_category",
-        "iteration",
-        "created_at",
     ],
     headers=[
         "ID",
         "Name",
-        "Source",
-        "Iteration",
-        "Created At",
     ],
 )
-panel_formatter = PanelFormatter(
-    name="Overview",
-    fields=[
-        "id",
-        "name",
-        "model_category",
-        "forms[0].vendor",
-        "forms[0].storage_name",
-        "iteration",
-        "forms[0].form_category",
-        "created_at",
-        "status",
-    ],
-    headers=[
-        "ID",
-        "Name",
-        "Source",
-        "Cloud",
-        "Storage Name",
-        "Iteration",
-        "Format",
-        "Created At",
-        "Status",
-    ],
-)
-json_formatter = JSONFormatter(name="Attributes")
-tree_formatter = TreeFormatter(name="Files")
+
+
+@app.command("list")
+@check_api
+def list_models():
+    """List models."""
+    client = Friendli()
+    models = client.model.list()
+    models_ = [model_dump(model) for model in iter(models)]
+    table_formatter.render(models_)
 
 
 @app.command()
@@ -101,7 +75,7 @@ def convert(
             "the `--output-attr-filename` option."
         ),
     ),
-    data_type: CheckpointDataType = typer.Option(
+    data_type: ModelDataType = typer.Option(
         ..., "--data-type", "-dt", help="The data type of converted checkpoint."
     ),
     cache_dir: Optional[str] = typer.Option(
@@ -302,7 +276,7 @@ def convert_adapter(
             "the `--output-attr-filename` option."
         ),
     ),
-    data_type: CheckpointDataType = typer.Option(
+    data_type: ModelDataType = typer.Option(
         ..., "--data-type", "-dt", help="The data type of converted checkpoint."
     ),
     cache_dir: Optional[str] = typer.Option(

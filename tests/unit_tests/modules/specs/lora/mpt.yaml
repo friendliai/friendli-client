@@ -21,7 +21,7 @@ decoder:
               dtype: {{ dtype }}
               shape:
                 - {{ hidden_size | int }}
-                - {{ lora_rank_dim }}
+                - {{ lora_rank_dim | int}}
           lora_B:
             type: group
             weight:0:

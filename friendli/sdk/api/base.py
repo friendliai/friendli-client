@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from typing_extensions import Self
 
 from friendli.auth import get_auth_header
-from friendli.errors import APIError, InvalidConfigError
+from friendli.errors import APIError
 from friendli.schema.api.v1.codegen.chat_completions_pb2 import V1ChatCompletionsRequest
 from friendli.schema.api.v1.codegen.completions_pb2 import V1CompletionsRequest
 from friendli.schema.api.v1.codegen.text_to_image_pb2 import V1TextToImageRequest
@@ -74,34 +74,14 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
 
     def __init__(
         self,
-        deployment_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        base_url: str,
+        endpoint_id: Optional[str] = None,
+        use_protobuf: bool = False,
     ) -> None:
         """Initializes BaseAPI."""
-        self._deployment_id = deployment_id
-
-        if deployment_id is None and endpoint is None:
-            raise InvalidConfigError(
-                "One of 'deployment_id' and 'endpoint' should be provided."
-            )
-        if deployment_id is not None and endpoint is not None:
-            raise InvalidConfigError(
-                "Only provide one between 'deployment_id' and 'endpoint'."
-            )
-
-        # if deployment_id is not None:
-        #     client = DeploymentGqlClient()
-        #     deployment = client.get_deployment(deployment_id)
-        #     endpoint = deployment["endpoint"]
-        #     if not endpoint:
-        #         raise NotFoundError("Active endpoint for the deployment is not found.")
-        #     self._host = httpx.URL(get_host(endpoint))
-        # elif endpoint is not None:
-        #     self._host = httpx.URL(endpoint)
-        if endpoint is not None:
-            self._host = httpx.URL(endpoint)
-        else:
-            raise ValueError("endpoint is not configured.")
+        self._endpoint_id = endpoint_id
+        self._host = httpx.URL(base_url)
+        self._use_protobuf = use_protobuf
 
     @property
     @abstractmethod
@@ -127,26 +107,19 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
         self, data: dict[str, Any], model: Optional[str] = None
     ) -> httpx.Request:
         """Build request."""
-        if self._deployment_id is None and model is None:
-            raise ValueError("`model` is required for serverless endpoints.")
-        if self._deployment_id is not None and model is not None:
-            raise ValueError("`model` is not allowed for dedicated endpoints.")
-
         return self._client.build_request(
             method=self._method,
-            url=self._build_url(model),
-            content=self._build_content(data),
+            url=self._build_url(),
+            content=self._build_content(data, model),
             files=self._build_files(data),
             headers=self._get_headers(),
             timeout=DEFAULT_REQ_TIMEOUT,
         )
 
-    def _build_url(self, model: Optional[str] = None) -> httpx.URL:
+    def _build_url(self) -> httpx.URL:
         path = ""
-        if model is not None:
-            path = model
-        if self._deployment_id is not None:
-            path = self._deployment_id
+        if self._endpoint_id is not None:
+            path = "dedicated"
         path = os.path.join(path, self._api_path)
         return self._host.join(path)
 
@@ -165,17 +138,24 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
             return files
         return None
 
-    def _build_content(self, data: dict[str, Any]) -> bytes | None:
+    def _build_content(
+        self, data: dict[str, Any], model: Optional[str] = None
+    ) -> bytes | None:
+        if self._endpoint_id is not None:
+            data["model"] = self._endpoint_id
+        else:
+            data["model"] = model
+
         if self._content_type.startswith("multipart/form-data"):
             return None
 
-        if self._deployment_id is None:
-            return json.dumps(data).encode()
+        if self._use_protobuf:
+            pb_cls = self._request_pb_cls
+            request_pb = pb_cls()
+            json_format.ParseDict(data, request_pb)
+            return request_pb.SerializeToString()
 
-        pb_cls = self._request_pb_cls
-        request_pb = pb_cls()
-        json_format.ParseDict(data, request_pb)
-        return request_pb.SerializeToString()
+        return json.dumps(data).encode()
 
 
 class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
@@ -183,18 +163,30 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
 
     def __init__(
         self,
-        deployment_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        base_url: str,
+        endpoint_id: Optional[str] = None,
+        use_protobuf: bool = False,
         client: Optional[httpx.Client] = None,
     ) -> None:
         """Initializes ServingAPI."""
-        super().__init__(deployment_id=deployment_id, endpoint=endpoint)
+        super().__init__(
+            base_url=base_url, endpoint_id=endpoint_id, use_protobuf=use_protobuf
+        )
         self._client = client or httpx.Client()
 
     def _request(
         self, *, data: dict[str, Any], stream: bool, model: Optional[str] = None
     ) -> httpx.Response:
         # TODO: Add retry / handle timeout and etc.
+        if (
+            self._host == "https://inference.friendli.ai"
+            and self._endpoint_id is None
+            and model is None
+        ):
+            raise ValueError("`model` is required for serverless endpoints.")
+        if self._endpoint_id is not None and model is not None:
+            raise ValueError("`model` is not allowed for dedicated endpoints.")
+
         request = self._build_request(data=data, model=model)
         response = self._client.send(request=request, stream=stream)
         self._check_http_error(response)
@@ -221,18 +213,26 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
 
     def __init__(
         self,
-        deployment_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        base_url: str,
+        endpoint_id: Optional[str] = None,
+        use_protobuf: bool = False,
         client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         """Initializes AsyncServingAPI."""
-        super().__init__(deployment_id=deployment_id, endpoint=endpoint)
+        super().__init__(
+            base_url=base_url, endpoint_id=endpoint_id, use_protobuf=use_protobuf
+        )
         self._client = client or httpx.AsyncClient()
 
     async def _request(
         self, *, data: dict[str, Any], stream: bool, model: Optional[str] = None
     ) -> httpx.Response:
         # TODO: Add retry / handle timeout and etc.
+        if self._endpoint_id is None and model is None:
+            raise ValueError("`model` is required for serverless endpoints.")
+        if self._endpoint_id is not None and model is not None:
+            raise ValueError("`model` is not allowed for dedicated endpoints.")
+
         request = self._build_request(data=data, model=model)
         response = await self._client.send(request=request, stream=stream)
         await self._check_http_error(response)

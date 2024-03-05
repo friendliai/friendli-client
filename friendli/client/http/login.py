@@ -7,7 +7,6 @@ from __future__ import annotations
 from typing import Tuple
 
 from friendli.client.http.base import HttpClient
-from friendli.settings import Settings
 
 
 class LoginClient(HttpClient):
@@ -20,14 +19,16 @@ class LoginClient(HttpClient):
 
     def login(self, email: str, pwd: str) -> Tuple[str, str]:
         """Send request to sign in with email and password."""
-        settings = self.injector.get(Settings)
         payload = {
             "email": email,
             "password": pwd,
         }
-        headers = {"Accept": "application/json"}
+        headers = {
+            "Accept": "application/json",
+            "rid": "anti-csrf",
+            "st-auth-mode": "header",
+        }
         resp = self.bare_post(json=payload, headers=headers)
-        cookies = resp.cookies
-        access_token = cookies[settings.access_token_cookie_key]
-        refresh_token = cookies[settings.refresh_token_cookie_key]
+        access_token = resp.headers["st-access-token"]
+        refresh_token = resp.headers["st-refresh-token"]
         return access_token, refresh_token

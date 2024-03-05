@@ -18,7 +18,7 @@ from transformers import (  # type: ignore[import]
     PretrainedConfig,
 )
 
-from friendli.enums import CheckpointDataType
+from friendli.enums import ModelDataType
 from friendli.errors import (
     CheckpointConversionError,
     NotFoundError,
@@ -91,7 +91,7 @@ def get_tensor_from_state_dict(
 
 def convert_tensor_to_np_array(
     param: torch.Tensor,
-    data_type: CheckpointDataType,
+    data_type: ModelDataType,
 ) -> np.ndarray:
     """Reshape tensor to numpy ndarray.
 
@@ -104,16 +104,16 @@ def convert_tensor_to_np_array(
 
     """
     dtype_map = {
-        CheckpointDataType.BF16: torch.bfloat16,
-        CheckpointDataType.FP16: torch.float16,
-        CheckpointDataType.FP32: torch.float32,
-        CheckpointDataType.INT8: torch.int8,
-        CheckpointDataType.INT4: torch.int8,
+        ModelDataType.BF16: torch.bfloat16,
+        ModelDataType.FP16: torch.float16,
+        ModelDataType.FP32: torch.float32,
+        ModelDataType.INT8: torch.int8,
+        ModelDataType.INT4: torch.int8,
     }
 
     dtype = dtype_map[data_type]
 
-    if data_type is CheckpointDataType.BF16:
+    if data_type is ModelDataType.BF16:
         return (
             param.cpu()
             .detach()
@@ -123,7 +123,7 @@ def convert_tensor_to_np_array(
             .view(np.uint16)
         )
 
-    if data_type is CheckpointDataType.INT4:
+    if data_type is ModelDataType.INT4:
         pack_num = 8 // 4
         int4_param = torch.zeros(
             (param.shape[0], param.shape[1] // pack_num),
@@ -238,7 +238,7 @@ def get_model_arch(config: PretrainedConfig) -> str:
     if len(model_arch_list) == 0:
         raise NotSupportedCheckpointError(
             invalid_option=f"'architectures={model_arch_list}'",
-            valid_options=["non emtpy list of architectures"],
+            valid_options=["non empty list of architectures"],
         )
     model_arch = model_arch_list[0]
     return model_arch

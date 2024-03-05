@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import typer
 
-from friendli.client.graphql.base import get_default_gql_client
 from friendli.client.graphql.team import TeamGqlClient
 from friendli.context import (
     get_current_project_id,
@@ -42,8 +41,7 @@ member_table_formatter = TableFormatter(
 @check_api
 def list():
     """List all accessible projects."""
-    gql_client = get_default_gql_client()
-    client = TeamGqlClient(client=gql_client)
+    client = TeamGqlClient()
 
     team_id = get_current_team_id()
     if team_id is None:
@@ -76,4 +74,19 @@ def switch(
     )
 ):
     """Switch currnet project context to run as."""
+    client = TeamGqlClient()
+    team_id = get_current_team_id()
+    if team_id is None:
+        secho_error_and_exit(
+            "Team context should be set prior to setting project context"
+        )
+
+    accessible_project_ids = client.get_project_ids(team_id=team_id)
+    if project_id not in accessible_project_ids:
+        secho_error_and_exit(f"'{project_id}' is not valid team ID.")
+
     set_current_project_id(project_id)
+    typer.secho(
+        f"Project context is switched to '{project_id}'.",
+        fg=typer.colors.GREEN,
+    )

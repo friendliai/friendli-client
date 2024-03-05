@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Type, TypeVar, Union, overload
 
 import pydantic
-from injector import inject
 
 from friendli.client.graphql.base import GqlClient
 from friendli.context import get_current_project_id, get_current_team_id
@@ -23,9 +22,8 @@ _ResourceId = TypeVar("_ResourceId")
 _Client = TypeVar("_Client", bound=GqlClient)
 
 
-@inject
 @dataclass
-class ResourceAPI(ABC, Generic[_Client, _Resource, _ResourceId]):
+class ResourceApi(ABC, Generic[_Client, _Resource, _ResourceId]):
     """Abstract class for resource APIs."""
 
     client: _Client

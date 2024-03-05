@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -17,8 +17,8 @@ from peft.tuners.lora import (  # type: ignore[import] # pylint: disable=import-
 )
 from transformers import GenerationConfig, PretrainedConfig  # type: ignore[import]
 
-from friendli.enums import CheckpointDataType
-from friendli.errors import NotSupportedCheckpointError
+from friendli.enums import ModelDataType
+from friendli.errors import CheckpointConversionError, NotSupportedCheckpointError
 from friendli.logging import logger
 from friendli.modules.converter.interface import (
     DecoderTFBlockConversionInterface,
@@ -38,10 +38,24 @@ SUPPORTED_GELU_FAMILY = [
 ]
 SUPPORTED_HEAD_SIZE = [64, 80, 96, 128, 256]
 
-MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP = {
-    "gptj": ["q_proj", "v_proj"],
-    "llama": ["q_proj", "v_proj"],
-    "mpt": ["Wqkv"],
+MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP = {
+    "gptj": {"q_proj", "k_proj", "v_proj", "out_proj", "fc_in", "fc_out", "wte"},
+    "llama": {
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+    },
+    "mpt": {"Wqkv", "out_proj", "up_proj", "down_proj"},
+}
+# TODO: remove this const map when engine supports lm head LoRA
+MODEL_TYPE_TO_UNSUPPORTED_LORA_TARGET_MODULES_MAP = {
+    "gptj": {"lm_head"},
+    "llama": {"lm_head"},
+    "mpt": {"lm_head"},
 }
 
 ENCODER_PREFIX = "encoder"
@@ -64,7 +78,7 @@ class AbstractConverter(ModelConversionInterface, ABC):
         self,
         config: PretrainedConfig,
         generation_config: Optional[GenerationConfig],
-        data_type: CheckpointDataType,
+        data_type: ModelDataType,
     ) -> None:
         """Initialize converter."""
         self.config = config
@@ -350,10 +364,15 @@ class DecoderOnlyLoraConverter(AbstractConverter):
                 invalid_option=f"peft_type={self.adapter_config.peft_type}",
                 valid_options=[str(PeftType.LORA)],
             )
-        if self.config.model_type not in MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP:
+        if (
+            self.config.model_type
+            not in MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP
+        ):
             raise NotSupportedCheckpointError(
                 invalid_option=f"model_type={self.config.model_type} for LORA",
-                valid_options=list(MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP.keys()),
+                valid_options=list(
+                    MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP.keys()
+                ),
             )
         if (
             self.adapter_config.layers_pattern is not None
@@ -379,15 +398,35 @@ class DecoderOnlyLoraConverter(AbstractConverter):
                 invalid_option=f"alpha_pattern={self.adapter_config.alpha_pattern}",
                 valid_options=[None, {}],
             )
-        if self.adapter_config.target_modules is None or set(
-            self.adapter_config.target_modules
-        ) != set(MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP[self.config.model_type]):
-            raise NotSupportedCheckpointError(
-                invalid_option=f"target_modules={self.adapter_config.target_modules} for LORA",
-                valid_options=[
-                    str(MODEL_TYPE_TO_LORA_TARGET_MODULES_MAP[self.config.model_type])
-                ],
-            )
+
+        if self.adapter_config.target_modules is not None:
+            for target_module in self.adapter_config.target_modules:
+                if (
+                    target_module
+                    not in MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP[
+                        self.config.model_type
+                    ]
+                ):
+                    if (
+                        target_module
+                        in MODEL_TYPE_TO_UNSUPPORTED_LORA_TARGET_MODULES_MAP[
+                            self.config.model_type
+                        ]
+                    ):
+                        raise NotSupportedCheckpointError(
+                            invalid_option=f"target_module={target_module}",
+                            valid_options=list(
+                                MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP[
+                                    self.config.model_type
+                                ]
+                            ),
+                        )
+                    logger.warn(
+                        "Target module %s does not exist in the base model (%s). Will be ignored.",
+                        target_module,
+                        self.adapter_config.base_model_name_or_path,
+                    )
+
         if (self.adapter_config.layers_to_transform is not None) and (
             self.adapter_config != list(range(self.converter.decoder_layer_num))
         ):
@@ -447,14 +486,31 @@ class DecoderOnlyLoraConverter(AbstractConverter):
             "type": "lora",
             "alpha": self.adapter_config.lora_alpha,
             "rank": self.adapter_config.r,
-            "target-modules": self.adapter_target_modules,
+            "target-modules": list(self.adapter_target_modules),
             "ckpt-path": "FILL ME",
         }
 
     @property
-    @abstractmethod
-    def adapter_target_modules(self) -> List[str]:
+    def adapter_target_modules(self) -> Set[str]:
         """Return the target modules that LoRA applies to."""
+        if isinstance(self.adapter_config.target_modules, str):
+            hf_target_modules = {self.adapter_config.target_modules}
+        elif isinstance(self.adapter_config.target_modules, Iterable):
+            hf_target_modules = set(self.adapter_config.target_modules)
+        else:
+            raise CheckpointConversionError("`target_modules` should not be None")
+
+        translated_target_modules = set()
+        for target in hf_target_modules:
+            if target in self.adapter_target_module_map:
+                translated_target_modules.add(self.adapter_target_module_map[target])
+
+        return translated_target_modules
+
+    @property
+    @abstractmethod
+    def adapter_target_module_map(self) -> Dict[str, str]:
+        """Return the dictionary that maps Hugging Face's module name to Friendli's module name."""
 
     @property
     @abstractmethod

@@ -13,8 +13,9 @@ from requests import HTTPError, JSONDecodeError
 from typing_extensions import TypeAlias
 
 import friendli
+from friendli.context import get_current_team_id
 from friendli.di.injector import get_injector
-from friendli.errors import APIError, AuthorizationError, AuthTokenNotFoundError
+from friendli.errors import APIError, AuthorizationError
 from friendli.logging import logger
 from friendli.utils.fs import get_friendli_directory
 from friendli.utils.request import DEFAULT_REQ_TIMEOUT, decode_http_err
@@ -56,6 +57,7 @@ def get_auth_header(
     token_from_cfg = get_token(TokenType.ACCESS)
     token_from_env = friendli.token
 
+    headers = {}
     if token is not None:
         token_ = token
     elif token_from_env:
@@ -74,17 +76,12 @@ def get_auth_header(
     else:
         token_ = token_from_cfg
 
-    if token_ is None:
-        raise AuthTokenNotFoundError(
-            "Should set 'FRIENDLI_TOKEN' environment variable or sign in with 'friendli login'."
-        )
+    if token_ is not None:
+        headers["Authorization"] = f"Bearer {token_}"
 
-    headers = {"Authorization": f"Bearer {token_}"}
-
+    team_id = team_id or get_current_team_id()
     if team_id is not None:
         headers["X-Friendli-Team"] = team_id
-    elif friendli.team_id:
-        headers["X-Friendli-Team"] = friendli.team_id
 
     return headers
 
@@ -98,7 +95,7 @@ def get_token(token_type: TokenType) -> Union[str, None]:
             return refresh_token_path.read_text()
         if token_type == TokenType.MFA:
             return mfa_token_path.read_text()
-        raise ValueError("token_type should be one of 'access' or 'refresh' or 'mfa'.")
+        raise ValueError("Invalid token type.")
     except FileNotFoundError:
         return None
 

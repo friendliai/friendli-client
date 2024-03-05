@@ -54,5 +54,5 @@ def set_current_project_id(pf_project_id: str):
 
 def clear_contexts():
     """Clear all contexts."""
-    Path.unlink(team_context_path)
-    Path.unlink(project_context_path)
+    Path.unlink(team_context_path, missing_ok=True)
+    Path.unlink(project_context_path, missing_ok=True)

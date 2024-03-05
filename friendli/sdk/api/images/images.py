@@ -18,13 +18,13 @@ class Images:
 
     def __init__(
         self,
-        deployment_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        base_url: str,
+        endpoint_id: Optional[str] = None,
         client: Optional[httpx.Client] = None,
     ) -> None:
         """Initialize Images."""
         self.text_to_image = TextToImage(
-            deployment_id=deployment_id, endpoint=endpoint, client=client
+            base_url=base_url, endpoint_id=endpoint_id, client=client
         )
 
 
@@ -35,11 +35,11 @@ class AsyncImages:
 
     def __init__(
         self,
-        deployment_id: Optional[str] = None,
-        endpoint: Optional[str] = None,
+        base_url: str,
+        endpoint_id: Optional[str] = None,
         client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         """Initialize Images."""
         self.text_to_image = AsyncTextToImage(
-            deployment_id=deployment_id, endpoint=endpoint, client=client
+            base_url=base_url, endpoint_id=endpoint_id, client=client
         )

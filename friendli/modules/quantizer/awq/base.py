@@ -15,7 +15,7 @@ import torch
 from datasets.utils.logging import disable_progress_bar  # type: ignore[import]
 from tqdm import tqdm
 
-from friendli.enums import CheckpointDataType
+from friendli.enums import ModelDataType
 from friendli.errors import QuantizationError
 from friendli.logging import logger
 from friendli.modules.converter.base import DECODER_PREFIX
@@ -148,13 +148,13 @@ class AWQHook(AbstractQuantHook):
         )
 
     @property
-    def quant_dtype(self) -> CheckpointDataType:
+    def quant_dtype(self) -> ModelDataType:
         """Return the quantization dtype."""
         quant_config = cast(AWQConfig, self.quant_config)
         awq_args = quant_config.awq_args
         if awq_args.quant_bit == 4:
-            return CheckpointDataType.INT4
-        return CheckpointDataType.INT8
+            return ModelDataType.INT4
+        return ModelDataType.INT8
 
     @property
     @abstractmethod

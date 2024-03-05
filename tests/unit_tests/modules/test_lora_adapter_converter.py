@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import pytest
 from peft import LoraConfig
 
-from friendli.modules.converter.base import OneOfConverter
+from friendli.modules.converter.base import DecoderOnlyConverter, OneOfConverter
 from friendli.modules.converter.maps import get_adapter_converter_factory
 from friendli.modules.converter.utils import get_model_arch, get_tensor_from_state_dict
 
@@ -19,7 +19,7 @@ from tests.unit_tests.modules.helpers.utils import (
     get_param_specs,
 )
 
-model_with_adpater = ["mpt"]
+model_with_adpater = ["mpt", "llama"]
 model_with_adpater_name_config_map = {}
 for model_name, model_config in model_name_config_map.items():
     if model_name in model_with_adpater:
@@ -27,7 +27,14 @@ for model_name, model_config in model_name_config_map.items():
 
 
 @pytest.fixture
-def adapter_config() -> LoraConfig:
+def adapter_config(converter: OneOfConverter) -> LoraConfig:
+    model_type = cast(DecoderOnlyConverter, converter).config.model_type
+    if model_type == "mpt":
+        return LoraConfig(target_modules=["Wqkv"])
+    elif model_type == "llama":
+        return LoraConfig(
+            target_modules=["q_proj", "k_proj", "o_proj", "up_proj", "down_proj"]
+        )
     return LoraConfig()
 
 

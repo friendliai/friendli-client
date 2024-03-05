@@ -42,9 +42,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
     @property
     def _content_type(self) -> str:
         return (
-            "application/json"
-            if self._deployment_id is None
-            else "application/protobuf"
+            "application/protobuf" if self._use_protobuf is None else "application/json"
         )
 
     @property
@@ -236,7 +234,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             eos_token (Optional[List[int]], optional): A list of endpoint sentence tokens. Defaults to None.
 
         Raises:
-            APIError: Raised when the HTTP API request to the deployment fails.
+            APIError: Raised when the HTTP API request fails.
 
         Returns:
             Union[Completion, CompletionStream]: If `stream` is `True`, a `CompletionStream` object that iterates the results per token is returned. Otherwise, a `Completion` object is returned.
@@ -247,7 +245,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             ```python
             from friendli import Friendli
 
-            client = Friendli(deployment_id="friendli-deployment-1b9483a0")
+            client = Friendli()
             completion = client.completions.create(
                 prompt="Python is a popular language for",
                 stream=False,
@@ -264,7 +262,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             ```python
             from friendli import Friendli
 
-            client = Friendli(deployment_id="friendli-deployment-1b9483a0")
+            client = Friendli()
             stream = client.completions.create(
                 prompt="Python is a popular language for",
                 stream=True,  # Enable stream mode.
@@ -341,9 +339,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
     @property
     def _content_type(self) -> str:
         return (
-            "application/json"
-            if self._deployment_id is None
-            else "application/protobuf"
+            "application/protobuf" if self._use_protobuf is None else "application/json"
         )
 
     @property
@@ -517,7 +513,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             eos_token (Optional[List[int]], optional): A list of endpoint sentence tokens. Defaults to None.
 
         Raises:
-            APIError: Raised when the HTTP API request to the deployment fails.
+            APIError: Raised when the HTTP API request fails.
             SessionClosedError: Raised when the client session is not opened with `api_session()`.
 
         Returns:
@@ -530,7 +526,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             import asyncio
             from friendli import Friendli
 
-            client = Friendli(deployment_id="friendli-deployment-1b9483a0")
+            client = Friendli()
 
             async def main() -> None:
                 completion = await client.completions.create(
@@ -552,7 +548,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             import asyncio
             from friendli import Friendli
 
-            client = Friendli(deployment_id="friendli-deployment-1b9483a0")
+            client = Friendli()
 
             async def main() -> None:
                 stream = await client.completions.create(

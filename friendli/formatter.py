@@ -41,7 +41,7 @@ def get_value(data: Dict[str, Any], keys: str) -> str:
         getitem_match = re.match(r"(.+)\[(-?\d+)\]$", key)
         if getitem_match:
             value = value.get(getitem_match.group(1))[int(getitem_match.group(2))]
-        else:
+        elif value is not None:
             value = value.get(key)
     if isinstance(value, Enum):
         value = value.value
@@ -150,7 +150,7 @@ class TableFormatter(ListFormatter):
     def _make_header(self, show_detail: bool) -> None:
         for header in self.headers:
             cast(Table, self.table).add_column(
-                header, **self._styling_map.get(header, {})
+                header, **self._styling_map.get(header, {}), overflow="fold"
             )
 
         if show_detail:
