@@ -40,9 +40,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
 
     @property
     def _content_type(self) -> str:
-        return (
-            "application/protobuf" if self._use_protobuf is None else "application/json"
-        )
+        return "application/protobuf" if self._use_protobuf else "application/json"
 
     @property
     def _request_pb_cls(self) -> Type[V1ChatCompletionsRequest]:
@@ -150,9 +148,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
 
     @property
     def _content_type(self) -> str:
-        return (
-            "application/protobuf" if self._use_protobuf is None else "application/json"
-        )
+        return "application/protobuf" if self._use_protobuf else "application/json"
 
     @property
     def _request_pb_cls(self) -> Type[V1ChatCompletionsRequest]:

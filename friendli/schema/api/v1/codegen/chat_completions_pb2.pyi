@@ -1,4 +1,4 @@
-# Copyright (c) 2023-present, FriendliAI Inc. All rights reserved.
+# Copyright (c) 2024-present, FriendliAI Inc. All rights reserved.
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ DESCRIPTOR: _descriptor.FileDescriptor
 class V1ChatCompletionsRequest(_message.Message):
     __slots__ = [
         "messages",
+        "model",
         "frequency_penalty",
         "max_tokens",
         "n",
@@ -38,6 +39,7 @@ class V1ChatCompletionsRequest(_message.Message):
             self, content: _Optional[str] = ..., role: _Optional[str] = ...
         ) -> None: ...
     MESSAGES_FIELD_NUMBER: _ClassVar[int]
+    MODEL_FIELD_NUMBER: _ClassVar[int]
     FREQUENCY_PENALTY_FIELD_NUMBER: _ClassVar[int]
     MAX_TOKENS_FIELD_NUMBER: _ClassVar[int]
     N_FIELD_NUMBER: _ClassVar[int]
@@ -50,6 +52,7 @@ class V1ChatCompletionsRequest(_message.Message):
     messages: _containers.RepeatedCompositeFieldContainer[
         V1ChatCompletionsRequest.Message
     ]
+    model: str
     frequency_penalty: float
     max_tokens: int
     n: int
@@ -64,6 +67,7 @@ class V1ChatCompletionsRequest(_message.Message):
         messages: _Optional[
             _Iterable[_Union[V1ChatCompletionsRequest.Message, _Mapping]]
         ] = ...,
+        model: _Optional[str] = ...,
         frequency_penalty: _Optional[float] = ...,
         max_tokens: _Optional[int] = ...,
         n: _Optional[int] = ...,

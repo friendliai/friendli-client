@@ -1,4 +1,4 @@
-# Copyright (c) 2023-present, FriendliAI Inc. All rights reserved.
+# Copyright (c) 2024-present, FriendliAI Inc. All rights reserved.
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ DESCRIPTOR: _descriptor.FileDescriptor
 class V1CompletionsRequest(_message.Message):
     __slots__ = [
         "stream",
+        "model",
         "prompt",
         "tokens",
         "timeout_microseconds",
@@ -69,6 +70,7 @@ class V1CompletionsRequest(_message.Message):
         tokens: _containers.RepeatedScalarFieldContainer[int]
         def __init__(self, tokens: _Optional[_Iterable[int]] = ...) -> None: ...
     STREAM_FIELD_NUMBER: _ClassVar[int]
+    MODEL_FIELD_NUMBER: _ClassVar[int]
     PROMPT_FIELD_NUMBER: _ClassVar[int]
     TOKENS_FIELD_NUMBER: _ClassVar[int]
     TIMEOUT_MICROSECONDS_FIELD_NUMBER: _ClassVar[int]
@@ -104,6 +106,7 @@ class V1CompletionsRequest(_message.Message):
     FORCED_OUTPUT_TOKENS_FIELD_NUMBER: _ClassVar[int]
     EOS_TOKEN_FIELD_NUMBER: _ClassVar[int]
     stream: bool
+    model: str
     prompt: str
     tokens: _containers.RepeatedScalarFieldContainer[int]
     timeout_microseconds: int
@@ -145,6 +148,7 @@ class V1CompletionsRequest(_message.Message):
     def __init__(
         self,
         stream: bool = ...,
+        model: _Optional[str] = ...,
         prompt: _Optional[str] = ...,
         tokens: _Optional[_Iterable[int]] = ...,
         timeout_microseconds: _Optional[int] = ...,

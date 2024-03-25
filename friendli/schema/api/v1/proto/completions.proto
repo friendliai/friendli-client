@@ -16,6 +16,7 @@ message V1CompletionsRequest {
     }
 
     optional bool stream = 1;
+    optional string model = 2;
     optional string prompt = 3;
     repeated int32 tokens = 4;
     optional int32 timeout_microseconds = 5;

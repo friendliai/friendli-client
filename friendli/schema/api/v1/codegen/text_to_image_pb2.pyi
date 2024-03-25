@@ -19,6 +19,7 @@ class V1TextToImageRequest(_message.Message):
         "guidance_scale",
         "seed",
         "response_format",
+        "model",
     ]
     PROMPT_FIELD_NUMBER: _ClassVar[int]
     NEGATIVE_PROMPT_FIELD_NUMBER: _ClassVar[int]
@@ -27,6 +28,7 @@ class V1TextToImageRequest(_message.Message):
     GUIDANCE_SCALE_FIELD_NUMBER: _ClassVar[int]
     SEED_FIELD_NUMBER: _ClassVar[int]
     RESPONSE_FORMAT_FIELD_NUMBER: _ClassVar[int]
+    MODEL_FIELD_NUMBER: _ClassVar[int]
     prompt: str
     negative_prompt: str
     num_outputs: int
@@ -34,6 +36,7 @@ class V1TextToImageRequest(_message.Message):
     guidance_scale: float
     seed: int
     response_format: str
+    model: str
     def __init__(
         self,
         prompt: _Optional[str] = ...,
@@ -43,4 +46,5 @@ class V1TextToImageRequest(_message.Message):
         guidance_scale: _Optional[float] = ...,
         seed: _Optional[int] = ...,
         response_format: _Optional[str] = ...,
+        model: _Optional[str] = ...,
     ) -> None: ...

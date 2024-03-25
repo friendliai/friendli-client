@@ -11,6 +11,7 @@ message V1ChatCompletionsRequest {
     }
 
     repeated Message messages = 1;
+    optional string model = 2;
     optional float frequency_penalty = 3;
     optional int32 max_tokens = 5;
     optional int32 n = 6;
