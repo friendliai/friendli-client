@@ -139,10 +139,11 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
             logger.warn(str(exc))
 
 
-def convert_adapter_checkpoint(  # pylint: disable=too-many-locals
+def convert_adapter_checkpoint(  # pylint: disable=too-many-locals, too-many-arguments
     adapter_name_or_path: str,
     adapter_output_path: str,
     adapter_attr_output_path: str,
+    base_model_name_or_path: Optional[str],
     data_type: ModelDataType,
     output_adapter_file_type: CheckpointFileType,
     cache_dir: Optional[str],
@@ -150,8 +151,13 @@ def convert_adapter_checkpoint(  # pylint: disable=too-many-locals
 ) -> None:
     """Convert HuggingFace model checkpoint to Friendli format."""
     adapter_config = get_adapter_config(adapter_name_or_path, cache_dir)
+    base_model_name_or_path = (
+        base_model_name_or_path or adapter_config.base_model_name_or_path
+    )
     model_config = get_model_pretrained_config(
-        adapter_config.base_model_name_or_path, adapter_attr_output_path, cache_dir
+        base_model_name_or_path,
+        adapter_attr_output_path,
+        cache_dir,
     )
     model_arch = get_model_arch(model_config)
     hf_factory, converter_factory = get_hf_converter_factory(model_arch)
@@ -168,12 +174,12 @@ def convert_adapter_checkpoint(  # pylint: disable=too-many-locals
     if not dry_run:
         logger.info(
             "Start loading Hugging Face adapter checkpoint(%s's %s) for conversion...",
-            adapter_config.base_model_name_or_path,
+            base_model_name_or_path,
             adapter_name_or_path,
         )
         with init_empty_weights():
             model = hf_factory.from_pretrained(
-                adapter_config.base_model_name_or_path,
+                base_model_name_or_path,
                 torch_dtype=torch.float32,
                 cache_dir=cache_dir,
                 trust_remote_code=True,

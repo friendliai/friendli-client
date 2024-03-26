@@ -279,6 +279,15 @@ def convert_adapter(
     data_type: ModelDataType = typer.Option(
         ..., "--data-type", "-dt", help="The data type of converted checkpoint."
     ),
+    base_model_name_or_path: Optional[str] = typer.Option(
+        None,
+        "--base-model-name-or-path",
+        "-b",
+        help=(
+            "Hugging Face model name or path to the saved backbone checkpoint. "
+            "By default, we use the `base_model_name_or_path` in adapter_config.json."
+        ),
+    ),
     cache_dir: Optional[str] = typer.Option(
         None, "--cache-dir", help="Directory for downloading checkpoint."
     ),
@@ -342,6 +351,7 @@ def convert_adapter(
             adapter_name_or_path=adapter_name_or_path,
             adapter_output_path=adapter_output_path,
             adapter_attr_output_path=attr_output_path,
+            base_model_name_or_path=base_model_name_or_path,
             data_type=data_type,
             output_adapter_file_type=output_adapter_file_type,
             cache_dir=cache_dir,
