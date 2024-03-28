@@ -1,12 +1,12 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli Checkpoint Converter Utils."""
+"""Friendli Model Converter Utils."""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -16,6 +16,7 @@ from transformers import (  # type: ignore[import]
     AutoTokenizer,
     GenerationConfig,
     PretrainedConfig,
+    PreTrainedTokenizer,
 )
 
 from friendli.enums import ModelDataType
@@ -25,7 +26,6 @@ from friendli.errors import (
     NotSupportedCheckpointError,
     TokenizerNotFoundError,
 )
-from friendli.logging import logger
 
 
 def convert_to_gpt_j_params(param: torch.Tensor, rotary_dim: int) -> torch.Tensor:
@@ -89,31 +89,59 @@ def get_tensor_from_state_dict(
     return state_dict[tensor_name]
 
 
+def get_torch_data_type(data_type: str) -> torch.dtype:
+    """Get torch data type from Enum."""
+    if data_type == ModelDataType.FP16:
+        return torch.float16
+    if data_type == ModelDataType.FP32:
+        return torch.float32
+    if data_type == ModelDataType.BF16:
+        return torch.bfloat16
+    raise CheckpointConversionError(
+        f"Can't not converted original param to {data_type}."
+    )
+
+
+def get_model_data_type(torch_dtype: torch.dtype) -> ModelDataType:
+    """Get torch data type from Enum."""
+    if torch_dtype == torch.float16:
+        return ModelDataType.FP16
+    if torch_dtype == torch.float32:
+        return ModelDataType.FP32
+    if torch_dtype == torch.bfloat16:
+        return ModelDataType.BF16
+    raise CheckpointConversionError(f"{torch_dtype} is not valid dtype.")
+
+
 def convert_tensor_to_np_array(
     param: torch.Tensor,
-    data_type: ModelDataType,
+    data_type: Union[ModelDataType, torch.dtype],
 ) -> np.ndarray:
     """Reshape tensor to numpy ndarray.
 
     Args:
         param (torch.Tensor): The tensor to be converted.
-        data_type (CheckpointDataType): The data type of the tensor.
+        data_type (ModelDataType): The data type of the tensor.
 
     Returns:
         np.ndarray: The converted numpy ndarray from the tensor.
 
     """
     dtype_map = {
+        ModelDataType.FP8_E4M3: torch.float8_e4m3fn,
         ModelDataType.BF16: torch.bfloat16,
         ModelDataType.FP16: torch.float16,
         ModelDataType.FP32: torch.float32,
-        ModelDataType.INT8: torch.int8,
         ModelDataType.INT4: torch.int8,
+        ModelDataType.INT8: torch.int8,
     }
 
-    dtype = dtype_map[data_type]
+    dtype = dtype_map[data_type] if isinstance(data_type, ModelDataType) else data_type
 
-    if data_type is ModelDataType.BF16:
+    if dtype is torch.float8_e4m3fn:
+        return param.cpu().detach().to(dtype).view(dtype=torch.int8).numpy()
+
+    if dtype is torch.bfloat16:
         return (
             param.cpu()
             .detach()
@@ -142,7 +170,7 @@ def get_tokenizer(
     model_name_or_path: str,
     *,
     cache_dir: Optional[str] = None,
-) -> AutoTokenizer:
+) -> PreTrainedTokenizer:
     """Try to get tokenizer of a pretrained model."""
     try:
         tokenizer = AutoTokenizer.from_pretrained(
@@ -158,6 +186,11 @@ def get_tokenizer(
             "This model does not support Friendli-compatible tokenizer"
         )
 
+    if tokenizer.pad_token != "<unk>":
+        tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
     return tokenizer
 
 
@@ -166,7 +199,7 @@ def save_tokenizer(
     *,
     cache_dir: Optional[str] = None,
     save_dir: str,
-) -> None:
+) -> Tuple[str, ...]:
     """Try to save `tokenizer.json` of a pretrained model."""
     if not os.path.isdir(save_dir):
         raise NotFoundError(f"Directory '{save_dir}' is not found.")
@@ -178,22 +211,14 @@ def save_tokenizer(
     for path in saved_file_paths:
         if "tokenizer.json" == os.path.basename(path):
             tokenizer_json_path = path
-        else:
-            # Remove unnecessary files.
-            try:
-                os.remove(path)
-            except FileNotFoundError:
-                logger.warn(
-                    "Tried to delete unnecessary tokenizer file %s but the file "
-                    "is not found.",
-                    path,
-                )
+            break
 
     if tokenizer_json_path is None:
         raise TokenizerNotFoundError(
             "This model has the Friendli-compatible tokenizer implementation, but "
             "'tokenizer.json' file is not found."
         )
+    return saved_file_paths
 
 
 def get_model_generation_config(

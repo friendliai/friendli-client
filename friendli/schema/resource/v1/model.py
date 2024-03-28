@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli Checkpoint Schemas."""
+"""Friendli Model Schemas."""
 
 from __future__ import annotations
 

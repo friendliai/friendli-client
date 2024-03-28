@@ -151,6 +151,7 @@ class SmoothQuantHook(AbstractQuantHook):
                 name,
                 max_input_stats[name],
                 weight[start:end],
+                weight[start:end],
                 sort_fn(max_output_stats[name])[start:end]
                 if sort_fn
                 else max_output_stats[name][start:end],
@@ -547,6 +548,7 @@ class SmoothQuantQuantizer(CommonQuantizer, ModelConversionInterface):
             tqdm_desc="Collecting stats for Static Quantization.",
         )
         for quant_input in self.hook.iter_tf_quant_inputs(model):
+            assert isinstance(quant_input, TFQuantInputs)
             quant_result = cast(SmoothQuantHook, self.hook).get_quant_result(
                 quant_input,
                 max_input_stats=max_input_stats,

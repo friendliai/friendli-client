@@ -1,12 +1,14 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli Checkpoint Quantizer Data Schema."""
+"""Friendli Model Quantizer Data Schema."""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import torch
+
+from friendli.enums import ModelDataType
 
 ModuleName = str
 
@@ -16,7 +18,7 @@ class CommonQuantResult:
     """Dataclass for quantization result per layer."""
 
     module_name: str
-    q_bit: int
+    quant_dtype: ModelDataType
     q_group_size: int
     zero_point: torch.Tensor
 
@@ -33,8 +35,9 @@ class WeightOnlyQuantResult(CommonQuantResult):
 class WeightActQuantResult(WeightOnlyQuantResult):
     """Dataclass for weight-activation quantization result per layer."""
 
-    in_scale: torch.Tensor
-    out_scale: torch.Tensor
+    act_scale: torch.Tensor
+    zero_point: torch.Tensor
+    q_group_size: int
 
 
 @dataclass
@@ -48,6 +51,32 @@ class QuantInput:
     sort_fn: Optional[
         Callable[[torch.Tensor], torch.Tensor]
     ] = None  # sort function for max_output_stats
+
+
+@dataclass
+class HFQuantInput:
+    """Dataclass for quantization input of each layer in transformer block.
+
+    Attributes:
+        parent_module: module contains target layers.
+        target_names: list of target module's full name
+                    (ex. model.model.layers.0.self_attn.q_proj, )
+        local_names: list of target module's name using when access from parent_module
+                    (ex. q_proj, k_proj, v_proj )
+    """
+
+    parent_module: torch.nn.Module
+    target_names: List[ModuleName]
+    local_names: str
+
+
+@dataclass
+class HFTFQuantInputs:
+    """Dataclass for quantization input per transformer block."""
+
+    layer_index: int
+    block: torch.nn.Module
+    quant_inputs: List[HFQuantInput]
 
 
 @dataclass

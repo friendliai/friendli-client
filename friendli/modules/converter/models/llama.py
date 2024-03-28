@@ -32,18 +32,34 @@ class LlamaForCausalLMLoraConverter(DecoderOnlyLoraConverter):
         """Adjust the LoRA Adapter module's params in Llama before converting."""
         converter = cast(LlamaForCausalLMConverter, self.converter)
         for layer in cast(LlamaForCausalLM, model).model.layers:
-            query_b = layer.self_attn.q_proj.lora_B.default.weight
-            query_b = query_b.reshape(
-                converter.decoder_num_attention_heads,
-                converter.decoder_head_size,
-                -1,
-            )
-            query_b = convert_to_gpt_j_params(query_b, converter.decoder_head_size)
-            query_b = query_b.reshape(
-                converter.decoder_num_attention_heads * converter.decoder_head_size,
-                -1,
-            )
-            layer.self_attn.q_proj.lora_B.default.weight.data = query_b
+            if "query" in self.adapter_target_modules:
+                query_b = layer.self_attn.q_proj.lora_B.default.weight
+                query_b = query_b.reshape(
+                    converter.decoder_num_attention_heads,
+                    converter.decoder_head_size,
+                    -1,
+                )
+                query_b = convert_to_gpt_j_params(query_b, converter.decoder_head_size)
+                query_b = query_b.reshape(
+                    converter.decoder_num_attention_heads * converter.decoder_head_size,
+                    -1,
+                )
+                layer.self_attn.q_proj.lora_B.default.weight.data = query_b
+
+            if "key" in self.adapter_target_modules:
+                key_b = layer.self_attn.k_proj.lora_B.default.weight
+                key_b = key_b.reshape(
+                    converter.decoder_num_kv_attention_heads,
+                    converter.decoder_head_size,
+                    -1,
+                )
+                key_b = convert_to_gpt_j_params(key_b, converter.decoder_head_size)
+                key_b = key_b.reshape(
+                    converter.decoder_num_attention_heads * converter.decoder_head_size,
+                    -1,
+                )
+                layer.self_attn.k_proj.lora_B.default.weight.data = key_b
+
         return model
 
     @property

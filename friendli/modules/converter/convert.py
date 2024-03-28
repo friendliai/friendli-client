@@ -1,15 +1,16 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli Checkpoint Converter."""
+"""Friendli Model Converter."""
 
 from __future__ import annotations
 
+import os
 from typing import Optional
 
 import yaml
 from peft import PeftModel  # type: ignore[import] # pylint: disable=import-error
 
-from friendli.enums import CheckpointFileType, ModelDataType
+from friendli.enums import CheckpointFileType, ModelDataType, QuantMode
 from friendli.errors import TokenizerNotFoundError
 from friendli.logging import logger
 from friendli.modules.converter.saver import get_saver
@@ -29,6 +30,7 @@ from friendli.modules.converter.utils import (
     get_model_arch,
     get_model_generation_config,
     get_model_pretrained_config,
+    get_torch_data_type,
     save_tokenizer,
 )
 from friendli.modules.quantizer.maps import get_quantized_converter
@@ -37,12 +39,13 @@ from friendli.modules.quantizer.schema.config import OneOfQuantConfig
 # pylint: enable=import-outside-toplevel, wrong-import-position, wrong-import-order, ungrouped-imports
 
 
-def convert_checkpoint(  # pylint: disable=too-many-locals
+def convert_checkpoint(  # pylint: disable=too-many-branches
     model_name_or_path: str,
     model_output_path: str,
-    data_type: ModelDataType,
     output_ckpt_file_type: CheckpointFileType,
+    output_dir: str,
     *,
+    data_type: Optional[ModelDataType] = None,
     tokenizer_output_dir: Optional[str] = None,
     attr_output_path: Optional[str] = None,
     cache_dir: Optional[str] = None,
@@ -55,7 +58,8 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
     Args:
         model_name_or_path (str): Hugging Face model name or local path to the checkpoint.
         model_output_path (str): Path to the converted checkpoint to save.
-        data_type (CheckpointDataType): Converted checkpoint data type.
+        data_type (Optional[ModelDataType]): Converted checkpoint data type.
+            Defaults to torch_dtype in 'config.json'
         tokenizer_output_dir (Optional[str], optional): Directory path to save 'tokenizer.json'
             for the converted checkpoint. Defaults to None.
         attr_output_path (Optional[str], optional): Path to create the attribute YAML file for
@@ -72,6 +76,7 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         NotSupportedCheckpointError: Raised when model architecture is not supported to convert.
 
     """
+    # pylint: disable=too-many-locals
     model_config = get_model_pretrained_config(
         model_name_or_path, model_output_path, cache_dir
     )
@@ -87,6 +92,9 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
 
     if quantize:
         assert quant_config is not None
+        #  common quantization only supports `.safetensors`` output format.
+        if quant_config.mode == QuantMode.FP8:
+            assert output_ckpt_file_type == CheckpointFileType.SAFETENSORS
         converter = get_quantized_converter(  # type: ignore[assignment]
             quant_config, converter
         )
@@ -100,7 +108,7 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         )
         model = hf_factory.from_pretrained(
             model_name_or_path,
-            torch_dtype=torch.float32,
+            torch_dtype=model_config.torch_dtype,
             cache_dir=cache_dir,
             trust_remote_code=True,
             low_cpu_mem_usage=True,
@@ -114,7 +122,7 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         )
 
         convert_info_list = converter.get_convert_info_list()
-        with get_saver(output_ckpt_file_type, model_output_path) as saver:
+        with get_saver(output_ckpt_file_type, output_dir) as saver:
             for name, w in converter.convert(model, convert_info_list):
                 saver.save_tensor(name, w)
 
@@ -124,13 +132,27 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         )
 
     if attr_output_path is not None:
-        attr = converter.get_attributes()
-        with open(attr_output_path, "w", encoding="utf-8") as file:
-            yaml.dump(attr, file, sort_keys=False)
+        if (
+            quant_config
+            and quant_config.mode == QuantMode.FP8
+            and ModelDataType.FP8_E4M3
+        ):
+            model_config.torch_dtype = (
+                get_torch_data_type(data_type)
+                if data_type
+                else model_config.torch_dtype
+            )
+            setattr(model_config, "use_fp8_e4m3", True)
+            assert output_dir is not None
+            model_config.to_json_file(os.path.join(output_dir, "config.json"))
+        else:
+            attr = converter.get_attributes()
+            with open(attr_output_path, "w", encoding="utf-8") as file:
+                yaml.dump(attr, file, sort_keys=False)
 
     if tokenizer_output_dir is not None:
         try:
-            save_tokenizer(
+            saved_tokenizer_file_paths = save_tokenizer(
                 model_name_or_path=model_name_or_path,
                 cache_dir=cache_dir,
                 save_dir=tokenizer_output_dir,
@@ -138,13 +160,29 @@ def convert_checkpoint(  # pylint: disable=too-many-locals
         except TokenizerNotFoundError as exc:
             logger.warn(str(exc))
 
+        if not (
+            quant_config
+            and quant_config.mode == QuantMode.FP8
+            and ModelDataType.FP8_E4M3
+        ):
+            for path in saved_tokenizer_file_paths:
+                if path != "tokenizer.json":
+                    try:
+                        os.remove(path)
+                    except FileNotFoundError:
+                        logger.warn(
+                            "Tried to delete unnecessary tokenizer file %s but the file "
+                            "is not found.",
+                            path,
+                        )
+
 
 def convert_adapter_checkpoint(  # pylint: disable=too-many-locals, too-many-arguments
     adapter_name_or_path: str,
     adapter_output_path: str,
     adapter_attr_output_path: str,
     base_model_name_or_path: Optional[str],
-    data_type: ModelDataType,
+    data_type: Optional[ModelDataType],
     output_adapter_file_type: CheckpointFileType,
     cache_dir: Optional[str],
     dry_run: bool = False,

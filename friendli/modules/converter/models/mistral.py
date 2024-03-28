@@ -11,7 +11,14 @@ from transformers import MistralConfig  # type: ignore[import]
 
 from friendli.errors import CheckpointConversionError, NotSupportedCheckpointError
 from friendli.logging import logger
-from friendli.modules.converter.models.llama import LlamaForCausalLMConverter
+from friendli.modules.converter.models.llama import (
+    LlamaForCausalLMConverter,
+    LlamaForCausalLMLoraConverter,
+)
+
+
+class MistralForCausalLMLoraConverter(LlamaForCausalLMLoraConverter):
+    """MistralForCausalLM LoRA Converter Class."""
 
 
 class MistralForCausalLMConverter(LlamaForCausalLMConverter):

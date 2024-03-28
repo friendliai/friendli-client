@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli Checkpoint Converter."""
+"""Friendli Model Converter."""
 
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ from friendli.modules.converter.interface import (
     NonTFBlockConversionInterface,
 )
 from friendli.modules.converter.schema import ConvertInfo
+from friendli.modules.converter.utils import get_model_data_type
 
 SUPPORTED_GELU_FAMILY = [
     "gelu",
@@ -49,12 +50,22 @@ MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP = {
         "up_proj",
         "down_proj",
     },
+    "mistral": {
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+    },
     "mpt": {"Wqkv", "out_proj", "up_proj", "down_proj"},
 }
 # TODO: remove this const map when engine supports lm head LoRA
 MODEL_TYPE_TO_UNSUPPORTED_LORA_TARGET_MODULES_MAP = {
     "gptj": {"lm_head"},
     "llama": {"lm_head"},
+    "mistral": {"lm_head"},
     "mpt": {"lm_head"},
 }
 
@@ -69,8 +80,7 @@ class AbstractConverter(ModelConversionInterface, ABC):
         config (PreTrainedConfig): Hugging Face model configuration.
         generation_config (Optional[GenerationConfig]): Hugginface generation config.
             When set to None, `config` is used for configuring generation.
-        data_type (CheckpointDataType): Data type for the Friendli checkpoint.
-        quantize (bool): Whether to quantize the Friendli checkpoint.
+        data_type (Optional(ModelDataType)): Data type for the Friendli checkpoint.
 
     """
 
@@ -78,12 +88,14 @@ class AbstractConverter(ModelConversionInterface, ABC):
         self,
         config: PretrainedConfig,
         generation_config: Optional[GenerationConfig],
-        data_type: ModelDataType,
+        data_type: Optional[ModelDataType],
     ) -> None:
         """Initialize converter."""
         self.config = config
         self.generation_config = generation_config
-        self.data_type = data_type
+        self.data_type = (
+            data_type if data_type else get_model_data_type(config.torch_dtype)
+        )
 
     def get_eos_token_id(self) -> Optional[int]:
         """Get ID of EOS token."""
@@ -403,29 +415,23 @@ class DecoderOnlyLoraConverter(AbstractConverter):
             for target_module in self.adapter_config.target_modules:
                 if (
                     target_module
-                    not in MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP[
+                    in MODEL_TYPE_TO_UNSUPPORTED_LORA_TARGET_MODULES_MAP[
                         self.config.model_type
                     ]
                 ):
-                    if (
-                        target_module
-                        in MODEL_TYPE_TO_UNSUPPORTED_LORA_TARGET_MODULES_MAP[
-                            self.config.model_type
-                        ]
-                    ):
-                        raise NotSupportedCheckpointError(
-                            invalid_option=f"target_module={target_module}",
-                            valid_options=list(
-                                MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP[
-                                    self.config.model_type
-                                ]
-                            ),
-                        )
-                    logger.warn(
-                        "Target module %s does not exist in the base model (%s). Will be ignored.",
-                        target_module,
-                        self.adapter_config.base_model_name_or_path,
+                    raise NotSupportedCheckpointError(
+                        invalid_option=f"target_module={target_module}",
+                        valid_options=list(
+                            MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP[
+                                self.config.model_type
+                            ]
+                        ),
                     )
+                logger.warn(
+                    "Target module %s does not exist in the base model (%s). Will be ignored.",
+                    target_module,
+                    self.adapter_config.base_model_name_or_path,
+                )
 
         if (self.adapter_config.layers_to_transform is not None) and (
             self.adapter_config != list(range(self.converter.decoder_layer_num))

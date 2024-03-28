@@ -14,6 +14,7 @@ class ModelDataType(str, Enum):
     BF16 = "bf16"
     FP16 = "fp16"
     FP32 = "fp32"
+    FP8_E4M3 = "fp8_e4m3"
     INT8 = "int8"
     INT4 = "int4"
 
@@ -41,6 +42,7 @@ class QuantMode(str, Enum):
 
     SMOOTH_QUANT = "smoothquant"
     AWQ = "awq"
+    FP8 = "fp8"
 
 
 class QuantDatasetFormat(str, Enum):

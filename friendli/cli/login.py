@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import base64
 import threading
 import time
 import webbrowser
@@ -54,6 +55,8 @@ def oauth2_login() -> Tuple[str, str]:
 
         access_token = request.query_params.get("access_token")
         refresh_token = request.query_params.get("refresh_token")
+        assert refresh_token is not None
+        refresh_token = base64.b64decode(refresh_token).decode()
 
         if not access_token:
             raise HTTPException(
@@ -88,7 +91,7 @@ def oauth2_login() -> Tuple[str, str]:
   <div class="message-box">
     <h1>Authentication was successful</h1>
     <p>You can now close this window and return to CLI.</p>
-    <p>Redirecting to <a href="https://docs.periflow.ai/">Friendli Documentation</a> in <span id="countdown">10</span> seconds.</p>
+    <p>Redirecting to <a href="https://docs.friendli.ai/">Friendli Documentation</a> in <span id="countdown">10</span> seconds.</p>
   </div>
   <script>
     var timeLeft = 10;
@@ -99,7 +102,7 @@ def oauth2_login() -> Tuple[str, str]:
       countdownElement.innerHTML = timeLeft;
       if (timeLeft <= 0) {
         clearInterval(timerId);
-        window.location.href = "https://docs.periflow.ai/";
+        window.location.href = "https://docs.friendli.ai/";
       }
     }, 1000);
   </script>

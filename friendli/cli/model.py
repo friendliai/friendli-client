@@ -2,7 +2,7 @@
 
 # pylint: disable=redefined-builtin, too-many-locals, too-many-arguments, line-too-long
 
-"""Friendli Checkpoint CLI."""
+"""Friendli Model CLI."""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ def convert(
         ),
     ),
     data_type: ModelDataType = typer.Option(
-        ..., "--data-type", "-dt", help="The data type of converted checkpoint."
+        None, "--data-type", "-dt", help="The data type of converted checkpoint."
     ),
     cache_dir: Optional[str] = typer.Option(
         None, "--cache-dir", help="Directory for downloading checkpoint."
@@ -119,7 +119,7 @@ def convert(
     checkpoint in the Friendli format (*.h5).
 
     :::caution
-    The `friendli checkpoint convert` is available only when the package is installed with
+    The `friendli model convert` is available only when the package is installed with
     `pip install "friendli-client[mllib]"`.
     :::
 
@@ -233,8 +233,9 @@ def convert(
         convert_checkpoint(
             model_name_or_path=model_name_or_path,
             model_output_path=model_output_path,
-            data_type=data_type,
             output_ckpt_file_type=output_ckpt_file_type,
+            output_dir=output_dir,
+            data_type=data_type,
             tokenizer_output_dir=tokenizer_output_dir,
             attr_output_path=attr_output_path,
             cache_dir=cache_dir,
@@ -277,7 +278,7 @@ def convert_adapter(
         ),
     ),
     data_type: ModelDataType = typer.Option(
-        ..., "--data-type", "-dt", help="The data type of converted checkpoint."
+        None, "--data-type", "-dt", help="The data type of converted checkpoint."
     ),
     base_model_name_or_path: Optional[str] = typer.Option(
         None,
@@ -312,11 +313,11 @@ def convert_adapter(
     The conversion process involves copying the original adapter checkpoint and
     transforming it into a checkpoint in the Friendli format (*.h5).
 
-    This function does not include the `friendli checkpoint convert` command. i.e.
-    `friendli checkpoint convert-adapter` only converts adapter's parameters, not backbone's.
+    This function does not include the `friendli model convert` command. i.e.
+    `friendli model convert-adapter` only converts adapter's parameters, not backbone's.
 
     :::caution
-    The `friendli checkpoint convert-adapter` is available only when the package is installed with
+    The `friendli model convert-adapter` is available only when the package is installed with
     `pip install "friendli-client[mllib]"`.
     :::
 

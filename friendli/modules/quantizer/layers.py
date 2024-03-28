@@ -65,16 +65,14 @@ class WeightActQuantizedLinearLayer(torch.nn.Module):
         out_features: int,
         q_weight: torch.Tensor,
         weight_scale: torch.Tensor,
-        in_scale: torch.Tensor,
-        out_scale: torch.Tensor,
+        act_scale: torch.Tensor,
         bias: Optional[torch.nn.Parameter] = None,
     ):
         """Initialize the Weight Only Quantized Linear Layer."""
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.in_scale = torch.nn.Parameter(in_scale)
-        self.out_scale = torch.nn.Parameter(out_scale)
+        self.in_scale = torch.nn.Parameter(act_scale)
         self.weight_scale = torch.nn.Parameter(weight_scale)
         self.weight = torch.nn.Parameter(q_weight, requires_grad=False)
         self.register_parameter("bias", bias)
@@ -90,8 +88,7 @@ class WeightActQuantizedLinearLayer(torch.nn.Module):
             cast(torch.nn.Linear, layer).out_features,
             q_result.q_weight,
             q_result.weight_scale,
-            q_result.in_scale,
-            q_result.out_scale,
+            q_result.act_scale,
             cast(torch.nn.Linear, layer).bias,
         )
 

@@ -25,8 +25,10 @@ from typing import (
 import datasets  # type: ignore[import]
 import torch
 from accelerate import cpu_offload_with_hook  # type: ignore
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from friendli.enums import ModelDataType
 from friendli.errors import InvalidConfigError, QuantizationError
 from friendli.logging import logger
 from friendli.modules.quantizer.schema.config import CalibrationDatasetConfig
@@ -68,15 +70,6 @@ def quantized_linear_weight_reshape(
     assert len(params) == 1
 
     return params[0].to(torch.uint8)
-
-
-def get_torch_data_type(data_type: str):
-    """Get torch data type from Enum."""
-    if data_type == "fp16":
-        return torch.float16
-    if data_type == "fp32":
-        return torch.float32
-    return torch.bfloat16
 
 
 def safe_load_datasets(data_cfg: CalibrationDatasetConfig) -> datasets.Dataset:
@@ -258,6 +251,7 @@ def collect_stats(
     target_classes: Tuple[Type[torch.nn.Module], ...],
     tqdm_desc: str,
     percentile: float,
+    batch_size: int = 1,
 ) -> Tuple[Dict[ModuleName, torch.Tensor], Dict[ModuleName, torch.Tensor]]:
     """Collects the maximum values of input and output activations of a specific model.
 
@@ -292,12 +286,12 @@ def collect_stats(
         if isinstance(module, target_classes)
     ]
 
+    calib_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     removables = []
     for name, module in name_mods:
         removables.append(module.register_forward_hook(create_hook(name)))
     try:
-        for inp_dict in tqdm(dataset, desc=tqdm_desc):
-            inputs = torch.tensor(inp_dict["input_ids"])
+        for inputs in tqdm(calib_dataloader, desc=tqdm_desc):
             model(inputs.to(device))
     finally:
         for removable in removables:
@@ -370,42 +364,45 @@ def get_torch_quant_dtype(q_bit: int = 8):
 def get_weight_act_quant_scales(
     layer_name: str,
     input_max: torch.Tensor,
-    fc_weight: torch.Tensor,
+    target_weight: torch.Tensor,
+    weight: torch.Tensor,
     output_max: torch.Tensor,
     device: str = "cpu",
+    quant_dtype: ModelDataType = ModelDataType.INT8,
 ) -> WeightActQuantResult:
     """Get the quantization scales and int8 weight for a specific layer."""
     # shape of input_max: [InChannels]
     # shape of output_max: [OutChannels]
-    # shape of fc_weight: [OutChannels, InChannels]
+    # shape of target_weight: [OutChannels, InChannels]
     assert input_max.ndim == 1
     assert output_max.ndim == 1
 
+    assert quant_dtype == ModelDataType.INT8
+
     in_channels = input_max.size(0)
     out_channels = output_max.size(0)
-    assert tuple(fc_weight.size()) == (out_channels, in_channels)
+    assert tuple(weight.size()) == (out_channels, in_channels)
 
-    max_int = 2 ** (8 - 1) - 1
-    min_int = -(2 ** (8 - 1))
+    max_val = 2 ** (8 - 1) - 1
+    min_val = -(2 ** (8 - 1))
 
-    in_scale = float(max_int) / float(input_max.detach().abs().max().item())
-    weight_scale = float(max_int) / float(fc_weight.detach().abs().max().item())
-    out_scale = float(max_int) / float(output_max.detach().abs().max().item())
+    act_scale = float(input_max.detach().abs().max().item()) / float(max_val)
+    weight_scale = float(target_weight.detach().abs().max().item()) / float(max_val)
+
     q_weight = (
-        (fc_weight.detach().float() * weight_scale)
+        (weight.detach().float() / weight_scale)
         .round()
-        .clip(min_int, max_int)
+        .clip(min_val, max_val)
         .to(get_torch_quant_dtype(8))
         .to(device)
     )
 
     return WeightActQuantResult(
         layer_name,
-        q_bit=8,
+        quant_dtype=quant_dtype,
         zero_point=torch.tensor(0.0),
-        in_scale=torch.tensor(in_scale),
+        act_scale=torch.tensor(act_scale),
         weight_scale=torch.tensor(weight_scale),
-        out_scale=torch.tensor(out_scale),
         q_weight=q_weight,
         q_group_size=-1,
     )
@@ -419,6 +416,7 @@ def get_weight_only_quant_scales(
     device: Union[str, torch.device] = "cpu",
 ) -> WeightOnlyQuantResult:
     """Return the quantization scales of weight for a specific layer."""
+    assert q_bit in [4, 8]
     org_w_shape = w.shape  # [OutDim, InDim]
 
     w = w.reshape(-1, q_group_size)  # [OutDim x num_groups, group_size]
@@ -443,9 +441,10 @@ def get_weight_only_quant_scales(
     )  # [OutDim, num_groups]
 
     assert torch.isnan(q_weight).sum() == 0
+
     return WeightOnlyQuantResult(
         layer_name,
-        q_bit=q_bit,
+        quant_dtype=ModelDataType.INT4 if q_bit == 4 else ModelDataType.INT8,
         zero_point=zeros,
         q_group_size=q_group_size,
         weight_scale=scales,

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import gc
 from abc import abstractmethod
-from contextlib import contextmanager
 from dataclasses import fields
 from typing import Any, Dict, Iterator, List, Tuple, Type, cast
 
@@ -17,7 +16,6 @@ from tqdm import tqdm
 
 from friendli.enums import ModelDataType
 from friendli.errors import QuantizationError
-from friendli.logging import logger
 from friendli.modules.converter.base import DECODER_PREFIX
 from friendli.modules.converter.schema import ConvertInfo
 from friendli.modules.converter.utils import get_tokenizer
@@ -40,12 +38,10 @@ from friendli.modules.quantizer.schema.data import (
 from friendli.modules.quantizer.utils import (
     collect_inps,
     get_weight_only_quant_scales,
-    offload_module_sequence,
     quantized_linear_weight_reshape,
     quantized_qkv_weight_reshape,
     safe_load_datasets,
     scale_reshape,
-    send_model_to_device,
 )
 
 
@@ -458,19 +454,6 @@ class AWQQuantizer(CommonQuantizer):
         attributes["quant_bit"] = awq_args.quant_bit
         return attributes
 
-    @contextmanager
-    def _try_offload_model(self, model: torch.nn.Module):
-        if not self.quant_config.offload:
-            logger.info("AWQ offloading not enabled. Skipping.")
-            model.to(self.quant_config.device)
-            yield
-        else:
-            logger.info("AWQ offloading enabled.")
-            tf_blocks = self.hook.get_tf_blocks(model)
-            send_model_to_device(model, self.quant_config.device, exclude=tf_blocks)
-            with offload_module_sequence(tf_blocks, self.quant_config.device):
-                yield
-
     @torch.no_grad()
     def _apply_awq_scale_clip(
         self,
@@ -520,6 +503,7 @@ class AWQQuantizer(CommonQuantizer):
             total=len(self.hook.get_tf_blocks(model)),
             desc="Quantize model..",
         ):
+            assert isinstance(quant_input, TFQuantInputs)
             quant_result = cast(AWQHook, self.hook).get_quant_result(
                 quant_input, quant_config=cast(AWQConfig, self.quant_config)
             )

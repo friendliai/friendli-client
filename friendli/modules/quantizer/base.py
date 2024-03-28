@@ -7,22 +7,41 @@ from __future__ import annotations
 import os
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Any, Dict, Iterator, List, Tuple, Type
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator, List, Tuple, Type, Union, cast
 
 import datasets  # type: ignore[import]
 import huggingface_hub  # type: ignore[import]
 import numpy as np
 import torch
+from torch.nn.modules import Module
+from tqdm import tqdm
 
 from friendli.enums import (
     QuantDatasetFormat,  # TODO: move this to friendli/modules/converter/enums.py
 )
+from friendli.enums import ModelDataType
 from friendli.errors import NotSupportedQuantConfigError
+from friendli.logging import logger
 from friendli.modules.converter.base import DECODER_PREFIX, OneOfConverter
 from friendli.modules.converter.interface import ModelConversionInterface
 from friendli.modules.converter.schema import ConvertInfo
-from friendli.modules.quantizer.schema.config import CommonQuantConfig
-from friendli.modules.quantizer.schema.data import TFQuantInputs, TFQuantResults
+from friendli.modules.converter.utils import get_tokenizer, get_torch_data_type
+from friendli.modules.quantizer.layers import WeightActQuantizedLinearLayer
+from friendli.modules.quantizer.schema.config import OneOfQuantConfig
+from friendli.modules.quantizer.schema.data import (
+    HFTFQuantInputs,
+    ModuleName,
+    TFQuantInputs,
+    TFQuantResults,
+    WeightActQuantResult,
+)
+from friendli.modules.quantizer.utils import (
+    collect_stats,
+    offload_module_sequence,
+    safe_load_datasets,
+    send_model_to_device,
+)
 
 
 class AbstractQuantHook(ABC):
@@ -47,7 +66,9 @@ class AbstractQuantHook(ABC):
         """Returns the type of linear layer (etc. qkv, linear layer) in transformer block."""
 
     @abstractmethod
-    def iter_tf_quant_inputs(self, model: torch.nn.Module) -> Iterator[TFQuantInputs]:
+    def iter_tf_quant_inputs(
+        self, model: torch.nn.Module
+    ) -> Union[Iterator[TFQuantInputs], Iterator[HFTFQuantInputs]]:
         """Returns the layers which should be quantized in transformer blocks."""
 
     @abstractmethod
@@ -97,7 +118,7 @@ class AbstractQuantizer(ABC):
     def __init__(
         self,
         hook: AbstractQuantHook,
-        config: CommonQuantConfig,
+        config: OneOfQuantConfig,
         converter: OneOfConverter,
     ):
         """Initialize the Quantizer.
@@ -191,6 +212,19 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
         """Return the attributes of the converted model."""
         return self.converter.get_attributes()
 
+    @contextmanager
+    def _try_offload_model(self, model: torch.nn.Module):
+        if not self.quant_config.offload:
+            logger.info("Offloading not enabled. Skipping.")
+            model.to(self.quant_config.device)
+            yield
+        else:
+            logger.info("Offloading enabled.")
+            tf_blocks = self.hook.get_tf_blocks(model)
+            send_model_to_device(model, self.quant_config.device, exclude=tf_blocks)
+            with offload_module_sequence(tf_blocks, self.quant_config.device):
+                yield
+
     def convert(
         self,
         model: torch.nn.Module,
@@ -209,3 +243,226 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
         self.pre_quantize(model)
         model = self.quantize(model)
         yield from self.converter.convert(model, convert_info_list)
+
+
+class FP8QuantHook(AbstractQuantHook):
+    """Quantization Hook for FP8Quantizer."""
+
+    def get_quant_result(
+        self, quant_inputs: TFQuantInputs, **kwargs: Any
+    ) -> TFQuantResults:
+        """Returns the quantization result of the layer."""
+        raise NotImplementedError
+
+    @property
+    def quantized_convert_info_list(
+        self,
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for quantized layers."""
+        raise NotImplementedError
+
+    @property
+    def modified_layers_convert_info_list(
+        self,
+    ) -> List[ConvertInfo]:
+        """Return the list of conversion informations for modified layers."""
+        raise NotImplementedError
+
+
+class FP8Quantizer(CommonQuantizer):
+    """Common Quantizer for huggingface format.
+
+    This quantizer supports per-tensor weight-activation quantization by
+    using calibration dataset. It adds quantization scale, and quantized
+    parameter to the checkpoint, while preserves parameter shape, and name
+    in huggingface checkpoint.
+    """
+
+    def get_calib_dataset(self) -> datasets.Dataset:
+        """Get calibration dataset."""
+        data_cfg = self.quant_config.calibration_dataset
+        tokenizer = get_tokenizer(self.converter.config.name_or_path)
+        dataset = safe_load_datasets(data_cfg)
+
+        dataset = (
+            dataset.shuffle(self.quant_config.seed)
+            .select(range(data_cfg.num_samples))
+            .select_columns([data_cfg.lookup_column_name])
+        )
+
+        encoded_dataset = tokenizer(
+            dataset["article"][:512],
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=data_cfg.max_length,
+        )
+        return encoded_dataset["input_ids"]
+
+    def get_convert_info_list(self) -> List[ConvertInfo]:
+        """Not used in FP8Quantizer."""
+        return []
+
+    def pre_quantize(self, model: Module) -> None:
+        """Not used in FP8Quantizer."""
+        return None
+
+    def _get_weight_act_quantize_results(
+        self,
+        model: torch.nn.Module,
+        names: List[ModuleName],
+        max_input_stats: Dict[ModuleName, torch.Tensor],
+    ) -> List[WeightActQuantResult]:
+        """Get the quantization scales and quantized_weight for a specific layer."""
+        assert (
+            self.quant_config.quant_dtype == ModelDataType.FP8_E4M3
+        ), "currently support fp8_e4m3"
+        max_val = 448.0
+        min_val = -448.0
+
+        input_max = torch.concat([max_input_stats[name] for name in names])
+        target_weights = [model.get_submodule(name).weight for name in names]
+        target_weight = torch.concat(target_weights)
+
+        act_scale = float(input_max.detach().abs().max().item()) / float(max_val)
+        weight_scale = float(target_weight.detach().abs().max().item()) / float(max_val)
+
+        q_weights = [
+            ((weight.detach().float() / weight_scale).clip(min_val, max_val).to("cpu"))
+            for weight in target_weights
+        ]
+        return [
+            WeightActQuantResult(
+                name,
+                quant_dtype=self.quant_config.quant_dtype,
+                act_scale=torch.tensor(act_scale, dtype=torch.float32),
+                weight_scale=torch.tensor(weight_scale, dtype=torch.float32),
+                q_weight=q_weight,
+                q_group_size=-1,
+                zero_point=torch.tensor(0.0),
+            )
+            for name, q_weight in zip(names, q_weights)
+        ]
+
+    @torch.no_grad()
+    def quantize(
+        self,
+        model: torch.nn.Module,
+    ) -> torch.nn.Module:
+        """Quantize model to lower data type. Currently supports FP8."""
+        # pylint: disable=too-many-locals
+        dataset = self.get_calib_dataset()
+        model.eval()
+        with self._try_offload_model(model):
+            max_input_stats, _ = collect_stats(
+                model,
+                self.quant_config.device,
+                dataset,
+                cast(FP8QuantHook, self.hook).get_linear_layer_types(),
+                percentile=self.quant_config.percentile,
+                tqdm_desc="Collecting stats for Static Quantization.",
+                batch_size=32,
+            )
+            for tf_quant_input in self.hook.iter_tf_quant_inputs(model):
+                assert isinstance(tf_quant_input, HFTFQuantInputs)
+                for quant_input in tf_quant_input.quant_inputs:
+                    parent_module, local_names, names = (
+                        quant_input.parent_module,
+                        quant_input.local_names,
+                        quant_input.target_names,
+                    )
+                    if isinstance(parent_module, torch.nn.ModuleList):
+                        # for MoE model
+                        # all module share same weight scale & act scale
+                        parent_modules_w_local_name = []
+                        for p_module in parent_module:
+                            for local_name in local_names:
+                                parent_modules_w_local_name.append(
+                                    (p_module, local_name)
+                                )
+
+                        layers = [
+                            p_module.get_submodule(local_name)
+                            for p_module, local_name in parent_modules_w_local_name
+                        ]
+
+                        quant_results = self._get_weight_act_quantize_results(
+                            model,
+                            names,
+                            max_input_stats,
+                        )
+                        q_layers = [
+                            WeightActQuantizedLinearLayer.from_layer(
+                                layer, quant_result
+                            )
+                            for layer, quant_result in zip(layers, quant_results)
+                        ]
+                        for (p_module, local_name), q_layer in zip(
+                            parent_modules_w_local_name, q_layers
+                        ):
+                            setattr(p_module, local_name, q_layer)
+
+                    else:
+                        layers = [
+                            parent_module.get_submodule(local_name)
+                            for local_name in local_names
+                        ]
+                        quant_results = self._get_weight_act_quantize_results(
+                            model,
+                            names,
+                            max_input_stats,
+                        )
+                        q_layers = [
+                            WeightActQuantizedLinearLayer.from_layer(
+                                layer, quant_result
+                            )
+                            for layer, quant_result in zip(layers, quant_results)
+                        ]
+                        for local_name, q_layer in zip(local_names, q_layers):
+                            setattr(parent_module, local_name, q_layer)
+
+        return model
+
+    def convert(  # type: ignore[override]
+        self,
+        model: torch.nn.Module,
+        convert_info_list: List[ConvertInfo],
+    ) -> Generator[Tuple[str, Union[torch.Tensor, np.ndarray]], None, None]:
+        """Convert Huggingface Model to Friendli format(.h5).
+
+        Args:
+            model (torch.nn.Module): Huggingface model.
+            state_dict (Dict[str, torch.Tensor]):
+                Dictionary of mapping of tensor name to tensor
+            convert_info_list (List[ConvertInfo]):
+                Dictionary of mapping converted params name to conversion functions.
+                It will be depreciated.
+        """
+        quantized_param_names = []
+        quantized_param_scale_names = []
+        for tf_quant_input in self.hook.iter_tf_quant_inputs(model):
+            assert isinstance(tf_quant_input, HFTFQuantInputs)
+            for quant_input in tf_quant_input.quant_inputs:
+                for target_name in quant_input.target_names:
+                    quantized_param_names.append(f"{target_name}.weight")
+                    quantized_param_scale_names.append(f"{target_name}.weight_scale")
+                    quantized_param_scale_names.append(f"{target_name}.in_scale")
+
+        self.pre_quantize(model)
+        model = self.quantize(model)
+        state_dict: Dict[str, torch.Tensor] = model.state_dict()
+
+        with tqdm(total=len(state_dict), desc="Converting", unit="tensor") as pbar:
+            for param_name, param in state_dict.items():
+                param = param.to("cpu").detach()
+                if param_name in quantized_param_names:
+                    converted_param = param.to(torch.float8_e4m3fn).view(torch.int8)
+                elif param_name in quantized_param_scale_names:
+                    converted_param = param.to(torch.float32)
+                else:
+                    converted_param = param.to(
+                        get_torch_data_type(self.converter.data_type)
+                    )
+
+                yield param_name, converted_param
+                pbar.update()

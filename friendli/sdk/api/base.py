@@ -200,7 +200,7 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
             if response.status_code == 404:
                 raise APIError(
                     "Endpoint is not found. This may be due to an invalid model name. "
-                    "See https://docs.periflow.ai/guides/serverless_endpoints/pricing "
+                    "See https://docs.friendli.ai/guides/serverless_endpoints/pricing "
                     "to find out availble models."
                 ) from exc
 
@@ -246,7 +246,7 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
             if response.status_code == 404:
                 raise APIError(
                     "Endpoint is not found. This may be due to an invalid model name. "
-                    "See https://docs.periflow.ai/guides/serverless_endpoints/pricing "
+                    "See https://docs.friendli.ai/guides/serverless_endpoints/pricing "
                     "to find out availble models."
                 ) from exc
 

@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli Checkpoint Converter Schema."""
+"""Friendli Model Converter Schema."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class ConvertInfo:
 
     Args:
         param_names(List[str]): List of parameter names in the huggingface checkpoint.
-        data_type(CheckpointDataType): Data type of the parameter.
+        data_type(ModelDataType): Data type of the parameter.
         converted_name(str): Name of the converted parameter.
         reshape_fn(Callable[[List[torch.tensor]], np.ndarray]):
             Function to reshape the tensor from the huggignface checkpoint.

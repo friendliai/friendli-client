@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Defining Friendli Checkpoint Converter maps."""
+"""Defining Friendli Model Converter maps."""
 
 from __future__ import annotations
 
@@ -40,7 +40,10 @@ from friendli.modules.converter.models.llama import (
     LlamaForCausalLMConverter,
     LlamaForCausalLMLoraConverter,
 )
-from friendli.modules.converter.models.mistral import MistralForCausalLMConverter
+from friendli.modules.converter.models.mistral import (
+    MistralForCausalLMConverter,
+    MistralForCausalLMLoraConverter,
+)
 from friendli.modules.converter.models.mixtral import MixtralForCausalLMConverter
 from friendli.modules.converter.models.mpt import (
     MPTForCausalLMConverter,
@@ -81,6 +84,7 @@ MODEL_ARCH_ADAPTER_CONVERTER_MAP: Dict[
     "LlamaForCausalLM": LlamaForCausalLMLoraConverter,
     "LLaMAForCausalLM": LlamaForCausalLMLoraConverter,
     "MPTForCausalLM": MptForCausalLMLoraConverter,
+    "MistralForCausalLM": MistralForCausalLMLoraConverter,
 }
 
 

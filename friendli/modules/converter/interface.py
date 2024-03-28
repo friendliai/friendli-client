@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli Checkpoint Converter Interface."""
+"""Friendli Model Converter Interface."""
 
 from __future__ import annotations
 

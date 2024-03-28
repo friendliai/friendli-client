@@ -196,4 +196,4 @@ For further information about the `friendli` command, run `friendli --help` in y
 This will provide you with a detailed list of available options and usage instructions.
 
 > [!TIP]
-> **Check out our [official documentations](https://docs.periflow.ai/) to learn more!**
+> **Check out our [official documentations](https://docs.friendli.ai/) to learn more!**

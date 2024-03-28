@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli Checkpoint Quantizer Config Schema."""
+"""Friendli Model Quantizer Config Schema."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Literal, Union
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
-from friendli.enums import QuantDatasetFormat, QuantMode
+from friendli.enums import ModelDataType, QuantDatasetFormat, QuantMode
 
 
 class CalibrationDatasetConfig(BaseModel):
@@ -23,17 +23,30 @@ class CalibrationDatasetConfig(BaseModel):
     max_length: int = 512
 
 
-class CommonQuantConfig(BaseModel):
-    """Common quantization config."""
+class AbstractQuantConfig(BaseModel):
+    """Abstract quantization config."""
 
     mode: QuantMode
     device: str = "cuda:0"
     offload: bool = True
     seed: int = 42
-    percentile: float = 99.9
+    percentile: float = 100.0
+    quant_dtype: ModelDataType = ModelDataType.INT8
     calibration_dataset: CalibrationDatasetConfig = Field(
         default_factory=CalibrationDatasetConfig
     )
+
+
+class FP8QuantConfig(AbstractQuantConfig):
+    """FP8 quantization config.
+
+    The data type of parameters are converted to the one specified at `quant_dtype`
+    by using calibration dataset. The quantization scale for weight and activation is
+    added to converted checkpoint.
+
+    """
+
+    mode: Literal[QuantMode.FP8] = QuantMode.FP8
 
 
 class SmoothQuantArgs(BaseModel):
@@ -44,7 +57,7 @@ class SmoothQuantArgs(BaseModel):
     ff2_smoothing: bool = False
 
 
-class SmoothQuantConfig(CommonQuantConfig):
+class SmoothQuantConfig(AbstractQuantConfig):
     """SmoothQuant config."""
 
     mode: Literal[QuantMode.SMOOTH_QUANT] = QuantMode.SMOOTH_QUANT
@@ -54,11 +67,12 @@ class SmoothQuantConfig(CommonQuantConfig):
 class AWQArgs(BaseModel):
     """AWQ args."""
 
+    quant_dtype: ModelDataType = ModelDataType.INT4
     quant_bit: int = 4
     quant_group_size: int = 64
 
 
-class AWQConfig(CommonQuantConfig):
+class AWQConfig(AbstractQuantConfig):
     """AWQ config."""
 
     mode: Literal[QuantMode.AWQ] = QuantMode.AWQ
@@ -66,7 +80,7 @@ class AWQConfig(CommonQuantConfig):
 
 
 OneOfQuantConfig = Annotated[
-    Union[SmoothQuantConfig, AWQConfig], Field(discriminator="mode")
+    Union[SmoothQuantConfig, AWQConfig, FP8QuantConfig], Field(discriminator="mode")
 ]
 
 

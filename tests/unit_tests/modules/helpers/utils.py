@@ -137,8 +137,7 @@ def get_smoothquant_quantized_meta_model(
             out_features=weight.size(0),
             q_weight=weight,
             weight_scale=torch.zeros(weight.size(1), device="meta"),
-            in_scale=torch.zeros(weight.size(1), device="meta"),
-            out_scale=torch.zeros(weight.size(0), device="meta"),
+            act_scale=torch.zeros(weight.size(1), device="meta"),
         )
 
     for tf_quant_input in quantizer.hook.iter_tf_quant_inputs(model):
