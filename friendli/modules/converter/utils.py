@@ -206,7 +206,6 @@ def save_tokenizer(
 
     tokenizer = get_tokenizer(model_name_or_path, cache_dir=cache_dir)
     saved_file_paths = tokenizer.save_pretrained(save_directory=save_dir)
-
     tokenizer_json_path = None
     for path in saved_file_paths:
         if "tokenizer.json" == os.path.basename(path):

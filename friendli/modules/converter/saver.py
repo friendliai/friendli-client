@@ -23,14 +23,13 @@ from friendli.logging import logger
 
 
 def get_saver(
-    ckpt_file_type: CheckpointFileType,
-    output_dir: str,
+    ckpt_file_type: CheckpointFileType, output_dir: str, output_file_name: str
 ) -> CheckpointSaver:
     """Create a saver that corresponds to the file type."""
     if ckpt_file_type == CheckpointFileType.HDF5:
-        return HDF5Saver(output_dir)
+        return HDF5Saver(output_dir, output_file_name)
     if ckpt_file_type == CheckpointFileType.SAFETENSORS:
-        return SafetensorsSaver(output_dir)
+        return SafetensorsSaver(output_dir, output_file_name)
     raise CheckpointConversionError(
         f"Output file type {ckpt_file_type} is not supported."
     )
@@ -39,10 +38,13 @@ def get_saver(
 class CheckpointSaver(AbstractContextManager):
     """Abstract for savers."""
 
-    def __init__(self, output_dir: Union[str, os.PathLike]) -> None:
+    def __init__(
+        self, output_dir: Union[str, os.PathLike], output_file_name: str
+    ) -> None:
         """Check that the output file already exists."""
         super().__init__()
-        self.output_dir = output_dir
+        self._output_dir = output_dir
+        self._output_file_name = output_file_name
 
     @abstractmethod
     def save_tensor(self, tensor_id: str, t: Union[np.ndarray, torch.Tensor]) -> None:
@@ -66,10 +68,10 @@ class CheckpointSaver(AbstractContextManager):
 class HDF5Saver(CheckpointSaver):
     """Saver for HDF5."""
 
-    def __init__(self, output_dir: str) -> None:
+    def __init__(self, output_dir: str, output_file_name: str) -> None:
         """Create a HDF5 file."""
-        super().__init__(output_dir)
-        self._out_f = h5py.File(output_dir + "model.h5", "w")
+        super().__init__(output_dir, output_file_name)
+        self._out_f = h5py.File(os.path.join(output_dir, output_file_name), "w")
 
     def save_tensor(self, tensor_id: str, t: Union[np.ndarray, torch.Tensor]) -> None:
         """Create a group if not exists, and save the tensor in the file."""
@@ -158,10 +160,11 @@ class SafetensorsSaver(CheckpointSaver):
     because Safetensors does not support stream saving.
     """
 
-    def __init__(self, output_dir: Union[str, os.PathLike]) -> None:
+    def __init__(
+        self, output_dir: Union[str, os.PathLike], output_file_name: str
+    ) -> None:
         """Initialize a saver."""
-        super().__init__(output_dir)
-        self._output_dir = output_dir
+        super().__init__(output_dir, output_file_name)
         self._tensors: Dict[str, Union[np.ndarray, torch.Tensor]] = {}
         self._saver: UnionSafetensorsSaverInterface = UnionSafetensorsSaverInterface()
 
@@ -191,12 +194,12 @@ class SafetensorsSaver(CheckpointSaver):
             total_size += weight_size
 
         if len(sharded_tensors) == 1:
-            return {"model.safetensors": sharded_tensors[0]}, None
+            return {self._output_file_name: sharded_tensors[0]}, None
 
         weight_map = {}
         shards = {}
         for idx, shard in enumerate(sharded_tensors):
-            shard_file = "model.safetensors".replace(
+            shard_file = self._output_file_name.replace(
                 ".safetensors",
                 f"-{idx + 1:05d}-of-{len(sharded_tensors):05d}.safetensors",
             )
@@ -219,7 +222,7 @@ class SafetensorsSaver(CheckpointSaver):
             self._saver.save_file(shard, os.path.join(self._output_dir, shard_file))
 
         if index is None:
-            path_to_weights = os.path.join(self._output_dir, "model.safetensors")
+            path_to_weights = os.path.join(self._output_dir, self._output_file_name)
             logger.info("Model weights saved in (%s)", path_to_weights)
         else:
             save_index_file = os.path.join(

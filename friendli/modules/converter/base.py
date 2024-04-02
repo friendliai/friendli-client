@@ -415,23 +415,30 @@ class DecoderOnlyLoraConverter(AbstractConverter):
             for target_module in self.adapter_config.target_modules:
                 if (
                     target_module
-                    in MODEL_TYPE_TO_UNSUPPORTED_LORA_TARGET_MODULES_MAP[
+                    not in MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP[
                         self.config.model_type
                     ]
                 ):
-                    raise NotSupportedCheckpointError(
-                        invalid_option=f"target_module={target_module}",
-                        valid_options=list(
-                            MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP[
-                                self.config.model_type
-                            ]
-                        ),
+                    if (
+                        target_module
+                        in MODEL_TYPE_TO_UNSUPPORTED_LORA_TARGET_MODULES_MAP[
+                            self.config.model_type
+                        ]
+                    ):
+                        raise NotSupportedCheckpointError(
+                            invalid_option=f"target_module={target_module}",
+                            valid_options=list(
+                                MODEL_TYPE_TO_SUPPORTED_LORA_TARGET_MODULES_MAP[
+                                    self.config.model_type
+                                ]
+                            ),
+                        )
+
+                    logger.warn(
+                        "Target module %s does not exist in the base model (%s). Will be ignored.",
+                        target_module,
+                        self.adapter_config.base_model_name_or_path,
                     )
-                logger.warn(
-                    "Target module %s does not exist in the base model (%s). Will be ignored.",
-                    target_module,
-                    self.adapter_config.base_model_name_or_path,
-                )
 
         if (self.adapter_config.layers_to_transform is not None) and (
             self.adapter_config != list(range(self.converter.decoder_layer_num))

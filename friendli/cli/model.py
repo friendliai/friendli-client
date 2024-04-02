@@ -225,19 +225,14 @@ def convert(
         output_model_file_name or default_names[output_ckpt_file_type]
     )
 
-    model_output_path = os.path.join(output_dir, output_model_file_name)
-    tokenizer_output_dir = output_dir
-    attr_output_path = os.path.join(output_dir, output_attr_file_name)
-
     try:
         convert_checkpoint(
             model_name_or_path=model_name_or_path,
-            model_output_path=model_output_path,
+            output_model_file_name=output_model_file_name,
             output_ckpt_file_type=output_ckpt_file_type,
+            output_attr_file_name=output_attr_file_name,
             output_dir=output_dir,
             data_type=data_type,
-            tokenizer_output_dir=tokenizer_output_dir,
-            attr_output_path=attr_output_path,
             cache_dir=cache_dir,
             dry_run=dry_run,
             quantize=quantize,
@@ -344,14 +339,12 @@ def convert_adapter(
         output_adapter_filename or default_names[output_adapter_file_type]
     )
 
-    adapter_output_path = os.path.join(output_dir, output_adapter_filename)
-    attr_output_path = os.path.join(output_dir, output_attr_filename)
-
     try:
         convert_adapter_checkpoint(
             adapter_name_or_path=adapter_name_or_path,
-            adapter_output_path=adapter_output_path,
-            adapter_attr_output_path=attr_output_path,
+            output_attr_filename=output_attr_filename,
+            output_dir=output_dir,
+            output_adapter_filename=output_adapter_filename,
             base_model_name_or_path=base_model_name_or_path,
             data_type=data_type,
             output_adapter_file_type=output_adapter_file_type,
@@ -360,3 +353,10 @@ def convert_adapter(
         )
     except (NotFoundError, CheckpointConversionError, InvalidConfigError) as exc:
         secho_error_and_exit(str(exc))
+
+    msg = (
+        f"Checkpoint({adapter_name_or_path}) can be converted."
+        if dry_run
+        else f"Checkpoint({adapter_name_or_path}) has been converted successfully."
+    )
+    typer.secho(msg)
