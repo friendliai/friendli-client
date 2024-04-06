@@ -135,6 +135,7 @@ class V1MistralAttributes(V1CommonAttributes):
     max_length: int
     vocab_size: int
     eos_token: int
+    rope_theta: Optional[float]
     attention_window_size: int
 
 
