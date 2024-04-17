@@ -61,8 +61,6 @@ class WeightActQuantizedLinearLayer(torch.nn.Module):
 
     def __init__(  # pylint: disable=too-many-arguments
         self,
-        in_features: int,
-        out_features: int,
         q_weight: torch.Tensor,
         weight_scale: torch.Tensor,
         act_scale: torch.Tensor,
@@ -70,8 +68,6 @@ class WeightActQuantizedLinearLayer(torch.nn.Module):
     ):
         """Initialize the Weight Only Quantized Linear Layer."""
         super().__init__()
-        self.in_features = in_features
-        self.out_features = out_features
         self.in_scale = torch.nn.Parameter(act_scale)
         self.weight_scale = torch.nn.Parameter(weight_scale)
         self.weight = torch.nn.Parameter(q_weight, requires_grad=False)
@@ -84,12 +80,10 @@ class WeightActQuantizedLinearLayer(torch.nn.Module):
         """Returns the quantized layer from the original layer."""
         q_result = cast(WeightActQuantResult, quant_result)
         return WeightActQuantizedLinearLayer(
-            cast(torch.nn.Linear, layer).in_features,
-            cast(torch.nn.Linear, layer).out_features,
             q_result.q_weight,
             q_result.weight_scale,
             q_result.act_scale,
-            cast(torch.nn.Linear, layer).bias,
+            cast(torch.nn.Linear, layer).bias if hasattr(layer, "bias") else None,
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

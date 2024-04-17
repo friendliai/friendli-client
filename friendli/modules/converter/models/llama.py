@@ -1,6 +1,6 @@
 # Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli LLaMAa Checkpoint Converter."""
+"""Friendli LLaMA Checkpoint Converter."""
 
 
 from __future__ import annotations

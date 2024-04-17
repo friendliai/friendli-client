@@ -535,3 +535,25 @@ class DecoderOnlyLoraConverter(AbstractConverter):
 
 OneOfAdapterConverter = DecoderOnlyLoraConverter
 OneOfConverter = Union[EncoderDecoderConverter, DecoderOnlyConverter]
+
+
+class FP8OnlyConverter(DecoderOnlyConverter):
+    """FP8Only Architectures Converter Class."""
+
+    def get_attributes(self) -> Dict[str, Any]:
+        """Get checkpoint attributes."""
+        raise NotImplementedError("Not supported in FP8 Conversion.")
+
+    @property
+    def decoder_convert_info_list(
+        self,
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for transformer blocks."""
+        raise NotImplementedError("Not supported in FP8 Conversion.")
+
+    @property
+    def non_transformer_convert_info_list(
+        self,
+    ) -> List[ConvertInfo]:
+        """The list of conversion informations for non-transformer blocks."""
+        raise NotImplementedError("Not supported in FP8 Conversion.")

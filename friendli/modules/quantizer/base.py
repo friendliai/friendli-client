@@ -248,11 +248,40 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
 class FP8QuantHook(AbstractQuantHook):
     """Quantization Hook for FP8Quantizer."""
 
+    def pre_quantize(self, model: Module) -> torch.nn.Module:  # type: ignore[]
+        """Pre-procedure that should be called before quantize() is called in FP8Quantizer."""
+        return model
+
+    def post_quantize(self, model: Module) -> torch.nn.Module:
+        """Post-procedure that should be called after quantize() is called in FP8Quantizer."""
+        return model
+
     def get_quant_result(
         self, quant_inputs: TFQuantInputs, **kwargs: Any
     ) -> TFQuantResults:
         """Returns the quantization result of the layer."""
         raise NotImplementedError
+
+    def get_quantized_param_names(self, model: torch.nn.Module) -> List[str]:
+        """Return the parameter names of quantized layers."""
+        quantized_param_names = []
+        for tf_quant_input in self.iter_tf_quant_inputs(model):
+            assert isinstance(tf_quant_input, HFTFQuantInputs)
+            for quant_input in tf_quant_input.quant_inputs:
+                for target_name in quant_input.target_names:
+                    quantized_param_names.append(f"{target_name}.weight")
+        return quantized_param_names
+
+    def get_quantized_param_scale_names(self, model):
+        """Return the parameter scale names of quantized layers."""
+        quantized_param_scale_names = []
+        for tf_quant_input in self.iter_tf_quant_inputs(model):
+            assert isinstance(tf_quant_input, HFTFQuantInputs)
+            for quant_input in tf_quant_input.quant_inputs:
+                for target_name in quant_input.target_names:
+                    quantized_param_scale_names.append(f"{target_name}.weight_scale")
+                    quantized_param_scale_names.append(f"{target_name}.in_scale")
+        return quantized_param_scale_names
 
     @property
     def quantized_convert_info_list(
@@ -270,7 +299,7 @@ class FP8QuantHook(AbstractQuantHook):
 
 
 class FP8Quantizer(CommonQuantizer):
-    """Common Quantizer for huggingface format.
+    """FP8Quantizer for huggingface format.
 
     This quantizer supports per-tensor weight-activation quantization by
     using calibration dataset. It adds quantization scale, and quantized
@@ -328,7 +357,13 @@ class FP8Quantizer(CommonQuantizer):
         weight_scale = float(target_weight.detach().abs().max().item()) / float(max_val)
 
         q_weights = [
-            ((weight.detach().float() / weight_scale).clip(min_val, max_val).to("cpu"))
+            (
+                (weight.detach().float() / weight_scale)
+                .clip(min_val, max_val)
+                .to(torch.float8_e4m3fn)
+                .view(torch.int8)
+                .to("cpu")
+            )
             for weight in target_weights
         ]
         return [
@@ -363,7 +398,12 @@ class FP8Quantizer(CommonQuantizer):
                 tqdm_desc="Collecting stats for Static Quantization.",
                 batch_size=32,
             )
-            for tf_quant_input in self.hook.iter_tf_quant_inputs(model):
+            for tf_quant_input in tqdm(
+                self.hook.iter_tf_quant_inputs(model),
+                total=len(self.hook.get_tf_blocks(model)),
+                desc="Qunatize",
+                unit="layer",
+            ):
                 assert isinstance(tf_quant_input, HFTFQuantInputs)
                 for quant_input in tf_quant_input.quant_inputs:
                     parent_module, local_names, names = (
@@ -371,9 +411,9 @@ class FP8Quantizer(CommonQuantizer):
                         quant_input.local_names,
                         quant_input.target_names,
                     )
+
                     if isinstance(parent_module, torch.nn.ModuleList):
-                        # for MoE model
-                        # all module share same weight scale & act scale
+                        # For MoE models with seperate expert layers
                         parent_modules_w_local_name = []
                         for p_module in parent_module:
                             for local_name in local_names:
@@ -438,31 +478,21 @@ class FP8Quantizer(CommonQuantizer):
                 Dictionary of mapping converted params name to conversion functions.
                 It will be depreciated.
         """
-        quantized_param_names = []
-        quantized_param_scale_names = []
-        for tf_quant_input in self.hook.iter_tf_quant_inputs(model):
-            assert isinstance(tf_quant_input, HFTFQuantInputs)
-            for quant_input in tf_quant_input.quant_inputs:
-                for target_name in quant_input.target_names:
-                    quantized_param_names.append(f"{target_name}.weight")
-                    quantized_param_scale_names.append(f"{target_name}.weight_scale")
-                    quantized_param_scale_names.append(f"{target_name}.in_scale")
-
-        self.pre_quantize(model)
+        model = cast(FP8QuantHook, self.hook).pre_quantize(model)
         model = self.quantize(model)
+        model = cast(FP8QuantHook, self.hook).post_quantize(model)
         state_dict: Dict[str, torch.Tensor] = model.state_dict()
+
+        quantized_param_names = cast(FP8QuantHook, self.hook).get_quantized_param_names(
+            model
+        )
+        quantized_param_names.extend(
+            cast(FP8QuantHook, self.hook).get_quantized_param_scale_names(model)
+        )
 
         with tqdm(total=len(state_dict), desc="Converting", unit="tensor") as pbar:
             for param_name, param in state_dict.items():
-                param = param.to("cpu").detach()
-                if param_name in quantized_param_names:
-                    converted_param = param.to(torch.float8_e4m3fn).view(torch.int8)
-                elif param_name in quantized_param_scale_names:
-                    converted_param = param.to(torch.float32)
-                else:
-                    converted_param = param.to(
-                        get_torch_data_type(self.converter.data_type)
-                    )
-
-                yield param_name, converted_param
+                if param_name not in quantized_param_names:
+                    param = param.to(get_torch_data_type(self.converter.data_type))
+                yield param_name, param
                 pbar.update()

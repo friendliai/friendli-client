@@ -20,7 +20,7 @@ from friendli.modules.quantizer.schema.data import (
 
 
 class LlamaHook(FP8QuantHook):
-    """CommonQuantHook for LlamaForCausalLM."""
+    """FP8QuantHook for LlamaForCausalLM."""
 
     def get_tf_blocks(self, model: torch.nn.Module) -> List[torch.nn.Module]:
         """Returns the transformer blocks in LlamaForCausalLM."""

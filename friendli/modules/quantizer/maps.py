@@ -16,6 +16,7 @@ from friendli.modules.quantizer.awq.models.gptj import AWQGPTJHook
 from friendli.modules.quantizer.awq.models.llama import AWQLlamaHook
 from friendli.modules.quantizer.awq.models.mpt import AWQMPTHook
 from friendli.modules.quantizer.base import CommonQuantizer, FP8QuantHook, FP8Quantizer
+from friendli.modules.quantizer.models.dbrx import DbrxHook
 from friendli.modules.quantizer.models.llama import LlamaHook
 from friendli.modules.quantizer.models.mixtral import MixtralHook
 from friendli.modules.quantizer.models.mpt import MPTHook
@@ -56,11 +57,13 @@ model_arch_awq_hook_map: Dict[str, type[AWQHook]] = {
     "MistralForCausalLM": AWQLlamaHook,
 }
 
-model_arch_common_hook_map: Dict[str, type[FP8QuantHook]] = {
+model_arch_fp8_hook_map: Dict[str, type[FP8QuantHook]] = {
     "LlamaForCausalLM": LlamaHook,
     "MistralForCausalLM": LlamaHook,
     "MixtralForCausalLM": MixtralHook,
     "MPTForCausalLM": MPTHook,
+    "CohereForCausalLM": LlamaHook,
+    "DbrxForCausalLM": DbrxHook,
 }
 
 
@@ -71,7 +74,7 @@ def get_quanthook_map(quant_mode: QuantMode) -> Dict[str, Any]:
     if quant_mode == QuantMode.AWQ:
         return model_arch_awq_hook_map
     if quant_mode == QuantMode.FP8:
-        return model_arch_common_hook_map
+        return model_arch_fp8_hook_map
     raise NotSupportedQuantModeError(
         invalid_option=quant_mode,
         valid_options=[e.value for e in QuantMode],

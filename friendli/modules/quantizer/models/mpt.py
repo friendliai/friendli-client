@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Iterator, List, Tuple, Type
 
 import torch
@@ -20,7 +19,7 @@ from friendli.modules.quantizer.schema.data import (
 
 
 class MPTHook(FP8QuantHook):
-    """CommonQuantHook for MPTForCausalLM."""
+    """FP8QuantHook for MPTForCausalLM."""
 
     def get_tf_blocks(self, model: torch.nn.Module) -> List[torch.nn.Module]:
         """Returns the transformer blocks in MPTForCausalLM."""

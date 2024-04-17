@@ -11,6 +11,8 @@ from transformers import (  # type: ignore[import]
     BlenderbotForConditionalGeneration,
     BloomForCausalLM,
     CodeGenForCausalLM,
+    CohereForCausalLM,
+    DbrxForCausalLM,
     FalconForCausalLM,
     GPT2LMHeadModel,
     GPTJForCausalLM,
@@ -29,6 +31,8 @@ from friendli.modules.converter.base import OneOfAdapterConverter, OneOfConverte
 from friendli.modules.converter.models.blenderbot import BlenderbotConverter
 from friendli.modules.converter.models.bloom import BloomForCausalLMConverter
 from friendli.modules.converter.models.codegen import CodegenForCausalLMConverter
+from friendli.modules.converter.models.cohere import CohereForCausalLMConverter
+from friendli.modules.converter.models.dbrx import DbrxForCausalLMConverter
 from friendli.modules.converter.models.falcon import FalconForCausalLMConverter
 from friendli.modules.converter.models.gpt2 import GPT2LMHeadModelConverter
 from friendli.modules.converter.models.gpt_neox import GPTNeoXForCausalLMConverter
@@ -74,6 +78,8 @@ MODEL_ARCH_CONVERTER_MAP: Dict[
     "OPTForCausalLM": (OPTForCausalLM, OPTForCausalLMConverter),
     "T5ForConditionalGeneration": (T5ForConditionalGeneration, T5Converter),
     "PhiForCausalLM": (AutoModelForCausalLM, PhiForCausalLMConverter),
+    "CohereForCausalLM": (CohereForCausalLM, CohereForCausalLMConverter),
+    "DbrxForCausalLM": (DbrxForCausalLM, DbrxForCausalLMConverter),
 }
 
 MODEL_ARCH_ADAPTER_CONVERTER_MAP: Dict[

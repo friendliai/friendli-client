@@ -15,11 +15,11 @@ from friendli.enums import ModelDataType, QuantDatasetFormat, QuantMode
 class CalibrationDatasetConfig(BaseModel):
     """Calibration dataset config."""
 
-    path_or_name: str = "lambada"
+    path_or_name: str = "cnn_dailymail:3.0.0"
     format: QuantDatasetFormat = QuantDatasetFormat.JSON
     split: str = "validation"
-    lookup_column_name: str = "text"
-    num_samples: int = 128
+    lookup_column_name: str = "article"
+    num_samples: int = 512
     max_length: int = 512
 
 

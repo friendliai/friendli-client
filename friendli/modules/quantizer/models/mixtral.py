@@ -1,13 +1,12 @@
 # Copyright (c) 2024-present, FriendliAI Inc. All rights reserved.
 
-"""Friendli LlamaForCausalLM QuantizerHook."""
+"""Friendli MixtralForCausalLM QuantizerHook."""
 
 # mypy: ignore-errors
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterator, List, Tuple, Type
+from typing import Iterator, List
 
 import torch
 
@@ -25,7 +24,7 @@ class MixtralHook(LlamaHook):
     def iter_tf_quant_inputs(
         self, model: torch.nn.Module
     ) -> Iterator[TFQuantInputs] | Iterator[HFTFQuantInputs]:
-        """Returns the layers which should be quantized in transformer block of LlamaForCausalLM."""
+        """Returns the layers which should be quantized in transformer block of MixtralForCausalLM."""
         for index, decoder_layer in enumerate(
             self.get_tf_blocks(model)  # type: ignore[union-attr, arg-type]
         ):
@@ -61,6 +60,14 @@ class MixtralHook(LlamaHook):
                         local_names=[
                             "o_proj",
                         ],
+                    ),
+                    # router
+                    HFQuantInput(
+                        parent_module=block_sparse_moe,
+                        target_names=[
+                            f"{self.quantized_layer_prefix}{index}.block_sparse_moe.gate",
+                        ],
+                        local_names=["gate"],
                     ),
                     # ff1, ff_gate in each moe
                     HFQuantInput(
