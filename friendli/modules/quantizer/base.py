@@ -291,7 +291,7 @@ class FP8Quantizer(CommonQuantizer):
         )
 
         encoded_dataset = tokenizer(
-            dataset["article"][:512],
+            dataset[data_cfg.lookup_column_name],
             return_tensors="pt",
             padding=True,
             truncation=True,
