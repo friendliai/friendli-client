@@ -143,13 +143,13 @@ class UnionSafetensorsSaverInterface(
         self, tensor: Dict[str, Union[torch.Tensor, np.ndarray]], path: str
     ) -> None:
         """Save given tensor to path."""
-        for tensor_type, itfc in self._sub_itfcs.items():
-            partial_dict = {
-                k: v
-                for k, v in tensor.items()
-                if type(v) == tensor_type  # pylint: disable=unidiomatic-typecheck
-            }
-            itfc.save_file(partial_dict, path)  # type: ignore[attr-defined]
+        if len(tensor) == 0:
+            logger.warn("No tensor to save. Skip saving tensors..")
+            return
+        # NOTE: Assume that all tensors are the same type
+        tensor_type = type(next(iter(tensor.values())))
+        itfc = self._sub_itfcs[tensor_type]
+        itfc.save_file(tensor, path)  # type: ignore[attr-defined]
 
 
 class SafetensorsSaver(CheckpointSaver):

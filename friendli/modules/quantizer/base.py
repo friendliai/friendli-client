@@ -229,7 +229,8 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
         self,
         model: torch.nn.Module,
         convert_info_list: List[ConvertInfo],
-    ) -> Generator[Tuple[str, np.ndarray], None, None]:
+        save_numpy_format: bool = True,
+    ) -> Generator[Tuple[str, Union[np.ndarray, torch.Tensor]], None, None]:
         """Convert Huggingface Model to Friendli format(.h5).
 
         Args:
@@ -238,11 +239,12 @@ class CommonQuantizer(AbstractQuantizer, ModelConversionInterface):
                 Dictionary of mapping of tensor name to tensor
             convert_info_list (List[ConvertInfo]):
                 Dictionary of mapping converted params name to conversion functions.
-
+            save_numpy_format (bool, optional): Save the converted tensor in numpy format.
+                                                Defaults to True.
         """
         self.pre_quantize(model)
         model = self.quantize(model)
-        yield from self.converter.convert(model, convert_info_list)
+        yield from self.converter.convert(model, convert_info_list, save_numpy_format)
 
 
 class FP8QuantHook(AbstractQuantHook):
@@ -320,7 +322,7 @@ class FP8Quantizer(CommonQuantizer):
         )
 
         encoded_dataset = tokenizer(
-            dataset["article"][:512],
+            dataset[data_cfg.lookup_column_name],
             return_tensors="pt",
             padding=True,
             truncation=True,
@@ -467,6 +469,7 @@ class FP8Quantizer(CommonQuantizer):
         self,
         model: torch.nn.Module,
         convert_info_list: List[ConvertInfo],
+        save_numpy_format: bool = False,
     ) -> Generator[Tuple[str, Union[torch.Tensor, np.ndarray]], None, None]:
         """Convert Huggingface Model to Friendli format(.h5).
 
@@ -477,6 +480,8 @@ class FP8Quantizer(CommonQuantizer):
             convert_info_list (List[ConvertInfo]):
                 Dictionary of mapping converted params name to conversion functions.
                 It will be depreciated.
+            save_numpy_format (bool, optional): Save the converted tensor in numpy format.
+                                                It will be depreciated.
         """
         model = cast(FP8QuantHook, self.hook).pre_quantize(model)
         model = self.quantize(model)

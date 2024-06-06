@@ -6,15 +6,16 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import torch
 from tqdm import tqdm
 
+from friendli.enums import ModelDataType
 from friendli.modules.converter.schema import ConvertInfo
 from friendli.modules.converter.utils import (
-    convert_tensor_to_np_array,
+    convert_tensor_dtype,
     get_tensor_from_state_dict,
 )
 
@@ -40,7 +41,8 @@ class ModelConversionInterface(ABC):
         self,
         model: torch.nn.Module,
         convert_info_list: List[ConvertInfo],
-    ) -> Generator[Tuple[str, np.ndarray], None, None]:
+        save_numpy_format: bool = True,
+    ) -> Generator[Tuple[str, Union[np.ndarray, torch.Tensor]], None, None]:
         """Convert Huggingface Model to Friendli format(.h5).
 
         Args:
@@ -48,6 +50,8 @@ class ModelConversionInterface(ABC):
             output_path (str): Path to save the converted checkpoint.
             convert_info_list (List[ConvertInfo]):
                 List of convert information of the parameter in huggingface checkpoint.
+            save_numpy_format (bool, optional): Save the converted tensor in numpy format.
+                                                Defaults to True.
         """
         state_dict = model.state_dict()
         total_layers = len(convert_info_list)
@@ -63,11 +67,20 @@ class ModelConversionInterface(ABC):
                     get_tensor_from_state_dict(state_dict, param_name)
                     for param_name in param_names
                 ]
-                reshaped_tensor = reshape_fn(params)
-                yield (
-                    converted_name,
-                    convert_tensor_to_np_array(reshaped_tensor, data_type),
-                )
+                reshaped_tensor = convert_tensor_dtype(reshape_fn(params), data_type)
+                if save_numpy_format:
+                    yield (
+                        converted_name,
+                        reshaped_tensor.view(torch.float16).numpy().view(np.uint16)
+                        if data_type == ModelDataType.BF16
+                        else reshaped_tensor.numpy(),
+                    )
+                else:
+                    yield (
+                        converted_name,
+                        reshaped_tensor.contiguous(),
+                    )
+
                 pbar.update()
 
 

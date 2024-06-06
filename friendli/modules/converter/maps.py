@@ -22,6 +22,7 @@ from transformers import (  # type: ignore[import]
     MixtralForCausalLM,
     MptForCausalLM,
     OPTForCausalLM,
+    Phi3ForCausalLM,
     PreTrainedModel,
     T5ForConditionalGeneration,
 )
@@ -54,6 +55,7 @@ from friendli.modules.converter.models.mpt import (
     MptForCausalLMLoraConverter,
 )
 from friendli.modules.converter.models.opt import OPTForCausalLMConverter
+from friendli.modules.converter.models.phi3 import Phi3ForCausalLMConverter
 from friendli.modules.converter.models.phi_msft import PhiForCausalLMConverter
 from friendli.modules.converter.models.t5 import T5Converter
 
@@ -80,6 +82,7 @@ MODEL_ARCH_CONVERTER_MAP: Dict[
     "PhiForCausalLM": (AutoModelForCausalLM, PhiForCausalLMConverter),
     "CohereForCausalLM": (CohereForCausalLM, CohereForCausalLMConverter),
     "DbrxForCausalLM": (DbrxForCausalLM, DbrxForCausalLMConverter),
+    "Phi3ForCausalLM": (Phi3ForCausalLM, Phi3ForCausalLMConverter),
 }
 
 MODEL_ARCH_ADAPTER_CONVERTER_MAP: Dict[

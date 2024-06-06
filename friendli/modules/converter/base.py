@@ -487,10 +487,11 @@ class DecoderOnlyLoraConverter(AbstractConverter):
         self,
         model: torch.nn.Module,
         convert_info_list: List[ConvertInfo],
-    ) -> Generator[Tuple[str, np.ndarray], None, None]:
+        save_numpy_format: bool = True,
+    ) -> Generator[Tuple[str, Union[np.ndarray, torch.Tensor]], None, None]:
         """Reshape Lora adapter model's all layer to Friendli format."""
         model = self.pre_convert(model)
-        yield from self.converter.convert(model, convert_info_list)
+        yield from self.converter.convert(model, convert_info_list, save_numpy_format)
 
     def get_attributes(self) -> Dict[str, Any]:
         """Get adapter checkpoint attributes."""

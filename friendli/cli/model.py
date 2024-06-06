@@ -91,9 +91,9 @@ def convert(
         "The default file name is `model.h5` when `--output-ckpt-file-type` is `hdf5` or `model.safetensors` when `--output-ckpt-file-type` is `safetensors`.",
     ),
     output_ckpt_file_type: CheckpointFileType = typer.Option(
-        CheckpointFileType.HDF5,
+        CheckpointFileType.SAFETENSORS,
         "--output-ckpt-file-type",
-        help="File format of the converted checkpoint file.",
+        help="File format of the converted checkpoint file. The default output ckpt file type is `safetensors`.",
     ),
     output_attr_file_name: str = typer.Option(
         "attr.yaml",

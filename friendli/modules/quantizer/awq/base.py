@@ -296,16 +296,12 @@ class AWQQuantizer(CommonQuantizer):
         disable_progress_bar()
         dataset = (
             dataset.shuffle(self.quant_config.seed)
-            .filter(
-                lambda sample: len(tokenizer(sample)) <= data_cfg.max_length,
-                input_columns=data_cfg.lookup_column_name,
-            )
+            .select(range(data_cfg.num_samples))
             .map(function=preprocess, input_columns=data_cfg.lookup_column_name)
             .filter(
                 lambda sample: torch.tensor(sample).numel() != 0,
                 input_columns="input_ids",
             )
-            .select(range(data_cfg.num_samples))
         )
 
         return dataset
@@ -313,12 +309,11 @@ class AWQQuantizer(CommonQuantizer):
     def get_batched_samples(self):
         """Get batched samples from dataset."""
         dataset = self.get_calib_dataset()
-
+        seqlen = self.quant_config.calibration_dataset.max_length
         samples = []
         for sample in dataset["input_ids"]:
-            samples.append(torch.tensor(sample))
+            samples.append(torch.tensor(sample[:seqlen]))
 
-        seqlen = self.quant_config.calibration_dataset.max_length
         batched_samples = torch.cat(samples)
         if len(batched_samples) // seqlen == 0:
             return batched_samples.unsqueeze(0)
@@ -328,7 +323,6 @@ class AWQQuantizer(CommonQuantizer):
             for i in range(len(batched_samples) // seqlen)
         ]
         batched_samples = torch.cat(batched_samples, dim=0)
-
         return batched_samples
 
     def _apply_awq_scale_clip_block(

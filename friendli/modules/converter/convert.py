@@ -128,7 +128,11 @@ def convert_checkpoint(  # pylint: disable=too-many-branches
         with get_saver(
             output_ckpt_file_type, output_dir, output_model_file_name
         ) as saver:
-            for name, w in converter.convert(model, convert_info_list):
+            for name, w in converter.convert(
+                model,
+                convert_info_list,
+                output_ckpt_file_type == CheckpointFileType.HDF5,
+            ):
                 saver.save_tensor(name, w)
 
         logger.info(
@@ -235,7 +239,9 @@ def convert_adapter_checkpoint(  # pylint: disable=too-many-locals, too-many-arg
         with get_saver(
             output_adapter_file_type, output_dir, output_adapter_filename
         ) as saver:
-            for name, w in adapter_converter.convert(model, convert_dict):
+            for name, w in adapter_converter.convert(
+                model, convert_dict, output_adapter_file_type == CheckpointFileType.HDF5
+            ):
                 saver.save_tensor(name, w)
 
         logger.info(

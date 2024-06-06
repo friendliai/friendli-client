@@ -20,6 +20,7 @@ from friendli.modules.quantizer.models.dbrx import DbrxHook
 from friendli.modules.quantizer.models.llama import LlamaHook
 from friendli.modules.quantizer.models.mixtral import MixtralHook
 from friendli.modules.quantizer.models.mpt import MPTHook
+from friendli.modules.quantizer.models.phi3 import Phi3Hook
 from friendli.modules.quantizer.schema.config import OneOfQuantConfig
 from friendli.modules.quantizer.smoothquant.base import (
     SmoothQuantHook,
@@ -64,6 +65,7 @@ model_arch_fp8_hook_map: Dict[str, type[FP8QuantHook]] = {
     "MPTForCausalLM": MPTHook,
     "CohereForCausalLM": LlamaHook,
     "DbrxForCausalLM": DbrxHook,
+    "Phi3ForCausalLM": Phi3Hook,
 }
 
 

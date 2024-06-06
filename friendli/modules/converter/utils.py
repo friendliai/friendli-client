@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
-import numpy as np
 import torch
 from peft import PeftConfig  # type: ignore[import] # pylint: disable=import-error
 from transformers import (  # type: ignore[import]
@@ -113,18 +112,18 @@ def get_model_data_type(torch_dtype: torch.dtype) -> ModelDataType:
     raise CheckpointConversionError(f"{torch_dtype} is not valid dtype.")
 
 
-def convert_tensor_to_np_array(
+def convert_tensor_dtype(
     param: torch.Tensor,
     data_type: Union[ModelDataType, torch.dtype],
-) -> np.ndarray:
-    """Reshape tensor to numpy ndarray.
+) -> torch.Tensor:
+    """Convert tensor format to the given data type.
 
     Args:
         param (torch.Tensor): The tensor to be converted.
         data_type (ModelDataType): The data type of the tensor.
 
     Returns:
-        np.ndarray: The converted numpy ndarray from the tensor.
+        torch.Tensor: The converted tensor.
 
     """
     dtype_map = {
@@ -139,17 +138,10 @@ def convert_tensor_to_np_array(
     dtype = dtype_map[data_type] if isinstance(data_type, ModelDataType) else data_type
 
     if dtype is torch.float8_e4m3fn:
-        return param.cpu().detach().to(dtype).view(dtype=torch.int8).numpy()
+        return param.detach().to(dtype).view(dtype=torch.int8).to("cpu")
 
     if dtype is torch.bfloat16:
-        return (
-            param.cpu()
-            .detach()
-            .to(dtype)
-            .view(dtype=torch.float16)
-            .numpy()
-            .view(np.uint16)
-        )
+        return param.detach().to(dtype).to("cpu")
 
     if data_type is ModelDataType.INT4:
         pack_num = 8 // 4
@@ -163,7 +155,7 @@ def convert_tensor_to_np_array(
                 int4_param[:, col] |= param[:, col * pack_num + i] << (i * 4)
         param = int4_param
 
-    return param.to("cpu").detach().to(dtype).numpy()
+    return param.detach().to(dtype).to("cpu")
 
 
 def get_tokenizer(
