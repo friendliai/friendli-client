@@ -46,6 +46,6 @@ class CompletionLine(BaseModel):
     """Completion line schema."""
 
     event: str
-    index: int
-    text: str
+    index: int = 0
+    text: str = ""
     token: int
