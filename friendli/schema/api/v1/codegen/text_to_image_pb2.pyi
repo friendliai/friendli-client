@@ -11,7 +11,7 @@ from google.protobuf import message as _message
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class V1TextToImageRequest(_message.Message):
-    __slots__ = [
+    __slots__ = (
         "prompt",
         "negative_prompt",
         "num_outputs",
@@ -20,7 +20,7 @@ class V1TextToImageRequest(_message.Message):
         "seed",
         "response_format",
         "model",
-    ]
+    )
     PROMPT_FIELD_NUMBER: _ClassVar[int]
     NEGATIVE_PROMPT_FIELD_NUMBER: _ClassVar[int]
     NUM_OUTPUTS_FIELD_NUMBER: _ClassVar[int]

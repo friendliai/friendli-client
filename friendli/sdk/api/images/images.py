@@ -18,7 +18,7 @@ class Images:
 
     def __init__(
         self,
-        base_url: str,
+        base_url: Optional[str] = None,
         endpoint_id: Optional[str] = None,
         client: Optional[httpx.Client] = None,
     ) -> None:
@@ -35,7 +35,7 @@ class AsyncImages:
 
     def __init__(
         self,
-        base_url: str,
+        base_url: Optional[str] = None,
         endpoint_id: Optional[str] = None,
         client: Optional[httpx.AsyncClient] = None,
     ) -> None:

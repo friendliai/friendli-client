@@ -16,7 +16,7 @@ from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class V1CompletionsRequest(_message.Message):
-    __slots__ = [
+    __slots__ = (
         "stream",
         "model",
         "prompt",
@@ -53,10 +53,11 @@ class V1CompletionsRequest(_message.Message):
         "include_output_logprobs",
         "forced_output_tokens",
         "eos_token",
-    ]
+        "response_format",
+    )
 
     class BeamSearchType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-        __slots__ = []
+        __slots__ = ()
         DETERMINISTIC: _ClassVar[V1CompletionsRequest.BeamSearchType]
         STOCHASTIC: _ClassVar[V1CompletionsRequest.BeamSearchType]
         NAIVE_SAMPLING: _ClassVar[V1CompletionsRequest.BeamSearchType]
@@ -65,10 +66,33 @@ class V1CompletionsRequest(_message.Message):
     NAIVE_SAMPLING: V1CompletionsRequest.BeamSearchType
 
     class TokenSequence(_message.Message):
-        __slots__ = ["tokens"]
+        __slots__ = ("tokens",)
         TOKENS_FIELD_NUMBER: _ClassVar[int]
         tokens: _containers.RepeatedScalarFieldContainer[int]
         def __init__(self, tokens: _Optional[_Iterable[int]] = ...) -> None: ...
+
+    class ResponseFormat(_message.Message):
+        __slots__ = ("type", "schema")
+
+        class Type(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+            __slots__ = ()
+            text: _ClassVar[V1CompletionsRequest.ResponseFormat.Type]
+            json_object: _ClassVar[V1CompletionsRequest.ResponseFormat.Type]
+            regex: _ClassVar[V1CompletionsRequest.ResponseFormat.Type]
+        text: V1CompletionsRequest.ResponseFormat.Type
+        json_object: V1CompletionsRequest.ResponseFormat.Type
+        regex: V1CompletionsRequest.ResponseFormat.Type
+        TYPE_FIELD_NUMBER: _ClassVar[int]
+        SCHEMA_FIELD_NUMBER: _ClassVar[int]
+        type: V1CompletionsRequest.ResponseFormat.Type
+        schema: str
+        def __init__(
+            self,
+            type: _Optional[
+                _Union[V1CompletionsRequest.ResponseFormat.Type, str]
+            ] = ...,
+            schema: _Optional[str] = ...,
+        ) -> None: ...
     STREAM_FIELD_NUMBER: _ClassVar[int]
     MODEL_FIELD_NUMBER: _ClassVar[int]
     PROMPT_FIELD_NUMBER: _ClassVar[int]
@@ -105,6 +129,7 @@ class V1CompletionsRequest(_message.Message):
     INCLUDE_OUTPUT_LOGPROBS_FIELD_NUMBER: _ClassVar[int]
     FORCED_OUTPUT_TOKENS_FIELD_NUMBER: _ClassVar[int]
     EOS_TOKEN_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_FORMAT_FIELD_NUMBER: _ClassVar[int]
     stream: bool
     model: str
     prompt: str
@@ -145,6 +170,7 @@ class V1CompletionsRequest(_message.Message):
     include_output_logprobs: bool
     forced_output_tokens: _containers.RepeatedScalarFieldContainer[int]
     eos_token: _containers.RepeatedScalarFieldContainer[int]
+    response_format: V1CompletionsRequest.ResponseFormat
     def __init__(
         self,
         stream: bool = ...,
@@ -189,4 +215,29 @@ class V1CompletionsRequest(_message.Message):
         include_output_logprobs: bool = ...,
         forced_output_tokens: _Optional[_Iterable[int]] = ...,
         eos_token: _Optional[_Iterable[int]] = ...,
+        response_format: _Optional[
+            _Union[V1CompletionsRequest.ResponseFormat, _Mapping]
+        ] = ...,
+    ) -> None: ...
+
+class V1CompletionsResponse(_message.Message):
+    __slots__ = ("event", "token", "text")
+
+    class Event(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        TOKEN_SAMPLED: _ClassVar[V1CompletionsResponse.Event]
+        COMPLETE: _ClassVar[V1CompletionsResponse.Event]
+    TOKEN_SAMPLED: V1CompletionsResponse.Event
+    COMPLETE: V1CompletionsResponse.Event
+    EVENT_FIELD_NUMBER: _ClassVar[int]
+    TOKEN_FIELD_NUMBER: _ClassVar[int]
+    TEXT_FIELD_NUMBER: _ClassVar[int]
+    event: V1CompletionsResponse.Event
+    token: _containers.RepeatedScalarFieldContainer[int]
+    text: str
+    def __init__(
+        self,
+        event: _Optional[_Union[V1CompletionsResponse.Event, str]] = ...,
+        token: _Optional[_Iterable[int]] = ...,
+        text: _Optional[str] = ...,
     ) -> None: ...

@@ -9,10 +9,15 @@ from __future__ import annotations
 import json
 from typing import List, Literal, Optional, Type, Union, overload
 
+import grpc
+import grpc.aio
 from pydantic import ValidationError
 
 from friendli.errors import InvalidGenerationError
 from friendli.schema.api.v1.codegen.completions_pb2 import V1CompletionsRequest
+from friendli.schema.api.v1.codegen.completions_pb2_grpc import (
+    TextGenerationServiceStub,
+)
 from friendli.schema.api.v1.completions import (
     BeamSearchType,
     Completion,
@@ -21,8 +26,10 @@ from friendli.schema.api.v1.completions import (
 )
 from friendli.sdk.api.base import (
     AsyncGenerationStream,
+    AsyncGrpcGenerationStream,
     AsyncServingAPI,
     GenerationStream,
+    GrpcGenerationStream,
     ServingAPI,
 )
 from friendli.utils.compat import model_parse
@@ -46,6 +53,9 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
     @property
     def _request_pb_cls(self) -> Type[V1CompletionsRequest]:
         return V1CompletionsRequest
+
+    def _get_grpc_stub(self, channel: grpc.Channel) -> TextGenerationServiceStub:
+        return TextGenerationServiceStub(channel)
 
     @overload
     def create(
@@ -87,7 +97,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
-    ) -> CompletionStream:
+    ) -> Union[CompletionStream, CompletionGrpcStream]:
         """[skip-doc]."""
 
     @overload
@@ -172,7 +182,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
-    ) -> Union[CompletionStream, Completion]:
+    ) -> Union[CompletionStream, Completion, CompletionGrpcStream]:
         """Creates a completion.
 
         :::note
@@ -279,6 +289,11 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             ```
 
         """
+        if self._use_grpc and not stream:
+            raise ValueError(
+                "Setting `stream=True` is required as only response-streaming RPC is supported."
+            )
+
         request_dict = {
             "stream": stream,
             "prompt": prompt,
@@ -319,6 +334,8 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         response = self._request(data=request_dict, stream=stream, model=model)
 
         if stream:
+            if self._use_grpc:
+                return CompletionGrpcStream(response=response)
             return CompletionStream(response=response)
         return model_parse(Completion, response.json())
 
@@ -341,6 +358,9 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
     @property
     def _request_pb_cls(self) -> Type[V1CompletionsRequest]:
         return V1CompletionsRequest
+
+    def _get_grpc_stub(self, channel: grpc.aio.Channel) -> TextGenerationServiceStub:
+        return TextGenerationServiceStub(channel)
 
     @overload
     async def create(
@@ -382,7 +402,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
-    ) -> AsyncCompletionStream:
+    ) -> Union[AsyncCompletionStream, AsyncCompletionGrpcStream]:
         """[skip-doc]."""
 
     @overload
@@ -467,7 +487,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
-    ) -> Union[AsyncCompletionStream, Completion]:
+    ) -> Union[AsyncCompletionStream, AsyncCompletionGrpcStream, Completion]:
         """Creates a completion asynchronously.
 
         Args:
@@ -562,6 +582,11 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             ```
 
         """
+        if self._use_grpc and not stream:
+            raise ValueError(
+                "Setting `stream=True` is required as only response-streaming RPC is supported."
+            )
+
         request_dict = {
             "stream": stream,
             "prompt": prompt,
@@ -602,6 +627,8 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         response = await self._request(data=request_dict, stream=stream, model=model)
 
         if stream:
+            if self._use_grpc:
+                return AsyncCompletionGrpcStream(response=response)
             return AsyncCompletionStream(response=response)
         return model_parse(Completion, response.json())
 
@@ -700,3 +727,29 @@ class AsyncCompletionStream(AsyncGenerationStream[CompletionLine]):
                             f"Generation result has invalid schema: {str(exc)}"
                         ) from exc
         return None
+
+
+class CompletionGrpcStream(GrpcGenerationStream[CompletionLine]):
+    """Completion stream."""
+
+    def __next__(self) -> CompletionLine:  # noqa: D105
+        line = next(self._iter)
+        while not line:
+            line = next(self._iter)
+
+        if line.event == 1:  # COMPLETE
+            raise StopIteration
+        return CompletionLine(event="", text=line.text, token=line.token[0])
+
+
+class AsyncCompletionGrpcStream(AsyncGrpcGenerationStream[CompletionLine]):
+    """Completion stream."""
+
+    async def __anext__(self) -> CompletionLine:  # noqa: D105
+        line = await self._iter.__anext__()
+        while not line:
+            line = await self._iter.__anext__()
+
+        if line.event == 1:  # COMPLETE
+            raise StopAsyncIteration
+        return CompletionLine(event="", text=line.text, token=line.token[0])

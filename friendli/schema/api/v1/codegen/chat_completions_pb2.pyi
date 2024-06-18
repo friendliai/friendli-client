@@ -15,7 +15,7 @@ from google.protobuf.internal import containers as _containers
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class V1ChatCompletionsRequest(_message.Message):
-    __slots__ = [
+    __slots__ = (
         "messages",
         "model",
         "frequency_penalty",
@@ -27,10 +27,10 @@ class V1ChatCompletionsRequest(_message.Message):
         "temperature",
         "top_p",
         "timeout_microseconds",
-    ]
+    )
 
     class Message(_message.Message):
-        __slots__ = ["content", "role"]
+        __slots__ = ("content", "role")
         CONTENT_FIELD_NUMBER: _ClassVar[int]
         ROLE_FIELD_NUMBER: _ClassVar[int]
         content: str

@@ -4,7 +4,10 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
+
+import grpc
+import grpc.aio
 
 import friendli
 from friendli.client.graphql.endpoint import EndpointGqlClient
@@ -30,6 +33,8 @@ class FriendliClientBase:
         endpoint_id: Optional[str] = None,
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
+        use_grpc: bool = False,
+        grpc_channel: Optional[Union[grpc.Channel, grpc.aio.Channel]] = None,
     ):
         """Initializes FriendliClientBase."""
         if token is not None:
@@ -41,6 +46,19 @@ class FriendliClientBase:
         self._endpoint_id = endpoint_id
         self._base_url = base_url
         self._use_protobuf = use_protobuf
+
+        if use_grpc:
+            if base_url is None and grpc_channel is None:
+                raise ValueError(
+                    "One of `base_url` and `grpc_channel` should be set when `use_grpc=True`."
+                )
+        else:
+            if grpc_channel is not None:
+                raise ValueError(
+                    "Setting `use_grpc=True` is required when `grpc_channel` is set."
+                )
+            if base_url is None:
+                self._base_url = INFERENCE_ENDPOINT_URL
 
 
 class Friendli(FriendliClientBase):
@@ -61,6 +79,8 @@ class Friendli(FriendliClientBase):
         endpoint_id: Optional[str] = None,
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
+        use_grpc: bool = False,
+        grpc_channel: Optional[grpc.Channel] = None,
     ):
         """Initializes Friendli."""
         super().__init__(
@@ -70,16 +90,25 @@ class Friendli(FriendliClientBase):
             endpoint_id=endpoint_id,
             base_url=base_url,
             use_protobuf=use_protobuf,
+            use_grpc=use_grpc,
+            grpc_channel=grpc_channel,
         )
 
-        base_url = base_url or INFERENCE_ENDPOINT_URL
         self.completions = Completions(
-            base_url=base_url, endpoint_id=self._endpoint_id, use_protobuf=use_protobuf
+            base_url=self._base_url,
+            endpoint_id=self._endpoint_id,
+            use_protobuf=use_protobuf,
+            use_grpc=use_grpc,
+            grpc_channel=grpc_channel,
         )
         self.chat = Chat(
-            base_url=base_url, endpoint_id=self._endpoint_id, use_protobuf=use_protobuf
+            base_url=self._base_url,
+            endpoint_id=self._endpoint_id,
+            use_protobuf=use_protobuf,
+            use_grpc=use_grpc,
+            grpc_channel=grpc_channel,
         )
-        self.images = Images(base_url=base_url, endpoint_id=self._endpoint_id)
+        self.images = Images(base_url=self._base_url, endpoint_id=self._endpoint_id)
 
         endpoint_client = EndpointGqlClient()
         model_client = ModelGqlClient()
@@ -103,6 +132,8 @@ class AsyncFriendli(FriendliClientBase):
         endpoint_id: Optional[str] = None,
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
+        use_grpc: bool = False,
+        grpc_channel: Optional[grpc.aio.Channel] = None,
     ):
         """Initializes AsyncFriendli."""
         super().__init__(
@@ -112,13 +143,24 @@ class AsyncFriendli(FriendliClientBase):
             endpoint_id=endpoint_id,
             base_url=base_url,
             use_protobuf=use_protobuf,
+            use_grpc=use_grpc,
+            grpc_channel=grpc_channel,
         )
 
-        base_url = base_url or INFERENCE_ENDPOINT_URL
         self.completions = AsyncCompletions(
-            base_url=base_url, endpoint_id=self._endpoint_id, use_protobuf=use_protobuf
+            base_url=self._base_url,
+            endpoint_id=self._endpoint_id,
+            use_protobuf=use_protobuf,
+            use_grpc=use_grpc,
+            grpc_channel=grpc_channel,
         )
         self.chat = AsyncChat(
-            base_url=base_url, endpoint_id=self._endpoint_id, use_protobuf=use_protobuf
+            base_url=self._base_url,
+            endpoint_id=self._endpoint_id,
+            use_protobuf=use_protobuf,
+            use_grpc=use_grpc,
+            grpc_channel=grpc_channel,
         )
-        self.images = AsyncImages(base_url=base_url, endpoint_id=self._endpoint_id)
+        self.images = AsyncImages(
+            base_url=self._base_url, endpoint_id=self._endpoint_id
+        )

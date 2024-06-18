@@ -11,16 +11,19 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
+import grpc
+import grpc._channel
+import grpc.aio
+import grpc.aio._call
+import grpc.aio._channel
 import httpx
 from google.protobuf import json_format
+from google.protobuf import message as pb_message
 from pydantic import BaseModel
 from typing_extensions import Self
 
 from friendli.auth import get_auth_header
 from friendli.errors import APIError
-from friendli.schema.api.v1.codegen.chat_completions_pb2 import V1ChatCompletionsRequest
-from friendli.schema.api.v1.codegen.completions_pb2 import V1CompletionsRequest
-from friendli.schema.api.v1.codegen.text_to_image_pb2 import V1TextToImageRequest
 from friendli.utils.request import DEFAULT_REQ_TIMEOUT
 
 _GenerationLine = TypeVar("_GenerationLine", bound=BaseModel)
@@ -56,15 +59,38 @@ class AsyncGenerationStream(ABC, Generic[_GenerationLine]):
         """Iterates the stream."""
 
 
+class GrpcGenerationStream(ABC, Generic[_GenerationLine]):
+    """Generation stream."""
+
+    def __init__(self, response: grpc._channel._MultiThreadedRendezvous) -> None:
+        """Initializes generation stream."""
+        self._iter = response
+
+    def __iter__(self) -> Self:  # noqa: D105
+        return self
+
+    @abstractmethod
+    def __next__(self) -> _GenerationLine:
+        """Iterates the stream."""
+
+
+class AsyncGrpcGenerationStream(ABC, Generic[_GenerationLine]):
+    """Generation stream."""
+
+    def __init__(self, response: grpc.aio._call.UnaryStreamCall) -> None:
+        """Initializes generation stream."""
+        self._iter = response.__aiter__()  # type: ignore
+
+    def __aiter__(self) -> Self:  # noqa: D105
+        return self
+
+    @abstractmethod
+    async def __anext__(self) -> _GenerationLine:
+        """Iterates the stream."""
+
+
 _HttpxClient = TypeVar("_HttpxClient", bound=Union[httpx.Client, httpx.AsyncClient])
-_ProtoMsgType = TypeVar(
-    "_ProtoMsgType",
-    bound=Union[
-        Type[V1CompletionsRequest],
-        Type[V1ChatCompletionsRequest],
-        Type[V1TextToImageRequest],
-    ],
-)
+_ProtoMsgType = TypeVar("_ProtoMsgType", bound=Type[pb_message.Message])
 
 
 class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
@@ -74,13 +100,13 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
 
     def __init__(
         self,
-        base_url: str,
+        base_url: Optional[str] = None,
         endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
     ) -> None:
         """Initializes BaseAPI."""
         self._endpoint_id = endpoint_id
-        self._host = httpx.URL(base_url)
+        self._base_url = base_url
         self._use_protobuf = use_protobuf
 
     @property
@@ -103,25 +129,34 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
     def _request_pb_cls(self) -> _ProtoMsgType:
         """Protobuf message class to serialize the data of request body."""
 
-    def _build_request(
+    def _build_http_request(
         self, data: dict[str, Any], model: Optional[str] = None
     ) -> httpx.Request:
         """Build request."""
         return self._client.build_request(
             method=self._method,
-            url=self._build_url(),
+            url=self._build_http_url(),
             content=self._build_content(data, model),
             files=self._build_files(data),
             headers=self._get_headers(),
             timeout=DEFAULT_REQ_TIMEOUT,
         )
 
-    def _build_url(self) -> httpx.URL:
+    def _build_http_url(self) -> httpx.URL:
+        assert self._base_url is not None
         path = ""
         if self._endpoint_id is not None:
             path = "dedicated"
         path = os.path.join(path, self._api_path)
-        return self._host.join(path)
+        host = httpx.URL(self._base_url)
+        return host.join(path)
+
+    def _build_grpc_url(self) -> str:
+        if self._base_url is None:
+            raise ValueError(
+                "You need to provide the gRPC server address through `base_url`."
+            )
+        return self._base_url
 
     def _get_headers(self) -> Dict[str, Any]:
         return {
@@ -157,29 +192,50 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
 
         return json.dumps(data).encode()
 
+    def _build_grpc_request(
+        self, data: dict[str, Any], model: Optional[str] = None
+    ) -> pb_message.Message:
+        if self._endpoint_id is not None:
+            data["model"] = self._endpoint_id
+        else:
+            data["model"] = model
+
+        pb_cls = self._request_pb_cls
+        return pb_cls(**data)
+
 
 class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
     """Serving API interface."""
 
     def __init__(
         self,
-        base_url: str,
+        base_url: Optional[str] = None,
         endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
+        use_grpc: bool = False,
         client: Optional[httpx.Client] = None,
+        grpc_channel: Optional[grpc.Channel] = None,
     ) -> None:
         """Initializes ServingAPI."""
         super().__init__(
-            base_url=base_url, endpoint_id=endpoint_id, use_protobuf=use_protobuf
+            base_url=base_url,
+            endpoint_id=endpoint_id,
+            use_protobuf=use_protobuf,
         )
+
+        self._use_grpc = use_grpc
         self._client = client or httpx.Client()
+        self._grpc_channel = grpc_channel
+
+    def _get_grpc_stub(self, channel: grpc.Channel) -> Any:
+        raise NotImplementedError  # pragma: no cover
 
     def _request(
         self, *, data: dict[str, Any], stream: bool, model: Optional[str] = None
-    ) -> httpx.Response:
+    ) -> Any:
         # TODO: Add retry / handle timeout and etc.
         if (
-            self._host == "https://inference.friendli.ai"
+            self._base_url == "https://inference.friendli.ai"
             and self._endpoint_id is None
             and model is None
         ):
@@ -187,11 +243,21 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         if self._endpoint_id is not None and model is not None:
             raise ValueError("`model` is not allowed for dedicated endpoints.")
 
-        request = self._build_request(data=data, model=model)
-        response = self._client.send(request=request, stream=stream)
-        self._check_http_error(response)
+        if self._use_grpc:
+            grpc_request = self._build_grpc_request(data=data, model=model)
+            channel = self._grpc_channel or grpc.insecure_channel(
+                self._build_grpc_url()
+            )
+            try:
+                stub = self._get_grpc_stub(channel)
+            except NotImplementedError as exc:
+                raise ValueError("This API does not support gRPC.") from exc
+            return stub.Generate(grpc_request)
 
-        return response
+        http_request = self._build_http_request(data=data, model=model)
+        http_response = self._client.send(request=http_request, stream=stream)
+        self._check_http_error(http_response)
+        return http_response
 
     def _check_http_error(self, response: httpx.Response) -> None:
         try:
@@ -213,31 +279,56 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
 
     def __init__(
         self,
-        base_url: str,
+        base_url: Optional[str] = None,
         endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
+        use_grpc: bool = False,
         client: Optional[httpx.AsyncClient] = None,
+        grpc_channel: Optional[grpc.aio.Channel] = None,
     ) -> None:
         """Initializes AsyncServingAPI."""
         super().__init__(
             base_url=base_url, endpoint_id=endpoint_id, use_protobuf=use_protobuf
         )
+
+        self._use_grpc = use_grpc
         self._client = client or httpx.AsyncClient()
+        self._grpc_channel = grpc_channel
+
+    def _get_grpc_stub(self, channel: grpc.aio.Channel) -> Any:
+        raise NotImplementedError  # pragma: no cover
 
     async def _request(
         self, *, data: dict[str, Any], stream: bool, model: Optional[str] = None
-    ) -> httpx.Response:
+    ) -> Any:
         # TODO: Add retry / handle timeout and etc.
-        if self._endpoint_id is None and model is None:
+        if (
+            self._base_url == "https://inference.friendli.ai"
+            and self._endpoint_id is None
+            and model is None
+        ):
             raise ValueError("`model` is required for serverless endpoints.")
         if self._endpoint_id is not None and model is not None:
             raise ValueError("`model` is not allowed for dedicated endpoints.")
 
-        request = self._build_request(data=data, model=model)
-        response = await self._client.send(request=request, stream=stream)
-        await self._check_http_error(response)
+        if self._use_grpc:
+            grpc_request = self._build_grpc_request(data=data, model=model)
+            channel = self._grpc_channel or grpc.aio.insecure_channel(
+                self._build_grpc_url()
+            )
+            try:
+                stub = self._get_grpc_stub(channel)
+            except NotImplementedError as exc:
+                raise ValueError("This API does not support gRPC.") from exc
+            grpc_response = stub.Generate(grpc_request, timeout=DEFAULT_REQ_TIMEOUT)
+            await grpc_response.wait_for_connection()
+            return grpc_response
 
-        return response
+        http_request = self._build_http_request(data=data, model=model)
+        http_response = await self._client.send(request=http_request, stream=stream)
+        await self._check_http_error(http_response)
+
+        return http_response
 
     async def _check_http_error(self, response: httpx.Response) -> None:
         try:
