@@ -27,6 +27,10 @@ class Images:
             base_url=base_url, endpoint_id=endpoint_id, client=client
         )
 
+    def close(self) -> None:
+        """Clean up all clients' resources."""
+        self.text_to_image.close()
+
 
 class AsyncImages:
     """Asynchronous images API."""
@@ -43,3 +47,7 @@ class AsyncImages:
         self.text_to_image = AsyncTextToImage(
             base_url=base_url, endpoint_id=endpoint_id, client=client
         )
+
+    async def close(self) -> None:
+        """Clean up all clients' resources."""
+        await self.text_to_image.close()

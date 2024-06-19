@@ -37,6 +37,10 @@ class Chat:
             grpc_channel=grpc_channel,
         )
 
+    def close(self) -> None:
+        """Clean up all clients' resources."""
+        self.completions.close()
+
 
 class AsyncChat:
     """Asynchronous chat API."""
@@ -61,3 +65,7 @@ class AsyncChat:
             client=client,
             grpc_channel=grpc_channel,
         )
+
+    async def close(self) -> None:
+        """Clean up all clients' resources."""
+        await self.completions.close()

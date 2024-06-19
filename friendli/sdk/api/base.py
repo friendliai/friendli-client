@@ -226,6 +226,21 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         self._use_grpc = use_grpc
         self._client = client or httpx.Client()
         self._grpc_channel = grpc_channel
+        self._grpc_stub = None
+
+    def __enter__(self) -> ServingAPI:
+        """Enter the context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit the context manager with cleaning up resources."""
+        self.close()
+
+    def close(self) -> None:
+        """Close the gRPC channel and HTTP client."""
+        if self._grpc_channel:
+            self._grpc_channel.close()
+        self._client.close()
 
     def _get_grpc_stub(self, channel: grpc.Channel) -> Any:
         raise NotImplementedError  # pragma: no cover
@@ -245,14 +260,16 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
 
         if self._use_grpc:
             grpc_request = self._build_grpc_request(data=data, model=model)
-            channel = self._grpc_channel or grpc.insecure_channel(
-                self._build_grpc_url()
-            )
+            if not self._grpc_channel:
+                self._grpc_channel = grpc.insecure_channel(self._build_grpc_url())
             try:
-                stub = self._get_grpc_stub(channel)
+                if not self._grpc_stub:
+                    self._grpc_stub = self._get_grpc_stub(self._grpc_channel)
             except NotImplementedError as exc:
                 raise ValueError("This API does not support gRPC.") from exc
-            return stub.Generate(grpc_request)
+            assert self._grpc_stub
+            grpc_response = self._grpc_stub.Generate(grpc_request)
+            return grpc_response
 
         http_request = self._build_http_request(data=data, model=model)
         http_response = self._client.send(request=http_request, stream=stream)
@@ -294,6 +311,21 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
         self._use_grpc = use_grpc
         self._client = client or httpx.AsyncClient()
         self._grpc_channel = grpc_channel
+        self._grpc_stub = None
+
+    async def __aenter__(self) -> AsyncServingAPI:
+        """Enter the async context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit the async context manager with cleaning up resources."""
+        await self.close()
+
+    async def close(self) -> None:
+        """Close the gRPC channel and HTTP client."""
+        if self._grpc_channel:
+            await self._grpc_channel.close(grace=None)
+        await self._client.aclose()
 
     def _get_grpc_stub(self, channel: grpc.aio.Channel) -> Any:
         raise NotImplementedError  # pragma: no cover
@@ -313,15 +345,17 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
 
         if self._use_grpc:
             grpc_request = self._build_grpc_request(data=data, model=model)
-            channel = self._grpc_channel or grpc.aio.insecure_channel(
-                self._build_grpc_url()
-            )
+            if not self._grpc_channel:
+                self._grpc_channel = grpc.aio.insecure_channel(self._build_grpc_url())
             try:
-                stub = self._get_grpc_stub(channel)
+                if not self._grpc_stub:
+                    self._grpc_stub = self._get_grpc_stub(self._grpc_channel)
             except NotImplementedError as exc:
                 raise ValueError("This API does not support gRPC.") from exc
-            grpc_response = stub.Generate(grpc_request, timeout=DEFAULT_REQ_TIMEOUT)
-            await grpc_response.wait_for_connection()
+            assert self._grpc_stub
+            grpc_response = self._grpc_stub.Generate(
+                grpc_request, timeout=DEFAULT_REQ_TIMEOUT
+            )
             return grpc_response
 
         http_request = self._build_http_request(data=data, model=model)

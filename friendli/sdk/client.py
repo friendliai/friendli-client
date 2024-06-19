@@ -115,6 +115,20 @@ class Friendli(FriendliClientBase):
         self.endpoint = EndpointApi(client=endpoint_client)
         self.model = ModelApi(client=model_client)
 
+    def __enter__(self) -> Friendli:
+        """Enter the context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit the context manager and close resources."""
+        self.close()
+
+    def close(self) -> None:
+        """Clean up all clients' resources."""
+        self.completions.close()
+        self.chat.close()
+        self.images.close()
+
 
 class AsyncFriendli(FriendliClientBase):
     """Async Friendli API client."""
@@ -164,3 +178,17 @@ class AsyncFriendli(FriendliClientBase):
         self.images = AsyncImages(
             base_url=self._base_url, endpoint_id=self._endpoint_id
         )
+
+    async def __aenter__(self) -> AsyncFriendli:
+        """Enter the asynchronous context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit the asynchronous context manager and close resources."""
+        await self.close()
+
+    async def close(self) -> None:
+        """Clean up all clients' resources."""
+        await self.completions.close()
+        await self.chat.close()
+        await self.images.close()
