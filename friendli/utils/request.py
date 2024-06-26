@@ -4,8 +4,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+import pydantic
 from requests.exceptions import HTTPError
 
+from friendli.utils.compat import model_dump
 from friendli.utils.url import discuss_url
 
 DEFAULT_REQ_TIMEOUT = 30
@@ -38,3 +42,17 @@ def decode_http_err(exc: HTTPError) -> str:
         error_str = exc.response.content.decode()
 
     return error_str
+
+
+def transform_request_data(data: Any) -> Any:
+    """Transform the data to be serializable."""
+    if isinstance(data, dict):
+        return {k: transform_request_data(v) for k, v in data.items()}
+
+    if isinstance(data, list):
+        return [transform_request_data(e) for e in data]
+
+    if isinstance(data, pydantic.BaseModel):
+        return model_dump(data, exclude_unset=True)
+
+    return data

@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2023-present, FriendliAI Inc. All rights reserved.
+ */
+
+syntax = "proto3";
+
+package orca;
+
+message ResponseFormat {
+  enum Type {
+    text = 0;
+    json_object = 1;
+    regex = 2;
+  }
+  Type type = 1;
+  optional string schema = 2; // Json schema or regex
+}

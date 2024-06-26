@@ -13,7 +13,13 @@ import typer
 import yaml
 
 from friendli.enums import CheckpointFileType, ModelDataType
-from friendli.errors import CheckpointConversionError, InvalidConfigError, NotFoundError
+from friendli.errors import (
+    CheckpointConversionError,
+    InvalidConfigError,
+    NotFoundError,
+    NotSupportedQuantConfigError,
+    QuantizationError,
+)
 from friendli.formatter import TableFormatter
 from friendli.sdk.client import Friendli
 from friendli.utils.compat import model_dump, model_parse
@@ -144,6 +150,7 @@ def convert(
         lookup_column_name: text
         num_samples: 128
         max_length: 512
+        batch_size: 1
     awq_args:
         quant_bit: 4
         quant_group_size: 64
@@ -160,6 +167,7 @@ def convert(
         - **`lookup_column_name`**: The name of a column in the dataset to be used as calibration inputs. Defaults to "text".
         - **`num_samples`**: The number of dataset samples to use for calibration. Note that the dataset will be shuffled before sampling. Defaults to 512.
         - **`max_length`**: The maximum length of a calibration input sequence. Defauts to 512.
+        - **`batch_size`**: The number of samples to process in a single batch. Defaults to 1.
     - **`awq_args`** (Fill in this field only for "awq" mode)
         - **`quant_bit`** : Bit width of integers to represent weights. Possible values are `4` or `8`. Defaults to 4.
         - **`quant_group_size`**: Group size of quantized matrices. 64 is the only supported value at this time. Defaults to 64.
@@ -187,15 +195,19 @@ def convert(
     :::
 
     """
+    # pylint: disable=too-many-branches
     try:
-        from friendli.modules.converter.convert import (  # pylint: disable=import-outside-toplevel
-            convert_checkpoint,
-        )
-        from friendli.modules.quantizer.schema.config import (  # pylint: disable=import-outside-toplevel
+        # pylint: disable=import-outside-toplevel
+        from friendli.modules.converter.convert import convert_checkpoint
+        from friendli.modules.quantizer.schema.config import (
             AWQConfig,
             OneOfQuantConfig,
             QuantConfig,
         )
+        from friendli.modules.quantizer_v2.quantize import quantize_checkpoint
+        from friendli.modules.quantizer_v2.schema.config import Int8QuantConfig
+
+        # pylint: enable=import-outside-toplevel
     except ModuleNotFoundError as exc:
         secho_error_and_exit(str(exc))
 
@@ -205,17 +217,28 @@ def convert(
         os.mkdir(output_dir)
 
     quant_config: Optional[OneOfQuantConfig] = None
+    use_quantizer_v2 = False
     if quantize:
         if quant_config_file:
             try:
                 quant_config_dict = cast(dict, yaml.safe_load(quant_config_file.read()))
             except yaml.YAMLError as err:
                 secho_error_and_exit(f"Failed to load the quant config file: {err}")
-            quant_config = model_parse(
-                QuantConfig, {"config": quant_config_dict}
-            ).config
+            if quant_config_dict["mode"] == "int8":
+                quant_config = model_parse(  # type: ignore
+                    Int8QuantConfig, quant_config_dict
+                )
+            else:
+                quant_config = model_parse(
+                    QuantConfig, {"config": quant_config_dict}
+                ).config
+
+            # TODO(SA): All Quantization mode will be migrated to V2. After migration, please remove it.
         else:
             quant_config = AWQConfig()
+
+        if isinstance(quant_config, Int8QuantConfig):
+            use_quantizer_v2 = True
 
     default_names = {
         CheckpointFileType.HDF5: "model.h5",
@@ -225,21 +248,38 @@ def convert(
         output_model_file_name or default_names[output_ckpt_file_type]
     )
 
-    try:
-        convert_checkpoint(
-            model_name_or_path=model_name_or_path,
-            output_model_file_name=output_model_file_name,
-            output_ckpt_file_type=output_ckpt_file_type,
-            output_attr_file_name=output_attr_file_name,
-            output_dir=output_dir,
-            data_type=data_type,
-            cache_dir=cache_dir,
-            dry_run=dry_run,
-            quantize=quantize,
-            quant_config=quant_config,
-        )
-    except (NotFoundError, CheckpointConversionError, InvalidConfigError) as exc:
-        secho_error_and_exit(str(exc))
+    if use_quantizer_v2:
+        if output_ckpt_file_type == CheckpointFileType.HDF5:
+            secho_error_and_exit(
+                f"int8 quantization only supports `safetensors` output_ckpt_file_type. Current output_ckpt_file_type: {output_ckpt_file_type}"
+            )
+        try:
+            assert isinstance(quant_config, Int8QuantConfig)
+            quantize_checkpoint(
+                model_name_or_path=model_name_or_path,
+                output_dir=output_dir,
+                cache_dir=cache_dir,
+                dry_run=dry_run,
+                quant_config=quant_config,
+            )
+        except (NotFoundError, QuantizationError, NotSupportedQuantConfigError) as exc:
+            secho_error_and_exit(str(exc))
+    else:
+        try:
+            convert_checkpoint(
+                model_name_or_path=model_name_or_path,
+                output_model_file_name=output_model_file_name,
+                output_ckpt_file_type=output_ckpt_file_type,
+                output_attr_file_name=output_attr_file_name,
+                output_dir=output_dir,
+                data_type=data_type,
+                cache_dir=cache_dir,
+                dry_run=dry_run,
+                quantize=quantize,
+                quant_config=quant_config,
+            )
+        except (NotFoundError, CheckpointConversionError, InvalidConfigError) as exc:
+            secho_error_and_exit(str(exc))
 
     msg = (
         f"Checkpoint({model_name_or_path}) can be converted."

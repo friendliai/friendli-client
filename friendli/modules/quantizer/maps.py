@@ -16,6 +16,7 @@ from friendli.modules.quantizer.awq.models.gptj import AWQGPTJHook
 from friendli.modules.quantizer.awq.models.llama import AWQLlamaHook
 from friendli.modules.quantizer.awq.models.mpt import AWQMPTHook
 from friendli.modules.quantizer.base import CommonQuantizer, FP8QuantHook, FP8Quantizer
+from friendli.modules.quantizer.models.arctic import ArcticHook
 from friendli.modules.quantizer.models.dbrx import DbrxHook
 from friendli.modules.quantizer.models.llama import LlamaHook
 from friendli.modules.quantizer.models.mixtral import MixtralHook
@@ -66,6 +67,7 @@ model_arch_fp8_hook_map: Dict[str, type[FP8QuantHook]] = {
     "CohereForCausalLM": LlamaHook,
     "DbrxForCausalLM": DbrxHook,
     "Phi3ForCausalLM": Phi3Hook,
+    "ArcticForCausalLM": ArcticHook,
 }
 
 

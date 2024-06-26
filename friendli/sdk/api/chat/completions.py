@@ -2,20 +2,22 @@
 
 """Friendli Completion API."""
 
-# pylint: disable=line-too-long, no-name-in-module
+# pylint: disable=line-too-long, no-name-in-module, too-many-locals
 
 from __future__ import annotations
 
 import json
-from typing import List, Literal, Optional, Type, Union, overload
+from typing import Dict, List, Literal, Optional, Type, Union, overload
 
 from pydantic import ValidationError
 
 from friendli.errors import InvalidGenerationError
+from friendli.schema.api.v1.chat.completion_chunk import ChatCompletionChunk
 from friendli.schema.api.v1.chat.completions import (
     ChatCompletion,
-    ChatCompletionLine,
     MessageParam,
+    ResponseFormatParam,
+    ToolParam,
 )
 from friendli.schema.api.v1.codegen.chat_completions_pb2 import V1ChatCompletionsRequest
 from friendli.sdk.api.base import (
@@ -55,12 +57,21 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        min_tokens: Optional[int] = None,
         n: Optional[int] = None,
         stop: Optional[List[str]] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         timeout_microseconds: Optional[int] = None,
+        tools: Optional[List[ToolParam]] = None,
+        tool_choice: Optional[str] = "auto",
+        response_format: Optional[ResponseFormatParam] = None,
     ) -> ChatCompletionStream:
         """[skip-doc]."""
 
@@ -73,12 +84,21 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        min_tokens: Optional[int] = None,
         n: Optional[int] = None,
         stop: Optional[List[str]] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         timeout_microseconds: Optional[int] = None,
+        tools: Optional[List[ToolParam]] = None,
+        tool_choice: Optional[str] = "auto",
+        response_format: Optional[ResponseFormatParam] = None,
     ) -> ChatCompletion:
         """[skip-doc]."""
 
@@ -86,16 +106,25 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         self,
         *,
         messages: List[MessageParam],
-        stream: bool,
+        stream: bool = False,
         model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        min_tokens: Optional[int] = None,
         n: Optional[int] = None,
         stop: Optional[List[str]] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         timeout_microseconds: Optional[int] = None,
+        tools: Optional[List[ToolParam]] = None,
+        tool_choice: Optional[str] = "auto",
+        response_format: Optional[ResponseFormatParam] = None,
     ) -> Union[ChatCompletionStream, ChatCompletion]:
         """Creates a chat completion.
 
@@ -121,12 +150,21 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
             "stream": stream,
             "frequency_penalty": frequency_penalty,
             "presence_penalty": presence_penalty,
+            "repetition_penalty": repetition_penalty,
             "max_tokens": max_tokens,
+            "min_tokens": min_tokens,
             "n": n,
             "stop": stop,
             "temperature": temperature,
             "top_p": top_p,
+            "top_k": top_k,
+            "logit_bias": logit_bias,
+            "logprobs": logprobs,
+            "top_logprobs": top_logprobs,
             "timeout_microseconds": timeout_microseconds,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "response_format": response_format,
         }
         response = self._request(data=request_dict, stream=stream, model=model)
 
@@ -163,12 +201,21 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        min_tokens: Optional[int] = None,
         n: Optional[int] = None,
         stop: Optional[List[str]] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         timeout_microseconds: Optional[int] = None,
+        tools: Optional[List[ToolParam]] = None,
+        tool_choice: Optional[str] = "auto",
+        response_format: Optional[ResponseFormatParam] = None,
     ) -> AsyncChatCompletionStream:
         """[skip-doc]."""
 
@@ -181,12 +228,21 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        min_tokens: Optional[int] = None,
         n: Optional[int] = None,
         stop: Optional[List[str]] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         timeout_microseconds: Optional[int] = None,
+        tools: Optional[List[ToolParam]] = None,
+        tool_choice: Optional[str] = "auto",
+        response_format: Optional[ResponseFormatParam] = None,
     ) -> ChatCompletion:
         """[skip-doc]."""
 
@@ -194,16 +250,25 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         self,
         *,
         messages: List[MessageParam],
-        stream: bool,
+        stream: bool = False,
         model: Optional[str] = None,
         frequency_penalty: Optional[float] = None,
         presence_penalty: Optional[float] = None,
+        repetition_penalty: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        min_tokens: Optional[int] = None,
         n: Optional[int] = None,
         stop: Optional[List[str]] = None,
         temperature: Optional[float] = None,
         top_p: Optional[float] = None,
+        top_k: Optional[int] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
+        logprobs: Optional[bool] = None,
+        top_logprobs: Optional[int] = None,
         timeout_microseconds: Optional[int] = None,
+        tools: Optional[List[ToolParam]] = None,
+        tool_choice: Optional[str] = "auto",
+        response_format: Optional[ResponseFormatParam] = None,
     ) -> Union[AsyncChatCompletionStream, ChatCompletion]:
         """Creates a completion asynchronously.
 
@@ -229,12 +294,21 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
             "stream": stream,
             "frequency_penalty": frequency_penalty,
             "presence_penalty": presence_penalty,
+            "repetition_penalty": repetition_penalty,
             "max_tokens": max_tokens,
+            "min_tokens": min_tokens,
             "n": n,
             "stop": stop,
             "temperature": temperature,
             "top_p": top_p,
+            "top_k": top_k,
+            "logit_bias": logit_bias,
+            "logprobs": logprobs,
+            "top_logprobs": top_logprobs,
             "timeout_microseconds": timeout_microseconds,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "response_format": response_format,
         }
         response = await self._request(data=request_dict, stream=stream, model=model)
 
@@ -243,10 +317,10 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         return model_parse(ChatCompletion, response.json())
 
 
-class ChatCompletionStream(GenerationStream[ChatCompletionLine]):
+class ChatCompletionStream(GenerationStream[ChatCompletionChunk]):
     """Completion stream."""
 
-    def __next__(self) -> ChatCompletionLine:  # noqa: D105
+    def __next__(self) -> ChatCompletionChunk:  # noqa: D105
         line = next(self._iter)
         while not line:
             line = next(self._iter)
@@ -257,17 +331,17 @@ class ChatCompletionStream(GenerationStream[ChatCompletionLine]):
         parsed = json.loads(data)
 
         try:
-            return model_parse(ChatCompletionLine, parsed)
+            return model_parse(ChatCompletionChunk, parsed)
         except ValidationError as exc:
             raise InvalidGenerationError(
                 f"Generation result has invalid schema: {str(exc)}"
             ) from exc
 
 
-class AsyncChatCompletionStream(AsyncGenerationStream[ChatCompletionLine]):
+class AsyncChatCompletionStream(AsyncGenerationStream[ChatCompletionChunk]):
     """Asynchronous completion stream."""
 
-    async def __anext__(self) -> ChatCompletionLine:  # noqa: D105
+    async def __anext__(self) -> ChatCompletionChunk:  # noqa: D105
         line = await self._iter.__anext__()
         while not line:
             line = await self._iter.__anext__()
@@ -278,7 +352,7 @@ class AsyncChatCompletionStream(AsyncGenerationStream[ChatCompletionLine]):
         parsed = json.loads(data)
 
         try:
-            return model_parse(ChatCompletionLine, parsed)
+            return model_parse(ChatCompletionChunk, parsed)
         except ValidationError as exc:
             raise InvalidGenerationError(
                 f"Generation result has invalid schema: {str(exc)}"

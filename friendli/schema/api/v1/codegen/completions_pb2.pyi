@@ -13,6 +13,8 @@ from google.protobuf import message as _message
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 
+from friendli.schema.api.v1.codegen import response_format_pb2 as _response_format_pb2
+
 DESCRIPTOR: _descriptor.FileDescriptor
 
 class V1CompletionsRequest(_message.Message):
@@ -70,29 +72,6 @@ class V1CompletionsRequest(_message.Message):
         TOKENS_FIELD_NUMBER: _ClassVar[int]
         tokens: _containers.RepeatedScalarFieldContainer[int]
         def __init__(self, tokens: _Optional[_Iterable[int]] = ...) -> None: ...
-
-    class ResponseFormat(_message.Message):
-        __slots__ = ("type", "schema")
-
-        class Type(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-            __slots__ = ()
-            text: _ClassVar[V1CompletionsRequest.ResponseFormat.Type]
-            json_object: _ClassVar[V1CompletionsRequest.ResponseFormat.Type]
-            regex: _ClassVar[V1CompletionsRequest.ResponseFormat.Type]
-        text: V1CompletionsRequest.ResponseFormat.Type
-        json_object: V1CompletionsRequest.ResponseFormat.Type
-        regex: V1CompletionsRequest.ResponseFormat.Type
-        TYPE_FIELD_NUMBER: _ClassVar[int]
-        SCHEMA_FIELD_NUMBER: _ClassVar[int]
-        type: V1CompletionsRequest.ResponseFormat.Type
-        schema: str
-        def __init__(
-            self,
-            type: _Optional[
-                _Union[V1CompletionsRequest.ResponseFormat.Type, str]
-            ] = ...,
-            schema: _Optional[str] = ...,
-        ) -> None: ...
     STREAM_FIELD_NUMBER: _ClassVar[int]
     MODEL_FIELD_NUMBER: _ClassVar[int]
     PROMPT_FIELD_NUMBER: _ClassVar[int]
@@ -170,7 +149,7 @@ class V1CompletionsRequest(_message.Message):
     include_output_logprobs: bool
     forced_output_tokens: _containers.RepeatedScalarFieldContainer[int]
     eos_token: _containers.RepeatedScalarFieldContainer[int]
-    response_format: V1CompletionsRequest.ResponseFormat
+    response_format: _response_format_pb2.ResponseFormat
     def __init__(
         self,
         stream: bool = ...,
@@ -216,7 +195,7 @@ class V1CompletionsRequest(_message.Message):
         forced_output_tokens: _Optional[_Iterable[int]] = ...,
         eos_token: _Optional[_Iterable[int]] = ...,
         response_format: _Optional[
-            _Union[V1CompletionsRequest.ResponseFormat, _Mapping]
+            _Union[_response_format_pb2.ResponseFormat, _Mapping]
         ] = ...,
     ) -> None: ...
 

@@ -4,21 +4,66 @@
 
 syntax = "proto3";
 
-message V1ChatCompletionsRequest {
-    message Message {
-        string content = 1;
-        string role = 2;
-    }
+import "google/protobuf/struct.proto";
+import "response_format.proto";
 
-    repeated Message messages = 1;
-    optional string model = 2;
-    optional float frequency_penalty = 3;
-    optional int32 max_tokens = 5;
-    optional int32 n = 6;
-    optional float presence_penalty = 7;
-    repeated string stop = 8;
-    optional bool stream = 9;
-    optional float temperature = 10;
-    optional float top_p = 11;
-    optional int32 timeout_microseconds = 30;
+package orca;
+
+
+message ToolCall {
+  message Function {
+    string name = 1;
+    string arguments = 2;
+  }
+
+  string id = 1;
+  string type = 2;
+  Function function = 3;
+}
+
+message Message {
+  optional string content = 1;
+  string role = 2;
+  optional string name = 3;
+  optional string tool_call_id = 4;
+  repeated ToolCall tool_calls = 5;
+}
+
+message Tool {
+  message Function {
+    string name = 1;
+    optional string description = 2;
+    google.protobuf.Struct parameters = 3; // Json schema
+  }
+
+  string type = 1;
+  Function function = 2;
+}
+
+message V1ChatCompletionsRequest {
+  repeated Message messages = 1;
+  optional string model = 2;
+  optional float frequency_penalty = 3;
+  map<int32, float> logit_bias = 4;
+  optional int32 min_tokens = 5;
+  optional int32 max_tokens = 6;
+  optional int32 n = 7;
+  optional float presence_penalty = 8;
+  repeated string stop = 9;
+  optional bool stream = 10;
+  optional float temperature = 11;
+  optional float top_p = 12;
+  optional int32 timeout_microseconds = 13;
+  optional bool logprobs = 14;
+  optional int32 top_logprobs = 15;
+  optional int32 top_k = 19;
+  optional float repetition_penalty = 20;
+  repeated uint64 seed = 21;
+  repeated int32 eos_token = 22;
+  repeated Tool tools = 23;
+  optional ResponseFormat response_format = 24;
+
+  // "auto", "none", "required" or {"type": "function", "function": {"name": "my_function"}}
+  optional google.protobuf.Value tool_choice = 25;
+  optional bool parallel_tool_calls = 26;
 }

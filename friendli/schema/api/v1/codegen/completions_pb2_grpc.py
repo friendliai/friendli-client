@@ -8,9 +8,7 @@ import warnings
 
 import grpc
 
-from friendli.schema.api.v1.codegen import (
-    completions_pb2 as friendli_dot_schema_dot_api_dot_v1_dot_codegen_dot_completions__pb2,
-)
+from friendli.schema.api.v1.codegen import completions_pb2 as completions__pb2
 
 GRPC_GENERATED_VERSION = "1.64.1"
 GRPC_VERSION = grpc.__version__
@@ -30,7 +28,7 @@ except ImportError:
 if _version_not_supported:
     warnings.warn(
         f"The grpc package installed is at version {GRPC_VERSION},"
-        + f" but the generated code in friendli/schema/api/v1/codegen/completions_pb2_grpc.py depends on"
+        + f" but the generated code in completions_pb2_grpc.py depends on"
         + f" grpcio>={GRPC_GENERATED_VERSION}."
         + f" Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}"
         + f" or downgrade your generated code using grpcio-tools<={GRPC_VERSION}."
@@ -51,8 +49,8 @@ class TextGenerationServiceStub(object):
         """
         self.Generate = channel.unary_stream(
             "/orca.TextGenerationService/Generate",
-            request_serializer=friendli_dot_schema_dot_api_dot_v1_dot_codegen_dot_completions__pb2.V1CompletionsRequest.SerializeToString,
-            response_deserializer=friendli_dot_schema_dot_api_dot_v1_dot_codegen_dot_completions__pb2.V1CompletionsResponse.FromString,
+            request_serializer=completions__pb2.V1CompletionsRequest.SerializeToString,
+            response_deserializer=completions__pb2.V1CompletionsResponse.FromString,
             _registered_method=True,
         )
 
@@ -71,8 +69,8 @@ def add_TextGenerationServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
         "Generate": grpc.unary_stream_rpc_method_handler(
             servicer.Generate,
-            request_deserializer=friendli_dot_schema_dot_api_dot_v1_dot_codegen_dot_completions__pb2.V1CompletionsRequest.FromString,
-            response_serializer=friendli_dot_schema_dot_api_dot_v1_dot_codegen_dot_completions__pb2.V1CompletionsResponse.SerializeToString,
+            request_deserializer=completions__pb2.V1CompletionsRequest.FromString,
+            response_serializer=completions__pb2.V1CompletionsResponse.SerializeToString,
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -105,8 +103,8 @@ class TextGenerationService(object):
             request,
             target,
             "/orca.TextGenerationService/Generate",
-            friendli_dot_schema_dot_api_dot_v1_dot_codegen_dot_completions__pb2.V1CompletionsRequest.SerializeToString,
-            friendli_dot_schema_dot_api_dot_v1_dot_codegen_dot_completions__pb2.V1CompletionsResponse.FromString,
+            completions__pb2.V1CompletionsRequest.SerializeToString,
+            completions__pb2.V1CompletionsResponse.FromString,
             options,
             channel_credentials,
             insecure,

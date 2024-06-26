@@ -24,7 +24,7 @@ from typing_extensions import Self
 
 from friendli.auth import get_auth_header
 from friendli.errors import APIError
-from friendli.utils.request import DEFAULT_REQ_TIMEOUT
+from friendli.utils.request import DEFAULT_REQ_TIMEOUT, transform_request_data
 
 _GenerationLine = TypeVar("_GenerationLine", bound=BaseModel)
 
@@ -258,6 +258,8 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         if self._endpoint_id is not None and model is not None:
             raise ValueError("`model` is not allowed for dedicated endpoints.")
 
+        data = transform_request_data(data)
+
         if self._use_grpc:
             grpc_request = self._build_grpc_request(data=data, model=model)
             if not self._grpc_channel:
@@ -342,6 +344,8 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
             raise ValueError("`model` is required for serverless endpoints.")
         if self._endpoint_id is not None and model is not None:
             raise ValueError("`model` is not allowed for dedicated endpoints.")
+
+        data = transform_request_data(data)
 
         if self._use_grpc:
             grpc_request = self._build_grpc_request(data=data, model=model)

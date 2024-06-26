@@ -350,8 +350,12 @@ class FP8Quantizer(CommonQuantizer):
         ), "currently support fp8_e4m3"
         max_val = 448.0
         min_val = -448.0
-
-        input_max = torch.concat([max_input_stats[name] for name in names])
+        input_max = None
+        for name in names:
+            input_max = max_input_stats.get(name)
+            if input_max is not None:
+                break
+        assert input_max is not None
         target_weights = [model.get_submodule(name).weight for name in names]
         target_weight = torch.concat(target_weights)
 
@@ -403,7 +407,7 @@ class FP8Quantizer(CommonQuantizer):
             for tf_quant_input in tqdm(
                 self.hook.iter_tf_quant_inputs(model),
                 total=len(self.hook.get_tf_blocks(model)),
-                desc="Qunatize",
+                desc="Quantize",
                 unit="layer",
             ):
                 assert isinstance(tf_quant_input, HFTFQuantInputs)

@@ -29,6 +29,7 @@ from transformers import (  # type: ignore[import]
 
 from friendli.errors import NotSupportedCheckpointError
 from friendli.modules.converter.base import OneOfAdapterConverter, OneOfConverter
+from friendli.modules.converter.models.arctic import ArcticForCausalLMConverter
 from friendli.modules.converter.models.blenderbot import BlenderbotConverter
 from friendli.modules.converter.models.bloom import BloomForCausalLMConverter
 from friendli.modules.converter.models.codegen import CodegenForCausalLMConverter
@@ -83,6 +84,7 @@ MODEL_ARCH_CONVERTER_MAP: Dict[
     "CohereForCausalLM": (CohereForCausalLM, CohereForCausalLMConverter),
     "DbrxForCausalLM": (DbrxForCausalLM, DbrxForCausalLMConverter),
     "Phi3ForCausalLM": (Phi3ForCausalLM, Phi3ForCausalLMConverter),
+    "ArcticForCausalLM": (AutoModelForCausalLM, ArcticForCausalLMConverter),
 }
 
 MODEL_ARCH_ADAPTER_CONVERTER_MAP: Dict[
