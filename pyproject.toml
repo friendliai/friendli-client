@@ -1,154 +1,265 @@
-[tool.poetry]
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
 name = "friendli-client"
-version = "1.4.1"
-description = "Client of Friendli Suite."
-license = "Apache-2.0"
-authors = ["FriendliAI teams <eng@friendli.ai>"]
-packages = [
-    { include = "friendli" },
+version = "2.0.0"
+description = "Friendli Suite Client"
+authors = [
+    {name = "FriendliAI teams", email = "eng@friendli.ai"},
 ]
-include = ["friendli/py.typed"]
+dependencies = [
+    "typer>=0.12.3",
+    "rich>=13.7.1",
+    "pydantic[email]>=2.8.2",
+    "httpx[http2]<1.0.0,>=0.24.1",
+    "trogon>=0.5.0",
+    "keyring>=25.2.1",
+    "questionary>=2.0.1",
+    "graphql-core>=3.2.3",
+    "websockets>=12.0",
+]
+requires-python = "<3.13,>=3.8.1"
 readme = "README.md"
+license = {text = "Apache-2.0"}
+keywords = ["generative-ai", "serving", "llm", "inference", "finetuning"]
+
+[project.urls]
 homepage = "https://friendli.ai/"
 repository = "https://github.com/friendliai/friendli-client"
 documentation = "https://docs.friendli.ai/"
-keywords = ["generative-ai", "serving", "llm", "inference", "finetuning"]
 
-[tool.poetry.scripts]
-friendli = "friendli.cli:app"
+[project.scripts]
+friendli = "friendli.cli.app:app"
 
-[build-system]
-requires = ["poetry-core>=1.6.1"]
-build-backend = "poetry.core.masonry.api"
+[tool.pdm]
+distribution = true
 
-# [[tool.poetry.source]]
-# name = "PyPI"
-# priority = "primary"
-
-[tool.poetry.dependencies]
-python = "^3.8.1"
-requests = "^2"
-PyYaml = "^6.0.1"
-typer = "^0.9.0"
-rich = "^12.2.0"
-jsonschema = "^4.17.3"
-tqdm = "^4.48.0"
-pydantic = {extras = ["email"], version = ">=1.9.0, <3"}
-transformers = { version = "4.41.2", optional = true }
-h5py = { version = "^3.9.0", optional = true }
-einops = { version = "^0.6.1", optional = true }
-accelerate = { version = "0.21.0", optional = true }
-datasets = { version = "2.16.0", optional = true }
-injector = "^0.21.0"
-protobuf = "^5.26.1"
-types-protobuf = "^5.26.0.20240422"
-peft = { version = "0.6.0", optional = true }
-safetensors = { version = "0.4.1", optional = true }
-httpx = "^0.24.1"
-fastapi = "^0.104.0"
-uvicorn = "^0.23.2"
-gql = "^3.4.1"
-grpcio-tools = "^1.64.1"
-grpc-stubs = "^1.53.0.5"
-grpcio = "^1.64.1"
-
-[tool.poetry.group.dev]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.4.0"
-coverage = "^7.2.7"
-pytest-asyncio = "^0.15.1"
-pytest-cov = "^4.1.0"
-requests-mock = "^1.11.0"
-black = "^23.3.0"
-isort = "^5.12.0"
-mypy = "^1.4.1"
-pydocstyle = "^6.3.0"
-pylint = "^2.17.4"
-toml = "^0.10.2"
-types-pyyaml = "^6.0.12.10"
-types-jsonschema = "^4.17.0.8"
-types-python-dateutil = "^2.8.19.13"
-types-requests = "^2.31.0.1"
-types-toml = "^0.10.8.6"
-types-tqdm = "^4.65.0.1"
-typer = "^0.9.0"
-
-[tool.poetry.extras]
-mllib = ["transformers", "h5py", "accelerate", "einops", "datasets", "peft", "safetensors"]
-
-[tool.isort]
-profile = "black"
-known_local_folder = ["tests"]
-append_only = true
-add_imports = ["from __future__ import annotations"]
+[tool.pdm.dev-dependencies]
+dev = [
+]
+test = [
+    "pytest>=7.2.0",
+    "pytest-cov>=4.0.0",
+    "coverage[toml]>=6.4.3",
+    "pytest-describe>=2.0.1",
+    "pytest-sugar>=0.9.6",
+]
+lint = [
+    "black>=22.12.0", 
+    "mypy>=1.0", 
+    "ruff>=0.0.246", 
+    "pytest>=7.2.0", 
+    "typing-extensions>=4.12.2",
+]
 
 [tool.black]
 line-length = 88
-target-version = ["py39"]
+target-version = ["py311"]
 
-[tool.pydocstyle]
+[tool.ruff]
+# Enable Pyflakes `E` and `F` codes by default.
+select = [
+  "F",
+  "E",
+  "W",
+  "C90",
+  "I",
+  "N",
+  "D",
+  "YTT",
+  "ANN",
+  "S",
+  "BLE",
+  "FBT",
+  "B",
+  "A",
+  "C4",
+  "DTZ",
+  "T10",
+  "EM",
+  "EXE",
+  "ISC",
+  "ICN",
+  "G",
+  "PIE",
+  "T20",
+  "PYI",
+  "PT",
+  "Q",
+  "RSE",
+  "RET",
+  "SLF",
+  "SIM",
+  "TID",
+  "TCH",
+  "ARG",
+  "PTH",
+  "ERA",
+  "PGH",
+  "PL",
+  "TRY",
+  "RUF",
+]
+ignore = [
+  "E741",   # Ambiguous variable name, to be removed later
+  "E999",   # SyntaxError, ignored due to pyflakes not understanding match case
+  "N818",   # Allow non-Error suffix in exception names
+  "ANN101", # Don't have to annotate self
+  "ANN102", # Don't have to annotate cls
+  "B010",   # Allow setattr
+  "PIE796", # Enum can use auto
+  "PGH003", # TODO: We can turn this one later
+  "TID252", # Allow relative imports
+]
+
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+fixable = [
+  "F",
+  "E",
+  "W",
+  "C90",
+  "I",
+  "N",
+  "D",
+  "YTT",
+  "ANN",
+  "S",
+  "BLE",
+  "FBT",
+  "B",
+  "A",
+  "C4",
+  "DTZ",
+  "T10",
+  "EM",
+  "EXE",
+  "ISC",
+  "ICN",
+  "G",
+  "PIE",
+  "T20",
+  "PYI",
+  "PT",
+  "Q",
+  "RSE",
+  "RET",
+  "SLF",
+  "SIM",
+  "TID",
+  "TCH",
+  "ARG",
+  "PTH",
+  "PGH",
+  "PL",
+  "TRY",
+  "RUF",
+]
+unfixable = ["ERA"]
+
+# Same as Black.
+line-length = 88
+target-version = "py311"
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+show-fixes = true
+src = ["src", "test"]
+task-tags = ["TODO", "FIXME", "XXX"]
+extend-exclude = ["src/friendli/graphql"]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401", "TCH001"]
+# no documentation and function annotation required for tests
+"tests/**/*" = [
+  "D",
+  "ANN202",
+  "ANN001",
+  "ANN201",
+  "S101",
+  "TCH003",
+  "FBT001",
+  "TCH002",
+  "DTZ005",
+  "S311",
+  "PLR0915", # Too-many-statements
+  "PLR2004", # Can assert with magic numbers
+]
+
+[tool.ruff.flake8-annotations]
+allow-star-arg-any = true
+suppress-dummy-args = true
+
+[tool.ruff.flake8-bugbear]
+extend-immutable-calls = [
+  "fastapi.Depends",
+  "fastapi.Query",
+  "fastapi.Body",
+  "fastapi.Header",
+  "_common.di.integration.fastapi.inject",
+]
+
+[tool.ruff.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.flake8-pytest-style]
+raises-extend-require-match-for = ["httpx.HTTPError"]
+
+[tool.ruff.flake8-unused-arguments]
+ignore-variadic-names = true
+
+[tool.ruff.isort]
+required-imports = ["from __future__ import annotations"]
+known-first-party = ["_3rdparty", "pf", "_common", "_datastructure", "_framework", "_testing"]
+known-local-folder = ["tests"]
+forced-separate = ["tests"]
+
+[tool.ruff.mccabe]
+max-complexity = 10
+
+[tool.ruff.pep8-naming]
+classmethod-decorators = ["classmethod", "pydantic.validator"]
+
+[tool.ruff.pycodestyle]
+ignore-overlong-task-comments = true
+max-doc-length = 88
+
+[tool.ruff.pydocstyle]
 convention = "google"
-inherit = false
-ignore-decorators = "overload"
-match = "(?!.*_pb2_grpc).py"
+
+[tool.ruff.pylint]
+max-args = 7
+
+[tool.mypy]
+check_untyped_defs = true
+ignore_missing_imports = true
+namespace_packages = true
+fast_module_lookup = true
+explicit_package_bases = true
+
+# https://github.com/python/mypy/issues/4717
+# (AJ) Such check should be removed from mypy
+disable_error_code = ["type-abstract"]
+# strict = true  # FIXME(aj): disabling strict mode due to lack of time
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = false
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
 
 [tool.pytest.ini_options]
-python_files = "test_*.py"
-addopts = "-rf --cov=friendli --cov-report=html --cov-report=xml --cov-config=.coveragerc --junit-xml=test-result.xml"
+addopts = "-rf --cov=src"
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 branch = true
+source_pkgs = ["friendli"]
 
 [tool.coverage.report]
-exclude_lines = ["pragma: no cover", "@overload"]
+exclude_lines = ["pragma: no cover", "@overload", "if TYPE_CHECKING:"]
 skip_covered = true
 sort = "Cover"
 
-[tool.pylint."messages control"]
-disable = [
-    "invalid-name",
-    "missing-class-docstring",
-    "too-few-public-methods",
-    "W0511",
-    "E0213",
-    "missing-function-docstring",
-    "no-self-argument",
-    "deprecated-method",
-    "unsubscriptable-object",
-    "consider-using-set-comprehension",
-    "redefined-outer-name"
-]
-extension-pkg-whitelist = "pydantic"
-
-[tool.pylint.TYPECHECK]
-generated-members = [
-    "numpy.*" ,
-    "torch.*"
-]
-
-[tool.pylint.check]
-ignored-classes = "Depends"
-ignore-patterns = [
-    ".+_pb2.py",
-    ".+_pb2_grpc.py"
-]
-
-[tool.pylint.design]
-max-args = 7
-max-parents = 15
-
-[tool.pylint.similarities]
-min-similarity-lines = 4
-ignore-signatures = "yes"
-ignore-comments = "yes"
-ignore-docstrings = "yes"
-ignore-imports = "yes"
-
-[tool.mypy]
-exclude = [
-    "^.*\\.pyi$",
-    "^.*_pb2\\.py$",
-    "^.*_pb2_grpc\\.py$"
-]
