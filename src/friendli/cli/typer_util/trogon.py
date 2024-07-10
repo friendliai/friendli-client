@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Collection, LiteralString
+from typing import TYPE_CHECKING, Collection
 
 from typer.core import TyperGroup
 
 if TYPE_CHECKING:
     from typer import Context, Typer
+    from typing_extensions import LiteralString
 
 
 def run_trogon(

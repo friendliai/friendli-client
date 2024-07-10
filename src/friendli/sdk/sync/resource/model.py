@@ -342,7 +342,7 @@ class ModelResource(ResourceBase):
 
         transport = RetryTransportWrapper(
             HTTPTransport(
-                http2=True,
+                http2=False,
                 # TODO: limits=XX,
                 # TODO: configure retries
                 retries=4,
@@ -352,7 +352,7 @@ class ModelResource(ResourceBase):
         with (
             Progress() as progress,
             Client(transport=transport) as client,
-            ThreadPoolExecutor(max_workers=5) as executor,
+            ThreadPoolExecutor(max_workers=20) as executor,
         ):
             futures = {
                 executor.submit(
@@ -366,9 +366,9 @@ class ModelResource(ResourceBase):
             for future in as_completed(futures):
                 try:
                     future.result()
-                except RequestError as e:
-                    print(f"Error pushing chunk: {e}")  # noqa: T201
-                    continue
+                except RequestError:
+                    print("Error pushing file. Please contact support.")  # noqa: T201
+                    raise
                 chunk_size = futures[future]["size"]
                 uploaded += chunk_size
                 desc = f"[green]Uploading ({format_bytes(uploaded)}/{format_bytes(descriptor.size)})"

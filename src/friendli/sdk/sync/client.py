@@ -6,10 +6,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
 
-from httpx import URL, Client
+from httpx import URL, Client, HTTPTransport
 from typing_extensions import Self
 
 from ...const import BaseUrl
+from ...util.httpx.retry_transport import RetryTransportWrapper
 from ..auth import BearerAuth
 from .base import SyncClientBase
 from .resource import (
@@ -127,11 +128,19 @@ class SyncClient(SyncClientBase):
             "Accept": "application/json",
             "rid": "anti-csrf",
             "st-auth-mode": "header",
+            "Connection": "close",
         }
+        transport = RetryTransportWrapper(
+            HTTPTransport(
+                http2=False,
+                retries=4,
+            )
+        )
         return Client(
             base_url=base_url,
             auth=auth,
             http2=True,
-            timeout=10,
+            timeout=40,
             headers=headers,
+            transport=transport,
         )
