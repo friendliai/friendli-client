@@ -28,10 +28,16 @@ def run(
         ctx.console.print("Please provide a project ID.")
         raise typer.Abort
 
-    ctx.sdk.model.push_adapter_model(
+    resp = ctx.sdk.model.push_adapter_model(
         model_path=model_path,
         base_model_id=base_model_id,
         project_id=project_id,
         model_name=model_name,
     )
-    ctx.console.print("Adapter model pushed successfully.")
+    if not (res := resp.dedicated_model_push_adapter_complete):
+        ctx.console.print("[error]Adapter model push failed[/]")
+        raise typer.Abort
+
+    ctx.console.print("[success]Adapter model pushed successfully.[/]")
+    ctx.console.print(f"[info]✓[/] id: {res.adapter.id}")  # type: ignore
+    ctx.console.print(f"[info]✓[/] name: {res.adapter.name}")  # type: ignore

@@ -109,6 +109,91 @@ mutation FilePushComplete($input: DedicatedModelPushFileCompleteInput!) {
 """
 
 
+BasePushStartGql = """
+mutation BasePushStart($input: DedicatedModelPushBaseStartInput!) {
+  dedicatedModelPushBaseStart(input: $input) {
+    ... on DedicatedModelPushBaseStartSuccess {
+      model {
+        name
+        id
+        digest
+        createdAt
+      }
+    }
+  }
+}
+"""
+
+
+BasePushCompleteGql = """
+mutation BasePushComplete($input: DedicatedModelPushBaseCompleteInput!) {
+  dedicatedModelPushBaseComplete(input: $input) {
+    ... on DedicatedModelPushBaseCompleteSuccess {
+      model {
+        updatedAt
+        name
+        id
+        digest
+        createdAt
+      }
+    }
+  }
+}
+"""
+
+
+ChunkGroupCreateGql = """
+mutation ChunkGroupCreate($input: DedicatedModelCreateChunkGroupInput!) {
+  dedicatedModelCreateChunkGroup(input: $input) {
+    ... on DedicatedModelCreateChunkGroupSuccess {
+      chunkGroupId
+    }
+  }
+}
+"""
+
+
+ChunkGroupCommitGql = """
+mutation ChunkGroupCommit($input: DedicatedModelCommitChunkGroupInput!) {
+  dedicatedModelCommitChunkGroup(input: $input) {
+    ... on DedicatedModelCommitChunkGroupSuccess {
+      ok
+    }
+  }
+}
+"""
+
+
+ChunkPushStartGql = """
+mutation ChunkPushStart($input: DedicatedModelPushChunkStartInput!) {
+  dedicatedModelPushChunkStart(input: $input) {
+    __typename
+    ... on DedicatedModelPushChunkStartSuccess {
+      uploadUrl
+    }
+    ... on DedicatedModelPushChunkStartAlreadyExistError {
+      message
+    }
+  }
+}
+"""
+
+
+ChunkPushCompleteGql = """
+mutation ChunkPushComplete($input: DedicatedModelPushChunkCompleteInput!) {
+  dedicatedModelPushChunkComplete(input: $input) {
+    __typename
+    ... on DedicatedModelPushChunkCompleteSuccess {
+      ok
+    }
+    ... on UserPermissionError {
+      message
+    }
+  }
+}
+"""
+
+
 class ClientTeamMembershipRole(str, Enum):
     OWNER = "OWNER"
     ADMIN = "ADMIN"
@@ -117,6 +202,9 @@ class ClientTeamMembershipRole(str, Enum):
 
 
 Base64 = NewType("Base64", bytes)
+
+
+BigInt = NewType("BigInt", str)
 
 
 URL = NewType("URL", str)
@@ -164,7 +252,7 @@ class AdapterPushStartResultDedicatedModelPushAdapterStartUserPermissionError(
 class FileDescriptorInput(BaseModel):
     digest: str
     filename: str
-    size: int
+    size: BigInt
 
 
 class AdapterPushCompleteResultDedicatedModelPushAdapterCompleteDedicatedModelPushAdapterCompleteSuccessAdapter(
@@ -215,6 +303,78 @@ class FilePushCompleteResultDedicatedModelPushFileCompleteUserPermissionError(
     message: str
 
 
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessModel(
+    BaseModel
+):
+    name: str | None = None
+    id: str
+    digest: str | None = None
+    created_at: datetime | None = Field(alias="createdAt", default=None)
+
+
+class BasePushCompleteResultDedicatedModelPushBaseCompleteDedicatedModelPushBaseCompleteSuccessModel(
+    BaseModel
+):
+    updated_at: datetime | None = Field(alias="updatedAt", default=None)
+    name: str | None = None
+    id: str
+    digest: str | None = None
+    created_at: datetime | None = Field(alias="createdAt", default=None)
+
+
+class ChunkGroupCreateResultDedicatedModelCreateChunkGroupDedicatedModelCreateChunkGroupSuccess(
+    BaseModel
+):
+    chunk_group_id: str = Field(alias="chunkGroupId")
+
+
+class ChunkGroupCommitResultDedicatedModelCommitChunkGroupDedicatedModelCommitChunkGroupSuccess(
+    BaseModel
+):
+    ok: bool
+
+
+class ChunkPushStartResultDedicatedModelPushChunkStartDedicatedModelPushChunkStartSuccess(
+    BaseModel
+):
+    typename__: TypeName = Field(alias="__typename")
+    upload_url: str = Field(alias="uploadUrl")
+
+
+class ChunkPushStartResultDedicatedModelPushChunkStartDedicatedModelPushChunkStartAlreadyExistError(
+    BaseModel
+):
+    typename__: TypeName = Field(alias="__typename")
+    message: str
+
+
+class FileChunkInput(BaseModel):
+    chunk_group_id: str = Field(alias="chunkGroupId")
+    part_number: int = Field(alias="partNumber")
+    size: BigInt
+
+
+class ChunkPushCompleteResultDedicatedModelPushChunkCompleteDedicatedModelPushChunkCompleteSuccess(
+    BaseModel
+):
+    typename__: TypeName = Field(alias="__typename")
+    ok: bool
+
+
+class ChunkPushCompleteResultDedicatedModelPushChunkCompleteUserPermissionError(
+    BaseModel
+):
+    typename__: TypeName = Field(alias="__typename")
+    message: str
+
+
+class FileChunkCompleteInput(BaseModel):
+    chunk_group_id: str = Field(alias="chunkGroupId")
+    part_number: int = Field(alias="partNumber")
+    e_tag: str = Field(alias="eTag")
+    size: BigInt
+
+
 class UserContextResultClientUserTeamsEdges(BaseModel):
     node: UserContextResultClientUserTeamsEdgesNode
     product_access: UserContextResultClientUserTeamsEdgesProductAccess | None = Field(
@@ -252,6 +412,29 @@ class DedicatedModelPushFileCompleteInput(BaseModel):
     file_input: FileDescriptorInput = Field(alias="fileInput")
 
 
+class BaseModelCreateInput(BaseModel):
+    config: FileDescriptorInput
+    tokenizer: FileDescriptorInput
+    tokenizer_config: FileDescriptorInput | None = Field(
+        alias="tokenizerConfig", default=None
+    )
+    special_tokens_map: FileDescriptorInput | None = Field(
+        alias="specialTokensMap", default=None
+    )
+    safetensors: list[FileDescriptorInput]
+
+
+class DedicatedModelCreateChunkGroupInput(BaseModel):
+    model_id: str = Field(alias="modelId")
+    file_input: FileDescriptorInput = Field(alias="fileInput")
+
+
+class DedicatedModelCommitChunkGroupInput(BaseModel):
+    model_id: str = Field(alias="modelId")
+    chunk_group_id: str = Field(alias="chunkGroupId")
+    file_input: FileDescriptorInput = Field(alias="fileInput")
+
+
 class AdapterPushCompleteResultDedicatedModelPushAdapterCompleteDedicatedModelPushAdapterCompleteSuccess(
     BaseModel
 ):
@@ -272,6 +455,52 @@ FilePushCompleteResultDedicatedModelPushFileComplete = (
     FilePushCompleteResultDedicatedModelPushFileCompleteDedicatedModelPushFileCompleteSuccess
     | FilePushCompleteResultDedicatedModelPushFileCompleteUserPermissionError
 )
+
+
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccess(
+    BaseModel
+):
+    model: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessModel
+
+
+class BasePushCompleteResultDedicatedModelPushBaseCompleteDedicatedModelPushBaseCompleteSuccess(
+    BaseModel
+):
+    model: BasePushCompleteResultDedicatedModelPushBaseCompleteDedicatedModelPushBaseCompleteSuccessModel
+
+
+class ChunkGroupCreateResult(BaseModel):
+    dedicated_model_create_chunk_group: (
+        ChunkGroupCreateResultDedicatedModelCreateChunkGroupDedicatedModelCreateChunkGroupSuccess
+    ) = Field(alias="dedicatedModelCreateChunkGroup")
+
+
+class ChunkGroupCommitResult(BaseModel):
+    dedicated_model_commit_chunk_group: (
+        ChunkGroupCommitResultDedicatedModelCommitChunkGroupDedicatedModelCommitChunkGroupSuccess
+    ) = Field(alias="dedicatedModelCommitChunkGroup")
+
+
+ChunkPushStartResultDedicatedModelPushChunkStart = (
+    ChunkPushStartResultDedicatedModelPushChunkStartDedicatedModelPushChunkStartSuccess
+    | ChunkPushStartResultDedicatedModelPushChunkStartDedicatedModelPushChunkStartAlreadyExistError
+)
+
+
+class DedicatedModelPushChunkStartInput(BaseModel):
+    model_id: str = Field(alias="modelId")
+    file_input: FileChunkInput = Field(alias="fileInput")
+
+
+ChunkPushCompleteResultDedicatedModelPushChunkComplete = (
+    ChunkPushCompleteResultDedicatedModelPushChunkCompleteDedicatedModelPushChunkCompleteSuccess
+    | ChunkPushCompleteResultDedicatedModelPushChunkCompleteUserPermissionError
+)
+
+
+class DedicatedModelPushChunkCompleteInput(BaseModel):
+    model_id: str = Field(alias="modelId")
+    file_input: FileChunkCompleteInput = Field(alias="fileInput")
 
 
 class UserContextResultClientUserTeams(BaseModel):
@@ -305,6 +534,25 @@ class FilePushCompleteVariables(BaseModel):
     input: DedicatedModelPushFileCompleteInput
 
 
+class DedicatedModelPushBaseStartInput(BaseModel):
+    project_id: str = Field(alias="projectId")
+    name: str | None = None
+    model_structure: BaseModelCreateInput = Field(alias="modelStructure")
+
+
+class DedicatedModelPushBaseCompleteInput(BaseModel):
+    model_id: str = Field(alias="modelId")
+    model_structure: BaseModelCreateInput = Field(alias="modelStructure")
+
+
+class ChunkGroupCreateVariables(BaseModel):
+    input: DedicatedModelCreateChunkGroupInput
+
+
+class ChunkGroupCommitVariables(BaseModel):
+    input: DedicatedModelCommitChunkGroupInput
+
+
 AdapterPushCompleteResultDedicatedModelPushAdapterComplete = (
     AdapterPushCompleteResultDedicatedModelPushAdapterCompleteUserPermissionError
     | AdapterPushCompleteResultDedicatedModelPushAdapterCompleteDedicatedModelPushAdapterCompleteSuccess
@@ -324,6 +572,38 @@ class FilePushCompleteResult(BaseModel):
     ) = Field(alias="dedicatedModelPushFileComplete")
 
 
+class BasePushStartResult(BaseModel):
+    dedicated_model_push_base_start: (
+        BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccess
+    ) = Field(alias="dedicatedModelPushBaseStart")
+
+
+class BasePushCompleteResult(BaseModel):
+    dedicated_model_push_base_complete: (
+        BasePushCompleteResultDedicatedModelPushBaseCompleteDedicatedModelPushBaseCompleteSuccess
+    ) = Field(alias="dedicatedModelPushBaseComplete")
+
+
+class ChunkPushStartResult(BaseModel):
+    dedicated_model_push_chunk_start: (
+        ChunkPushStartResultDedicatedModelPushChunkStart
+    ) = Field(alias="dedicatedModelPushChunkStart")
+
+
+class ChunkPushStartVariables(BaseModel):
+    input: DedicatedModelPushChunkStartInput
+
+
+class ChunkPushCompleteResult(BaseModel):
+    dedicated_model_push_chunk_complete: (
+        ChunkPushCompleteResultDedicatedModelPushChunkComplete
+    ) = Field(alias="dedicatedModelPushChunkComplete")
+
+
+class ChunkPushCompleteVariables(BaseModel):
+    input: DedicatedModelPushChunkCompleteInput
+
+
 class UserContextResultClientUser(BaseModel):
     teams: UserContextResultClientUserTeams
 
@@ -340,6 +620,14 @@ class AdapterPushStartVariables(BaseModel):
 
 class AdapterPushCompleteVariables(BaseModel):
     input: DedicatedModelPushAdapterCompleteInput
+
+
+class BasePushStartVariables(BaseModel):
+    input: DedicatedModelPushBaseStartInput
+
+
+class BasePushCompleteVariables(BaseModel):
+    input: DedicatedModelPushBaseCompleteInput
 
 
 class AdapterPushCompleteResult(BaseModel):
@@ -398,6 +686,54 @@ class BaseSyncStub(AbstractSyncStub):
             variables=variables,
         )
 
+    def base_push_start(self, variables: BasePushStartVariables) -> BasePushStartResult:
+        return self._mutation(
+            BasePushStartGql, response_model=BasePushStartResult, variables=variables
+        )
+
+    def base_push_complete(
+        self, variables: BasePushCompleteVariables
+    ) -> BasePushCompleteResult:
+        return self._mutation(
+            BasePushCompleteGql,
+            response_model=BasePushCompleteResult,
+            variables=variables,
+        )
+
+    def chunk_group_create(
+        self, variables: ChunkGroupCreateVariables
+    ) -> ChunkGroupCreateResult:
+        return self._mutation(
+            ChunkGroupCreateGql,
+            response_model=ChunkGroupCreateResult,
+            variables=variables,
+        )
+
+    def chunk_group_commit(
+        self, variables: ChunkGroupCommitVariables
+    ) -> ChunkGroupCommitResult:
+        return self._mutation(
+            ChunkGroupCommitGql,
+            response_model=ChunkGroupCommitResult,
+            variables=variables,
+        )
+
+    def chunk_push_start(
+        self, variables: ChunkPushStartVariables
+    ) -> ChunkPushStartResult:
+        return self._mutation(
+            ChunkPushStartGql, response_model=ChunkPushStartResult, variables=variables
+        )
+
+    def chunk_push_complete(
+        self, variables: ChunkPushCompleteVariables
+    ) -> ChunkPushCompleteResult:
+        return self._mutation(
+            ChunkPushCompleteGql,
+            response_model=ChunkPushCompleteResult,
+            variables=variables,
+        )
+
 
 class BaseAsyncStub(AbstractAsyncStub):
     async def user_context(self, variables: UserContextVariables) -> UserContextResult:
@@ -436,5 +772,55 @@ class BaseAsyncStub(AbstractAsyncStub):
         return await self._mutation(
             FilePushCompleteGql,
             response_model=FilePushCompleteResult,
+            variables=variables,
+        )
+
+    async def base_push_start(
+        self, variables: BasePushStartVariables
+    ) -> BasePushStartResult:
+        return await self._mutation(
+            BasePushStartGql, response_model=BasePushStartResult, variables=variables
+        )
+
+    async def base_push_complete(
+        self, variables: BasePushCompleteVariables
+    ) -> BasePushCompleteResult:
+        return await self._mutation(
+            BasePushCompleteGql,
+            response_model=BasePushCompleteResult,
+            variables=variables,
+        )
+
+    async def chunk_group_create(
+        self, variables: ChunkGroupCreateVariables
+    ) -> ChunkGroupCreateResult:
+        return await self._mutation(
+            ChunkGroupCreateGql,
+            response_model=ChunkGroupCreateResult,
+            variables=variables,
+        )
+
+    async def chunk_group_commit(
+        self, variables: ChunkGroupCommitVariables
+    ) -> ChunkGroupCommitResult:
+        return await self._mutation(
+            ChunkGroupCommitGql,
+            response_model=ChunkGroupCommitResult,
+            variables=variables,
+        )
+
+    async def chunk_push_start(
+        self, variables: ChunkPushStartVariables
+    ) -> ChunkPushStartResult:
+        return await self._mutation(
+            ChunkPushStartGql, response_model=ChunkPushStartResult, variables=variables
+        )
+
+    async def chunk_push_complete(
+        self, variables: ChunkPushCompleteVariables
+    ) -> ChunkPushCompleteResult:
+        return await self._mutation(
+            ChunkPushCompleteGql,
+            response_model=ChunkPushCompleteResult,
             variables=variables,
         )
