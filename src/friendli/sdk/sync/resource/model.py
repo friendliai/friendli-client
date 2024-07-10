@@ -7,12 +7,13 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from httpx import Client, HTTPTransport, Timeout
+from httpx import Client, HTTPTransport, RequestError, Timeout
 from rich.progress import Progress
 
 from ....schema import FileDescriptorInput
 from ....util.file_digest import file_sha256
 from ....util.httpx.retry_transport import RetryTransportWrapper
+from ....util.humanize import format_bytes
 from ...graphql.api import (
     AdapterModelCreateInput,
     AdapterPushCompleteResult,
@@ -321,8 +322,8 @@ class ModelResource(ResourceBase):
 
         # split blob_bytes into chunks, each 100MB
         # 100MB or 10 concurrent uploads
-        chunk_size = max(1024 * 1024 * 50, descriptor.size // 200)
-        chunk_size = min(chunk_size, 1024 * 1024 * 10)
+        chunk_size = max(1024 * 1024 * 100, descriptor.size // 200)
+        chunk_size = min(chunk_size, 1024 * 1024 * 50)
         num_chunks = descriptor.size // chunk_size
         chunk_configs = [
             {
@@ -349,9 +350,9 @@ class ModelResource(ResourceBase):
         )
 
         with (
-            ThreadPoolExecutor(max_workers=10) as executor,
             Progress() as progress,
             Client(transport=transport) as client,
+            ThreadPoolExecutor(max_workers=5) as executor,
         ):
             futures = {
                 executor.submit(
@@ -359,10 +360,19 @@ class ModelResource(ResourceBase):
                 ): cc
                 for cc in chunk_configs
             }
-            task = progress.add_task("[red]Uploading...", total=descriptor.size)
+            desc = f"[red]Uploading (0/{format_bytes(descriptor.size)})"
+            uploaded = 0
+            task = progress.add_task(desc, total=descriptor.size)
             for future in as_completed(futures):
-                future.result()
-                progress.update(task, advance=futures[future]["size"])
+                try:
+                    future.result()
+                except RequestError as e:
+                    print(f"Error pushing chunk: {e}")  # noqa: T201
+                    continue
+                chunk_size = futures[future]["size"]
+                uploaded += chunk_size
+                desc = f"[green]Uploading ({format_bytes(uploaded)}/{format_bytes(descriptor.size)})"
+                progress.update(task, advance=chunk_size, description=desc)
 
         self._sdk.gql_client.chunk_group_commit(
             variables=ChunkGroupCommitVariables(
@@ -410,9 +420,15 @@ class ModelResource(ResourceBase):
             f.seek(chunk_config["start"])
             chunk = f.read(chunk_config["size"])
 
-        upload_resp = client.put(
-            url=url, content=chunk, timeout=Timeout(120, connect=20)
-        )
+        while True:
+            try:
+                upload_resp = client.put(
+                    url=url, content=chunk, timeout=Timeout(120, connect=20)
+                )
+                break
+            except RequestError:
+                pass
+
         upload_resp.raise_for_status()
         e_tag = upload_resp.headers["etag"]
 
