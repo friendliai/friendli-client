@@ -21,9 +21,12 @@ from ...graphql.api import (
     AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccess,
     AdapterPushStartVariables,
     BaseModelCreateInput,
+    BaseModelListResultDedicatedProjectModels,
+    BaseModelListVariables,
     BasePushCompleteResult,
     BasePushCompleteVariables,
     BasePushStartVariables,
+    BidirectionalConnectionInput,
     BigInt,
     ChunkGroupCommitVariables,
     ChunkGroupCreateVariables,
@@ -55,6 +58,23 @@ from ._base import ResourceBase
 
 class ModelResource(ResourceBase):
     """Model resource for Friendli Suite API."""
+
+    def list(self, project_id: str) -> BaseModelListResultDedicatedProjectModels:
+        """List all models in the specified project."""
+        resp = self._sdk.gql_client.base_model_list(
+            variables=BaseModelListVariables(
+                dedicatedProjectId=project_id,
+                conn=BidirectionalConnectionInput(
+                    first=20,
+                    skip=0,
+                ),
+            )
+        )
+        if (res := resp.dedicated_project) is None or (res.models is None):
+            msg = f"No dedicated project found with ID {project_id}"
+            raise ValueError(msg)
+
+        return res.models
 
     def push_base_model(
         self,

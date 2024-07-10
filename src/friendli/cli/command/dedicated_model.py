@@ -25,21 +25,28 @@ app = Typer(
 @app.command(
     "list",
     help="""
-Login to Friendli Suite.
+List models.
 """,
     epilog=format_examples(
         [
             CommandUsageExample(
-                synopsis=(
-                    "Use browser to login to Friendli Suite. [yellow](RECOMMENDED)[/]"
-                ),
-                args="login",
+                synopsis=("List models in a project. [yellow](RECOMMENDED)[/]"),
+                args="friendli model list --project PROJECT_ID",
             ),
         ]
     ),
 )
-def _list() -> None:
-    pass
+def _list(
+    ctx: TyperAppContext,
+    project: Annotated[
+        str,
+        Option("--project", help="Project ID"),
+    ],
+) -> None:
+    from ..action.dedicated_model_list import run
+
+    with AppContext(ctx.obj) as app_ctx:
+        run(app_ctx, project)
 
 
 @app.command(

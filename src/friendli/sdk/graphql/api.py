@@ -194,6 +194,24 @@ mutation ChunkPushComplete($input: DedicatedModelPushChunkCompleteInput!) {
 """
 
 
+BaseModelListGql = """
+query BaseModelList($dedicatedProjectId: ID!, $conn: BidirectionalConnectionInput) {
+  dedicatedProject(id: $dedicatedProjectId) {
+    models(conn: $conn) {
+      totalCount
+      edges {
+        node {
+          name
+          id
+          createdAt
+        }
+      }
+    }
+  }
+}
+"""
+
+
 class ClientTeamMembershipRole(str, Enum):
     OWNER = "OWNER"
     ADMIN = "ADMIN"
@@ -375,6 +393,12 @@ class FileChunkCompleteInput(BaseModel):
     size: BigInt
 
 
+class BaseModelListResultDedicatedProjectModelsEdgesNode(BaseModel):
+    name: str | None = None
+    id: str
+    created_at: datetime | None = Field(alias="createdAt", default=None)
+
+
 class UserContextResultClientUserTeamsEdges(BaseModel):
     node: UserContextResultClientUserTeamsEdgesNode
     product_access: UserContextResultClientUserTeamsEdgesProductAccess | None = Field(
@@ -383,6 +407,11 @@ class UserContextResultClientUserTeamsEdges(BaseModel):
     role: ClientTeamMembershipRole | None = None
     joined_at: datetime | None = Field(alias="joinedAt", default=None)
     default: bool | None = None
+
+
+class BaseModelListVariables(BaseModel):
+    dedicated_project_id: str = Field(alias="dedicatedProjectId")
+    conn: BidirectionalConnectionInput | None = None
 
 
 class UserContextVariables(BaseModel):
@@ -503,6 +532,10 @@ class DedicatedModelPushChunkCompleteInput(BaseModel):
     file_input: FileChunkCompleteInput = Field(alias="fileInput")
 
 
+class BaseModelListResultDedicatedProjectModelsEdges(BaseModel):
+    node: BaseModelListResultDedicatedProjectModelsEdgesNode
+
+
 class UserContextResultClientUserTeams(BaseModel):
     total_count: int = Field(alias="totalCount")
     edges: list[UserContextResultClientUserTeamsEdges]
@@ -604,6 +637,11 @@ class ChunkPushCompleteVariables(BaseModel):
     input: DedicatedModelPushChunkCompleteInput
 
 
+class BaseModelListResultDedicatedProjectModels(BaseModel):
+    total_count: int = Field(alias="totalCount")
+    edges: list[BaseModelListResultDedicatedProjectModelsEdges]
+
+
 class UserContextResultClientUser(BaseModel):
     teams: UserContextResultClientUserTeams
 
@@ -642,9 +680,19 @@ class FilePushStartResult(BaseModel):
     )
 
 
+class BaseModelListResultDedicatedProject(BaseModel):
+    models: BaseModelListResultDedicatedProjectModels | None = None
+
+
 class UserContextResult(BaseModel):
     client_user: UserContextResultClientUser | None = Field(
         alias="clientUser", default=None
+    )
+
+
+class BaseModelListResult(BaseModel):
+    dedicated_project: BaseModelListResultDedicatedProject | None = Field(
+        alias="dedicatedProject", default=None
     )
 
 
@@ -732,6 +780,11 @@ class BaseSyncStub(AbstractSyncStub):
             ChunkPushCompleteGql,
             response_model=ChunkPushCompleteResult,
             variables=variables,
+        )
+
+    def base_model_list(self, variables: BaseModelListVariables) -> BaseModelListResult:
+        return self._query(
+            BaseModelListGql, response_model=BaseModelListResult, variables=variables
         )
 
 
@@ -823,4 +876,11 @@ class BaseAsyncStub(AbstractAsyncStub):
             ChunkPushCompleteGql,
             response_model=ChunkPushCompleteResult,
             variables=variables,
+        )
+
+    async def base_model_list(
+        self, variables: BaseModelListVariables
+    ) -> BaseModelListResult:
+        return await self._query(
+            BaseModelListGql, response_model=BaseModelListResult, variables=variables
         )
