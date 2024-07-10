@@ -7,7 +7,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from httpx import Client, HTTPTransport
+from httpx import Client, HTTPTransport, Timeout
 from rich.progress import Progress
 
 from ....schema import FileDescriptorInput
@@ -321,8 +321,8 @@ class ModelResource(ResourceBase):
 
         # split blob_bytes into chunks, each 100MB
         # 100MB or 10 concurrent uploads
-        chunk_size = max(1024 * 1024 * 100, descriptor.size // 200)
-        chunk_size = min(chunk_size, 1024 * 1024 * 200)
+        chunk_size = max(1024 * 1024 * 50, descriptor.size // 200)
+        chunk_size = min(chunk_size, 1024 * 1024 * 10)
         num_chunks = descriptor.size // chunk_size
         chunk_configs = [
             {
@@ -339,14 +339,23 @@ class ModelResource(ResourceBase):
             chunk_configs[-1]["end"] - chunk_configs[-1]["start"]
         )
 
-        with ThreadPoolExecutor(max_workers=10) as executor, Progress() as progress:
+        transport = RetryTransportWrapper(
+            HTTPTransport(
+                http2=True,
+                # TODO: limits=XX,
+                # TODO: configure retries
+                retries=4,
+            )
+        )
+
+        with (
+            ThreadPoolExecutor(max_workers=10) as executor,
+            Progress() as progress,
+            Client(transport=transport) as client,
+        ):
             futures = {
                 executor.submit(
-                    self._push_chunk,
-                    model_id,
-                    chunk_group_id,
-                    cc,
-                    descriptor,
+                    self._push_chunk, model_id, chunk_group_id, cc, descriptor, client
                 ): cc
                 for cc in chunk_configs
             }
@@ -377,6 +386,7 @@ class ModelResource(ResourceBase):
         chunk_group_id: str,
         chunk_config: dict[str, int],
         descriptor: FileDescriptorInput,
+        client: Client,
     ) -> str:
         resp = self._sdk.gql_client.chunk_push_start(
             variables=ChunkPushStartVariables(
@@ -400,17 +410,9 @@ class ModelResource(ResourceBase):
             f.seek(chunk_config["start"])
             chunk = f.read(chunk_config["size"])
 
-        transport = RetryTransportWrapper(
-            HTTPTransport(
-                http2=True,
-                # TODO: limits=XX,
-                # TODO: configure retries
-                retries=4,
-            )
+        upload_resp = client.put(
+            url=url, content=chunk, timeout=Timeout(120, connect=20)
         )
-
-        with Client(timeout=300, transport=transport) as client:
-            upload_resp = client.put(url=url, content=chunk, timeout=1200)
         upload_resp.raise_for_status()
         e_tag = upload_resp.headers["etag"]
 
