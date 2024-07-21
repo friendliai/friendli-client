@@ -69,7 +69,7 @@ pip install friendli-client
 ```
 
 > [!NOTE]
-> If you have a Hugging Face checkpoint and want to convert it to a Friendli-compatible format with applying quantization, you need to install the package with the necessary machine learing library (`mllib`) dependencies.
+> If you have a Hugging Face checkpoint and want to convert it to a Friendli-compatible format with applying quantization, you need to install the package with the necessary machine learning library (`mllib`) dependencies.
 > In this case, install the package with the following command:
 >
 > ```sh
