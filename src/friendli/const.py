@@ -4,6 +4,6 @@
 
 from __future__ import annotations
 
-__version__ = "2.0.0a7"
+__version__ = "2.0.0a8"
 
 BaseUrl = "https://suite.friendli.ai"

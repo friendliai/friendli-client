@@ -175,15 +175,8 @@ class ModelResource(ResourceBase):
             )
         )
         start_resp = self._sdk.gql_client.base_push_start(variables=start_vars)
-        model_id = start_resp.dedicated_model_push_base_start.model.id
 
-        # Push individual files
-        self._push_file(config_info, model_id)
-        self._push_file(tokenizer_info, model_id)
-        self._push_file(tokenizer_config_info, model_id)
-        self._push_file(special_tokens_map_info, model_id)
-        for safetensor_info in safetensor_infos:
-            self._push_file(safetensor_info, model_id)
+        model_id = start_resp.dedicated_model_push_base_start.model.id
 
         complete_vars = BasePushCompleteVariables(
             input=DedicatedModelPushBaseCompleteInput(
@@ -191,6 +184,24 @@ class ModelResource(ResourceBase):
                 modelStructure=model_structure,
             )
         )
+
+        upload_plan = start_resp.dedicated_model_push_base_start.upload_plan
+
+        # Push individual files
+        if upload_plan.config.required:
+            self._push_file(config_info, model_id)
+        if upload_plan.tokenizer.required:
+            self._push_file(tokenizer_info, model_id)
+        if upload_plan.tokenizer_config and upload_plan.tokenizer_config.required:
+            self._push_file(tokenizer_config_info, model_id)
+        if upload_plan.special_tokens_map and upload_plan.special_tokens_map.required:
+            self._push_file(special_tokens_map_info, model_id)
+        for safe_tensor_info, upload_plan_safetensor in zip(
+            safetensor_infos, upload_plan.safetensors, strict=True
+        ):
+            if upload_plan_safetensor.required:
+                self._push_file(safe_tensor_info, model_id)
+
         return self._sdk.gql_client.base_push_complete(variables=complete_vars)
 
     def push_adapter_model(
@@ -222,6 +233,8 @@ class ModelResource(ResourceBase):
         safetensor_paths = [
             f for f in model_path.iterdir() if f.is_file() and "safetensor" in f.name
         ]
+        tokenizer_config_path = model_path / "tokenizer_config.json"
+
         if not adapter_config_path.exists():
             msg = "adapter_config.json not found"
             raise FileNotFoundError(msg)
@@ -231,12 +244,22 @@ class ModelResource(ResourceBase):
 
         adapter_config_info = get_file_descriptor(adapter_config_path)
         safetensor_infos = [get_file_descriptor(Path(f)) for f in safetensor_paths]
+        tokenizer_config_info = get_optional_file_descriptor(tokenizer_config_path)
 
         model_structure = AdapterModelCreateInput(
             adapterConfig=FileDescriptorInputGql(
                 digest=adapter_config_info.digest,
                 filename=adapter_config_info.filename,
                 size=BigInt(str(adapter_config_info.size)),
+            ),
+            tokenizerConfig=(
+                FileDescriptorInputGql(
+                    digest=tokenizer_config_info.digest,
+                    filename=tokenizer_config_info.filename,
+                    size=BigInt(str(tokenizer_config_info.size)),
+                )
+                if tokenizer_config_info
+                else None
             ),
             safetensors=[
                 FileDescriptorInputGql(
@@ -266,17 +289,27 @@ class ModelResource(ResourceBase):
 
         model_id = start_res.adapter.id
 
-        # Push individual files
-        self._push_file(adapter_config_info, model_id)
-        for safetensor_info in safetensor_infos:
-            self._push_file(safetensor_info, model_id)
-
         complete_vars = AdapterPushCompleteVariables(
             input=DedicatedModelPushAdapterCompleteInput(
                 adapterId=model_id,
                 modelStructure=model_structure,
             )
         )
+
+        upload_plan = start_res.upload_plan
+
+        if upload_plan.adapter_config.required:
+            self._push_file(adapter_config_info, model_id)
+
+        if upload_plan.tokenizer_config and upload_plan.tokenizer_config.required:
+            self._push_file(tokenizer_config_info, model_id)
+
+        for safetensor_info, upload_plan_safetensor in zip(
+            safetensor_infos, upload_plan.safetensors, strict=True
+        ):
+            if upload_plan_safetensor.required:
+                self._push_file(safetensor_info, model_id)
+
         complete_resp = self._sdk.gql_client.adapter_push_complete(
             variables=complete_vars
         )

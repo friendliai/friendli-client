@@ -45,6 +45,17 @@ mutation AdapterPushStart($input: DedicatedModelPushAdapterStartInput!) {
         id
         createdAt
       }
+      uploadPlan {
+        adapterConfig {
+          required
+        }
+        tokenizerConfig {
+          required
+        }
+        safetensors {
+          required
+        }
+      }
     }
     ... on UserPermissionError {
       message
@@ -118,6 +129,23 @@ mutation BasePushStart($input: DedicatedModelPushBaseStartInput!) {
         id
         digest
         createdAt
+      }
+      uploadPlan {
+        config {
+          required
+        }
+        tokenizer {
+          required
+        }
+        tokenizerConfig {
+          required
+        }
+        specialTokensMap {
+          required
+        }
+        safetensors {
+          required
+        }
       }
     }
   }
@@ -260,6 +288,24 @@ class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdap
     created_at: datetime | None = Field(alias="createdAt", default=None)
 
 
+class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanAdapterConfig(
+    BaseModel
+):
+    required: bool
+
+
+class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanTokenizerConfig(
+    BaseModel
+):
+    required: bool
+
+
+class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanSafetensors(
+    BaseModel
+):
+    required: bool
+
+
 class AdapterPushStartResultDedicatedModelPushAdapterStartUserPermissionError(
     BaseModel
 ):
@@ -328,6 +374,36 @@ class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartS
     id: str
     digest: str | None = None
     created_at: datetime | None = Field(alias="createdAt", default=None)
+
+
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanConfig(
+    BaseModel
+):
+    required: bool
+
+
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanTokenizer(
+    BaseModel
+):
+    required: bool
+
+
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanTokenizerConfig(
+    BaseModel
+):
+    required: bool
+
+
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanSpecialTokensMap(
+    BaseModel
+):
+    required: bool
+
+
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanSafetensors(
+    BaseModel
+):
+    required: bool
 
 
 class BasePushCompleteResultDedicatedModelPushBaseCompleteDedicatedModelPushBaseCompleteSuccessModel(
@@ -419,15 +495,26 @@ class UserContextVariables(BaseModel):
     sorts: ClientUserTeamSortsInput | None = None
 
 
-class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccess(
+class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlan(
     BaseModel
 ):
-    typename__: TypeName = Field(alias="__typename")
-    adapter: AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessAdapter
+    adapter_config: AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanAdapterConfig = Field(
+        alias="adapterConfig"
+    )
+    tokenizer_config: (
+        AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanTokenizerConfig
+        | None
+    ) = Field(alias="tokenizerConfig", default=None)
+    safetensors: list[
+        AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanSafetensors
+    ]
 
 
 class AdapterModelCreateInput(BaseModel):
     adapter_config: FileDescriptorInput = Field(alias="adapterConfig")
+    tokenizer_config: FileDescriptorInput | None = Field(
+        alias="tokenizerConfig", default=None
+    )
     safetensors: list[FileDescriptorInput]
 
 
@@ -475,9 +562,9 @@ class FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartS
     BaseModel
 ):
     typename__: TypeName = Field(alias="__typename")
-    upload_info: (
-        FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartSuccessUploadInfo
-    ) = Field(alias="uploadInfo")
+    upload_info: FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartSuccessUploadInfo = Field(
+        alias="uploadInfo"
+    )
 
 
 FilePushCompleteResultDedicatedModelPushFileComplete = (
@@ -486,10 +573,22 @@ FilePushCompleteResultDedicatedModelPushFileComplete = (
 )
 
 
-class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccess(
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlan(
     BaseModel
 ):
-    model: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessModel
+    config: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanConfig
+    tokenizer: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanTokenizer
+    tokenizer_config: (
+        BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanTokenizerConfig
+        | None
+    ) = Field(alias="tokenizerConfig", default=None)
+    special_tokens_map: (
+        BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanSpecialTokensMap
+        | None
+    ) = Field(alias="specialTokensMap", default=None)
+    safetensors: list[
+        BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlanSafetensors
+    ]
 
 
 class BasePushCompleteResultDedicatedModelPushBaseCompleteDedicatedModelPushBaseCompleteSuccess(
@@ -541,10 +640,14 @@ class UserContextResultClientUserTeams(BaseModel):
     edges: list[UserContextResultClientUserTeamsEdges]
 
 
-AdapterPushStartResultDedicatedModelPushAdapterStart = (
-    AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccess
-    | AdapterPushStartResultDedicatedModelPushAdapterStartUserPermissionError
-)
+class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccess(
+    BaseModel
+):
+    typename__: TypeName = Field(alias="__typename")
+    adapter: AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessAdapter
+    upload_plan: AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlan = Field(
+        alias="uploadPlan"
+    )
 
 
 class DedicatedModelPushAdapterStartInput(BaseModel):
@@ -605,10 +708,13 @@ class FilePushCompleteResult(BaseModel):
     ) = Field(alias="dedicatedModelPushFileComplete")
 
 
-class BasePushStartResult(BaseModel):
-    dedicated_model_push_base_start: (
-        BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccess
-    ) = Field(alias="dedicatedModelPushBaseStart")
+class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccess(
+    BaseModel
+):
+    model: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessModel
+    upload_plan: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlan = Field(
+        alias="uploadPlan"
+    )
 
 
 class BasePushCompleteResult(BaseModel):
@@ -646,10 +752,10 @@ class UserContextResultClientUser(BaseModel):
     teams: UserContextResultClientUserTeams
 
 
-class AdapterPushStartResult(BaseModel):
-    dedicated_model_push_adapter_start: (
-        AdapterPushStartResultDedicatedModelPushAdapterStart
-    ) = Field(alias="dedicatedModelPushAdapterStart")
+AdapterPushStartResultDedicatedModelPushAdapterStart = (
+    AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccess
+    | AdapterPushStartResultDedicatedModelPushAdapterStartUserPermissionError
+)
 
 
 class AdapterPushStartVariables(BaseModel):
@@ -680,6 +786,12 @@ class FilePushStartResult(BaseModel):
     )
 
 
+class BasePushStartResult(BaseModel):
+    dedicated_model_push_base_start: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccess = Field(
+        alias="dedicatedModelPushBaseStart"
+    )
+
+
 class BaseModelListResultDedicatedProject(BaseModel):
     models: BaseModelListResultDedicatedProjectModels | None = None
 
@@ -687,6 +799,12 @@ class BaseModelListResultDedicatedProject(BaseModel):
 class UserContextResult(BaseModel):
     client_user: UserContextResultClientUser | None = Field(
         alias="clientUser", default=None
+    )
+
+
+class AdapterPushStartResult(BaseModel):
+    dedicated_model_push_adapter_start: AdapterPushStartResultDedicatedModelPushAdapterStart = Field(
+        alias="dedicatedModelPushAdapterStart"
     )
 
 
