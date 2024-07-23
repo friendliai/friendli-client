@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import re
+from typing import Optional
 
 import typer
 from typer import Context
@@ -12,7 +13,7 @@ from typer import Context
 _EmailRegex = re.compile(r"^[\w.+-]+@[\w-]+\.[\w.-]+$")
 
 
-def validate_email(value: str | None, ctx: Context) -> str | None:
+def validate_email(value: Optional[str], ctx: Context) -> Optional[str]:
     """Validate an email address callback."""
     if ctx.resilient_parsing:
         return None

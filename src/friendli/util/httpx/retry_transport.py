@@ -9,7 +9,7 @@ import logging
 import time
 from contextlib import closing
 from http import HTTPStatus
-from typing import Callable, Generator, Generic, Iterable, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Callable, Generator, Generic, Iterable, TypeVar
 
 from httpx import (
     AsyncBaseTransport,
@@ -23,10 +23,13 @@ from httpx import (
 from .backoff import generate_sequence
 from .header import RetryAfterHeader
 
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
+
 logger = logging.getLogger(__name__)
 
 TransportT = TypeVar("TransportT", bound=BaseTransport | AsyncBaseTransport)
-SequenceT: TypeAlias = Generator[float, None, None]
+SequenceT: "TypeAlias" = Generator[float, None, None]
 
 
 def _default_backoff_sequence() -> SequenceT:

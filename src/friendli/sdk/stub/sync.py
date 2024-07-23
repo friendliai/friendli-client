@@ -11,7 +11,7 @@ from __future__ import annotations
 import abc
 import io
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, TypeVar
 
 from pydantic import BaseModel
 
@@ -19,6 +19,7 @@ from .types import UploadFile
 
 if TYPE_CHECKING:
     from graphql import ExecutionResult
+    from typing_extensions import TypeAlias
 
 R = TypeVar("R", bound=BaseModel)
 

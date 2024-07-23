@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Optional
 
 from typer import Argument, Option, Typer
-from typing_extensions import Annotated
 
 from ..const import Panel
 from ..context import AppContext, TyperAppContext
@@ -38,10 +37,7 @@ List models.
 )
 def _list(
     ctx: TyperAppContext,
-    project: Annotated[
-        str,
-        Option("--project", help="Project ID"),
-    ],
+    project: str = Option("--project", help="Project ID"),
 ) -> None:
     from ..action.dedicated_model_list import run
 
@@ -79,28 +75,17 @@ def _list(
 )
 def _push(
     ctx: TyperAppContext,
-    model_path: Annotated[
-        Optional[Path],
-        Argument(
-            exists=True,
-            file_okay=False,
-            dir_okay=True,
-            readable=True,
-            resolve_path=True,
-        ),
-    ] = None,
-    base: Annotated[
-        Optional[str],
-        Option("--base", help="Base model ID"),
-    ] = None,
-    name: Annotated[
-        Optional[str],
-        Option("--name", help="Model name"),
-    ] = None,
-    project: Annotated[
-        Optional[str],
-        Option("--project", help="Project ID"),
-    ] = None,
+    model_path: Optional[Path] = Argument(
+        None,
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        readable=True,
+        resolve_path=True,
+    ),
+    base: Optional[str] = Option(None, "--base", help="Base model ID"),
+    name: Optional[str] = Option(None, "--name", help="Model name"),
+    project: Optional[str] = Option(None, "--project", help="Project ID"),
 ) -> None:
     model_path = model_path or Path.cwd()
 

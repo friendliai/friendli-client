@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Generator, Iterator, Literal, TypeAlias
+from typing import TYPE_CHECKING, Callable, Generator, Iterator, Literal
 
 from .sequence import (
     cap_sequence,
@@ -14,6 +14,9 @@ from .sequence import (
     fibonacci_sequence,
     jitter_sequence,
 )
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
 
 SequenceType: TypeAlias = Literal[
     "constant", "exponential", "fibonacci", "decorrelated_jitter"

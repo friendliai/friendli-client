@@ -5,13 +5,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Optional, TypeAlias
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-
     from graphql import ExecutionResult
+    from typing_extensions import TypeAlias
 
-Event: TypeAlias = tuple[str, Optional["ExecutionResult"]]
+Event: "TypeAlias" = tuple[str, Optional["ExecutionResult"]]
 
 
 class QueueCompletedError(Exception):
