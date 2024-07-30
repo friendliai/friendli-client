@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from importlib.util import find_spec
 from typing import Any, Dict, Optional, Type
 
 import typer
@@ -81,16 +80,3 @@ def validate_enums(val: Any, enum_cls: Type[Enum]) -> Any:
         raise InvalidConfigError(
             f"Invalid value. Please provide one of {supported_values}"
         ) from exc
-
-
-def validate_convert_imports() -> None:
-    """Validate the import modules for checkpoint conversion."""
-    if find_spec("torch") is None:
-        raise ModuleNotFoundError(
-            "To convert the checkpoint, you must install 'torch'."
-        )
-    if find_spec("transformers") is None or find_spec("accelerate") is None:
-        raise ModuleNotFoundError(
-            "To convert the checkpoint,"
-            " your must install the package with 'pip install \"friendli-client[mllib]\"'"
-        )

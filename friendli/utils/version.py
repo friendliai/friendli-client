@@ -48,8 +48,3 @@ def check_dependencies_installed(deps: List[str]) -> bool:
             return False
 
     return True
-
-
-def check_extras_installed() -> bool:
-    """Check extra package dependencies are installed."""
-    return check_dependencies_installed(["torch", "transformers"])

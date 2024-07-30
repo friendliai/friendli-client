@@ -24,7 +24,12 @@ from typing_extensions import Self
 
 from friendli.auth import get_auth_header
 from friendli.errors import APIError
-from friendli.utils.request import DEFAULT_REQ_TIMEOUT, transform_request_data
+from friendli.utils.request import (
+    DEFAULT_CONNECTION_LIMITS,
+    DEFAULT_REQ_TIMEOUT,
+    DEFAULT_TIMEOUT,
+    transform_request_data,
+)
 
 _GenerationLine = TypeVar("_GenerationLine", bound=BaseModel)
 
@@ -93,10 +98,26 @@ _HttpxClient = TypeVar("_HttpxClient", bound=Union[httpx.Client, httpx.AsyncClie
 _ProtoMsgType = TypeVar("_ProtoMsgType", bound=Type[pb_message.Message])
 
 
+class _DefaultHttpxClient(httpx.Client):
+    def __init__(self, **kwargs: Any) -> None:
+        kwargs.setdefault("timeout", DEFAULT_TIMEOUT)
+        kwargs.setdefault("limits", DEFAULT_CONNECTION_LIMITS)
+        kwargs.setdefault("follow_redirects", True)
+        super().__init__(**kwargs)
+
+
+class _DefaultAsyncHttpxClient(httpx.AsyncClient):
+    def __init__(self, **kwargs: Any) -> None:
+        kwargs.setdefault("timeout", DEFAULT_TIMEOUT)
+        kwargs.setdefault("limits", DEFAULT_CONNECTION_LIMITS)
+        kwargs.setdefault("follow_redirects", True)
+        super().__init__(**kwargs)
+
+
 class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
     """Base API interface."""
 
-    _client: _HttpxClient
+    _http_client: _HttpxClient
 
     def __init__(
         self,
@@ -133,13 +154,12 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
         self, data: dict[str, Any], model: Optional[str] = None
     ) -> httpx.Request:
         """Build request."""
-        return self._client.build_request(
+        return self._http_client.build_request(
             method=self._method,
             url=self._build_http_url(),
             content=self._build_content(data, model),
             files=self._build_files(data),
             headers=self._get_headers(),
-            timeout=DEFAULT_REQ_TIMEOUT,
         )
 
     def _build_http_url(self) -> httpx.URL:
@@ -213,7 +233,7 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
-        client: Optional[httpx.Client] = None,
+        http_client: Optional[httpx.Client] = None,
         grpc_channel: Optional[grpc.Channel] = None,
     ) -> None:
         """Initializes ServingAPI."""
@@ -224,7 +244,7 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         )
 
         self._use_grpc = use_grpc
-        self._client = client or httpx.Client()
+        self._http_client = http_client or _DefaultHttpxClient()
         self._grpc_channel = grpc_channel
         self._grpc_stub = None
 
@@ -240,7 +260,7 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         """Close the gRPC channel and HTTP client."""
         if self._grpc_channel:
             self._grpc_channel.close()
-        self._client.close()
+        self._http_client.close()
 
     def _get_grpc_stub(self, channel: grpc.Channel) -> Any:
         raise NotImplementedError  # pragma: no cover
@@ -274,7 +294,7 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
             return grpc_response
 
         http_request = self._build_http_request(data=data, model=model)
-        http_response = self._client.send(request=http_request, stream=stream)
+        http_response = self._http_client.send(request=http_request, stream=stream)
         self._check_http_error(http_response)
         return http_response
 
@@ -302,7 +322,7 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
         endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
-        client: Optional[httpx.AsyncClient] = None,
+        http_client: Optional[httpx.AsyncClient] = None,
         grpc_channel: Optional[grpc.aio.Channel] = None,
     ) -> None:
         """Initializes AsyncServingAPI."""
@@ -311,7 +331,7 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
         )
 
         self._use_grpc = use_grpc
-        self._client = client or httpx.AsyncClient()
+        self._http_client = http_client or _DefaultAsyncHttpxClient()
         self._grpc_channel = grpc_channel
         self._grpc_stub = None
 
@@ -327,7 +347,7 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
         """Close the gRPC channel and HTTP client."""
         if self._grpc_channel:
             await self._grpc_channel.close(grace=None)
-        await self._client.aclose()
+        await self._http_client.aclose()
 
     def _get_grpc_stub(self, channel: grpc.aio.Channel) -> Any:
         raise NotImplementedError  # pragma: no cover
@@ -363,7 +383,9 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
             return grpc_response
 
         http_request = self._build_http_request(data=data, model=model)
-        http_response = await self._client.send(request=http_request, stream=stream)
+        http_response = await self._http_client.send(
+            request=http_request, stream=stream
+        )
         await self._check_http_error(http_response)
 
         return http_response

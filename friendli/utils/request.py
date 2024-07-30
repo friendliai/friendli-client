@@ -6,14 +6,19 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
 import pydantic
 from requests.exceptions import HTTPError
 
 from friendli.utils.compat import model_dump
 from friendli.utils.url import discuss_url
 
-DEFAULT_REQ_TIMEOUT = 30
+DEFAULT_REQ_TIMEOUT = 600.0
 MAX_RETRIES = 3
+DEFAULT_TIMEOUT = httpx.Timeout(timeout=DEFAULT_REQ_TIMEOUT, connect=5.0)
+DEFAULT_CONNECTION_LIMITS = httpx.Limits(
+    max_connections=1000, max_keepalive_connections=100
+)
 
 
 def decode_http_err(exc: HTTPError) -> str:

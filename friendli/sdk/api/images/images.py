@@ -20,11 +20,11 @@ class Images:
         self,
         base_url: Optional[str] = None,
         endpoint_id: Optional[str] = None,
-        client: Optional[httpx.Client] = None,
+        http_client: Optional[httpx.Client] = None,
     ) -> None:
         """Initialize Images."""
         self.text_to_image = TextToImage(
-            base_url=base_url, endpoint_id=endpoint_id, client=client
+            base_url=base_url, endpoint_id=endpoint_id, http_client=http_client
         )
 
     def close(self) -> None:
@@ -41,11 +41,11 @@ class AsyncImages:
         self,
         base_url: Optional[str] = None,
         endpoint_id: Optional[str] = None,
-        client: Optional[httpx.AsyncClient] = None,
+        http_client: Optional[httpx.AsyncClient] = None,
     ) -> None:
         """Initialize Images."""
         self.text_to_image = AsyncTextToImage(
-            base_url=base_url, endpoint_id=endpoint_id, client=client
+            base_url=base_url, endpoint_id=endpoint_id, http_client=http_client
         )
 
     async def close(self) -> None:

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "friendli-client"
-version = "1.4.2"
+version = "1.5.0"
 description = "Client of Friendli Suite."
 license = "Apache-2.0"
 authors = ["FriendliAI teams <eng@friendli.ai>"]
@@ -34,16 +34,9 @@ rich = "^12.2.0"
 jsonschema = "^4.17.3"
 tqdm = "^4.48.0"
 pydantic = {extras = ["email"], version = ">=1.9.0, <3"}
-transformers = { version = "4.41.2", optional = true }
-h5py = { version = "^3.9.0", optional = true }
-einops = { version = "^0.6.1", optional = true }
-accelerate = { version = "0.21.0", optional = true }
-datasets = { version = "2.16.0", optional = true }
 injector = "^0.21.0"
 protobuf = "^5.26.1"
 types-protobuf = "^5.26.0.20240422"
-peft = { version = "0.6.0", optional = true }
-safetensors = { version = "0.4.1", optional = true }
 httpx = "^0.24.1"
 fastapi = "^0.104.0"
 uvicorn = "^0.23.2"
@@ -74,9 +67,6 @@ types-requests = "^2.31.0.1"
 types-toml = "^0.10.8.6"
 types-tqdm = "^4.65.0.1"
 typer = "^0.9.0"
-
-[tool.poetry.extras]
-mllib = ["transformers", "h5py", "accelerate", "einops", "datasets", "peft", "safetensors"]
 
 [tool.isort]
 profile = "black"
@@ -121,12 +111,6 @@ disable = [
     "redefined-outer-name"
 ]
 extension-pkg-whitelist = "pydantic"
-
-[tool.pylint.TYPECHECK]
-generated-members = [
-    "numpy.*" ,
-    "torch.*"
-]
 
 [tool.pylint.check]
 ignored-classes = "Depends"

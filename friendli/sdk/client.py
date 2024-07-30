@@ -8,6 +8,7 @@ from typing import Optional, Union
 
 import grpc
 import grpc.aio
+import httpx
 
 import friendli
 from friendli.client.graphql.endpoint import EndpointGqlClient
@@ -34,6 +35,7 @@ class FriendliClientBase:
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
+        http_client: Optional[Union[httpx.Client, httpx.AsyncClient]] = None,
         grpc_channel: Optional[Union[grpc.Channel, grpc.aio.Channel]] = None,
     ):
         """Initializes FriendliClientBase."""
@@ -52,6 +54,8 @@ class FriendliClientBase:
                 raise ValueError(
                     "One of `base_url` and `grpc_channel` should be set when `use_grpc=True`."
                 )
+            if http_client is not None:
+                raise ValueError("You cannot use HTTP client when `use_grpc=True`.")
         else:
             if grpc_channel is not None:
                 raise ValueError(
@@ -80,6 +84,7 @@ class Friendli(FriendliClientBase):
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
+        http_client: Optional[httpx.Client] = None,
         grpc_channel: Optional[grpc.Channel] = None,
     ):
         """Initializes Friendli."""
@@ -91,6 +96,7 @@ class Friendli(FriendliClientBase):
             base_url=base_url,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
+            http_client=http_client,
             grpc_channel=grpc_channel,
         )
 
@@ -99,6 +105,7 @@ class Friendli(FriendliClientBase):
             endpoint_id=self._endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
+            http_client=http_client,
             grpc_channel=grpc_channel,
         )
         self.chat = Chat(
@@ -106,9 +113,14 @@ class Friendli(FriendliClientBase):
             endpoint_id=self._endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
+            http_client=http_client,
             grpc_channel=grpc_channel,
         )
-        self.images = Images(base_url=self._base_url, endpoint_id=self._endpoint_id)
+        self.images = Images(
+            base_url=self._base_url,
+            endpoint_id=self._endpoint_id,
+            http_client=http_client,
+        )
 
         endpoint_client = EndpointGqlClient()
         model_client = ModelGqlClient()
@@ -147,6 +159,7 @@ class AsyncFriendli(FriendliClientBase):
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
+        http_client: Optional[httpx.AsyncClient] = None,
         grpc_channel: Optional[grpc.aio.Channel] = None,
     ):
         """Initializes AsyncFriendli."""
@@ -158,6 +171,7 @@ class AsyncFriendli(FriendliClientBase):
             base_url=base_url,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
+            http_client=http_client,
             grpc_channel=grpc_channel,
         )
 
@@ -166,6 +180,7 @@ class AsyncFriendli(FriendliClientBase):
             endpoint_id=self._endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
+            http_client=http_client,
             grpc_channel=grpc_channel,
         )
         self.chat = AsyncChat(
@@ -173,10 +188,13 @@ class AsyncFriendli(FriendliClientBase):
             endpoint_id=self._endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
+            http_client=http_client,
             grpc_channel=grpc_channel,
         )
         self.images = AsyncImages(
-            base_url=self._base_url, endpoint_id=self._endpoint_id
+            base_url=self._base_url,
+            endpoint_id=self._endpoint_id,
+            http_client=http_client,
         )
 
     async def __aenter__(self) -> AsyncFriendli:

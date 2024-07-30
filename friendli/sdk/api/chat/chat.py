@@ -24,7 +24,7 @@ class Chat:
         endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
-        client: Optional[httpx.Client] = None,
+        http_client: Optional[httpx.Client] = None,
         grpc_channel: Optional[grpc.Channel] = None,
     ) -> None:
         """Initializes Chat."""
@@ -33,7 +33,7 @@ class Chat:
             endpoint_id=endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
-            client=client,
+            http_client=http_client,
             grpc_channel=grpc_channel,
         )
 
@@ -53,7 +53,7 @@ class AsyncChat:
         endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
-        client: Optional[httpx.AsyncClient] = None,
+        http_client: Optional[httpx.AsyncClient] = None,
         grpc_channel: Optional[grpc.aio.Channel] = None,
     ) -> None:
         """Initializes AsyncChat."""
@@ -62,7 +62,7 @@ class AsyncChat:
             endpoint_id=endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
-            client=client,
+            http_client=http_client,
             grpc_channel=grpc_channel,
         )
 

@@ -3,7 +3,11 @@ Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 -->
 
 <p align="center">
-  <img src="https://docs.friendli.ai/img/logo.svg" width="30%" alt="Friendli Logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://docs.friendli.ai/img/logo_dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://docs.friendli.ai/img/logo.svg">
+    <img width="30%" alt="Friendli Logo" src="https://docs.friendli.ai/img/logo.svg">
+  </picture>
 </p>
 
 <h2><p align="center">Supercharge Generative AI Serving with Friendli 🚀</p></h2>
