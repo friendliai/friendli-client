@@ -11,7 +11,7 @@ from __future__ import annotations
 import abc
 import io
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Dict, Generator, TypeVar
 
 from pydantic import BaseModel
 
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 R = TypeVar("R", bound=BaseModel)
 
-VariablesT: TypeAlias = dict[str, Any]
+VariablesT: TypeAlias = Dict[str, Any]
 
 
 class ExecutionError(Exception):

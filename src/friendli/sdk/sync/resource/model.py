@@ -382,30 +382,35 @@ class ModelResource(ResourceBase):
             )
         )
 
-        with (
-            Progress() as progress,
-            Client(transport=transport) as client,
-            ThreadPoolExecutor(max_workers=20) as executor,
-        ):
-            futures = {
-                executor.submit(
-                    self._push_chunk, model_id, chunk_group_id, cc, descriptor, client
-                ): cc
-                for cc in chunk_configs
-            }
-            desc = f"[red]Uploading (0/{format_bytes(descriptor.size)})"
-            uploaded = 0
-            task = progress.add_task(desc, total=descriptor.size)
-            for future in as_completed(futures):
-                try:
-                    future.result()
-                except RequestError:
-                    print("Error pushing file. Please contact support.")  # noqa: T201
-                    raise
-                chunk_size = futures[future]["size"]
-                uploaded += chunk_size
-                desc = f"[green]Uploading ({format_bytes(uploaded)}/{format_bytes(descriptor.size)})"
-                progress.update(task, advance=chunk_size, description=desc)
+        with Progress() as progress:  # noqa: SIM117
+            with Client(transport=transport) as client:
+                with ThreadPoolExecutor(max_workers=20) as executor:
+                    futures = {
+                        executor.submit(
+                            self._push_chunk,
+                            model_id,
+                            chunk_group_id,
+                            cc,
+                            descriptor,
+                            client,
+                        ): cc
+                        for cc in chunk_configs
+                    }
+                    desc = f"[red]Uploading (0/{format_bytes(descriptor.size)})"
+                    uploaded = 0
+                    task = progress.add_task(desc, total=descriptor.size)
+                    for future in as_completed(futures):
+                        try:
+                            future.result()
+                        except RequestError:
+                            print(
+                                "Error pushing file. Please contact support."
+                            )  # noqa: T201
+                            raise
+                        chunk_size = futures[future]["size"]
+                        uploaded += chunk_size
+                        desc = f"[green]Uploading ({format_bytes(uploaded)}/{format_bytes(descriptor.size)})"
+                        progress.update(task, advance=chunk_size, description=desc)
 
         self._sdk.gql_client.chunk_group_commit(
             variables=ChunkGroupCommitVariables(

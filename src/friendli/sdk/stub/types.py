@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import NewType
+from typing import NewType, Union
 
 from pydantic import BaseModel, FilePath
 
@@ -14,4 +14,4 @@ TypeName = NewType("TypeName", str)
 class UploadFile(BaseModel):
     """File abstraction for stub."""
 
-    file: bytes | FilePath
+    file: Union[bytes, FilePath]

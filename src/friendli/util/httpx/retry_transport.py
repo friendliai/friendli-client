@@ -9,7 +9,7 @@ import logging
 import time
 from contextlib import closing
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Callable, Generator, Generic, Iterable, TypeVar
+from typing import TYPE_CHECKING, Callable, Generator, Generic, Iterable, TypeVar, Union
 
 from httpx import (
     AsyncBaseTransport,
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-TransportT = TypeVar("TransportT", bound=BaseTransport | AsyncBaseTransport)
+TransportT = TypeVar("TransportT", bound=Union[BaseTransport, AsyncBaseTransport])
 SequenceT: "TypeAlias" = Generator[float, None, None]
 
 

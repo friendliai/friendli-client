@@ -6,15 +6,18 @@ from __future__ import annotations
 
 from functools import wraps
 from http import HTTPStatus
-from typing import Callable, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Callable, TypeVar
 
 from httpx import HTTPStatusError
 from pydantic import ValidationError
 
 from .exception import ApiError, AuthenticationError, RemoteSystemError, SdkError
 
-P = ParamSpec("P")
-R = TypeVar("R")
+if TYPE_CHECKING:
+    from typing_extensions import ParamSpec
+
+    P = ParamSpec("P")
+    R = TypeVar("R")
 
 
 def translate_exception(func: Callable[P, R]) -> Callable[P, R]:

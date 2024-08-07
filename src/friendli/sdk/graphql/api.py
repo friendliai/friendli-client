@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import NewType
+from typing import NewType, Union
 
 from pydantic import BaseModel, Field
 
@@ -498,9 +498,9 @@ class UserContextVariables(BaseModel):
 class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlan(
     BaseModel
 ):
-    adapter_config: AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanAdapterConfig = Field(
-        alias="adapterConfig"
-    )
+    adapter_config: (
+        AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanAdapterConfig
+    ) = Field(alias="adapterConfig")
     tokenizer_config: (
         AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlanTokenizerConfig
         | None
@@ -562,15 +562,15 @@ class FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartS
     BaseModel
 ):
     typename__: TypeName = Field(alias="__typename")
-    upload_info: FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartSuccessUploadInfo = Field(
-        alias="uploadInfo"
-    )
+    upload_info: (
+        FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartSuccessUploadInfo
+    ) = Field(alias="uploadInfo")
 
 
-FilePushCompleteResultDedicatedModelPushFileComplete = (
-    FilePushCompleteResultDedicatedModelPushFileCompleteDedicatedModelPushFileCompleteSuccess
-    | FilePushCompleteResultDedicatedModelPushFileCompleteUserPermissionError
-)
+FilePushCompleteResultDedicatedModelPushFileComplete = Union[
+    FilePushCompleteResultDedicatedModelPushFileCompleteDedicatedModelPushFileCompleteSuccess,
+    FilePushCompleteResultDedicatedModelPushFileCompleteUserPermissionError,
+]
 
 
 class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlan(
@@ -609,10 +609,10 @@ class ChunkGroupCommitResult(BaseModel):
     ) = Field(alias="dedicatedModelCommitChunkGroup")
 
 
-ChunkPushStartResultDedicatedModelPushChunkStart = (
-    ChunkPushStartResultDedicatedModelPushChunkStartDedicatedModelPushChunkStartSuccess
-    | ChunkPushStartResultDedicatedModelPushChunkStartDedicatedModelPushChunkStartAlreadyExistError
-)
+ChunkPushStartResultDedicatedModelPushChunkStart = Union[
+    ChunkPushStartResultDedicatedModelPushChunkStartDedicatedModelPushChunkStartSuccess,
+    ChunkPushStartResultDedicatedModelPushChunkStartDedicatedModelPushChunkStartAlreadyExistError,
+]
 
 
 class DedicatedModelPushChunkStartInput(BaseModel):
@@ -620,10 +620,10 @@ class DedicatedModelPushChunkStartInput(BaseModel):
     file_input: FileChunkInput = Field(alias="fileInput")
 
 
-ChunkPushCompleteResultDedicatedModelPushChunkComplete = (
-    ChunkPushCompleteResultDedicatedModelPushChunkCompleteDedicatedModelPushChunkCompleteSuccess
-    | ChunkPushCompleteResultDedicatedModelPushChunkCompleteUserPermissionError
-)
+ChunkPushCompleteResultDedicatedModelPushChunkComplete = Union[
+    ChunkPushCompleteResultDedicatedModelPushChunkCompleteDedicatedModelPushChunkCompleteSuccess,
+    ChunkPushCompleteResultDedicatedModelPushChunkCompleteUserPermissionError,
+]
 
 
 class DedicatedModelPushChunkCompleteInput(BaseModel):
@@ -645,9 +645,9 @@ class AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdap
 ):
     typename__: TypeName = Field(alias="__typename")
     adapter: AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessAdapter
-    upload_plan: AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlan = Field(
-        alias="uploadPlan"
-    )
+    upload_plan: (
+        AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccessUploadPlan
+    ) = Field(alias="uploadPlan")
 
 
 class DedicatedModelPushAdapterStartInput(BaseModel):
@@ -689,17 +689,17 @@ class ChunkGroupCommitVariables(BaseModel):
     input: DedicatedModelCommitChunkGroupInput
 
 
-AdapterPushCompleteResultDedicatedModelPushAdapterComplete = (
-    AdapterPushCompleteResultDedicatedModelPushAdapterCompleteUserPermissionError
-    | AdapterPushCompleteResultDedicatedModelPushAdapterCompleteDedicatedModelPushAdapterCompleteSuccess
-)
+AdapterPushCompleteResultDedicatedModelPushAdapterComplete = Union[
+    AdapterPushCompleteResultDedicatedModelPushAdapterCompleteUserPermissionError,
+    AdapterPushCompleteResultDedicatedModelPushAdapterCompleteDedicatedModelPushAdapterCompleteSuccess,
+]
 
 
-FilePushStartResultDedicatedModelPushFileStart = (
-    FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartAlreadyExistError
-    | FilePushStartResultDedicatedModelPushFileStartUserPermissionError
-    | FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartSuccess
-)
+FilePushStartResultDedicatedModelPushFileStart = Union[
+    FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartAlreadyExistError,
+    FilePushStartResultDedicatedModelPushFileStartUserPermissionError,
+    FilePushStartResultDedicatedModelPushFileStartDedicatedModelPushFileStartSuccess,
+]
 
 
 class FilePushCompleteResult(BaseModel):
@@ -712,9 +712,9 @@ class BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartS
     BaseModel
 ):
     model: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessModel
-    upload_plan: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlan = Field(
-        alias="uploadPlan"
-    )
+    upload_plan: (
+        BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccessUploadPlan
+    ) = Field(alias="uploadPlan")
 
 
 class BasePushCompleteResult(BaseModel):
@@ -752,10 +752,10 @@ class UserContextResultClientUser(BaseModel):
     teams: UserContextResultClientUserTeams
 
 
-AdapterPushStartResultDedicatedModelPushAdapterStart = (
-    AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccess
-    | AdapterPushStartResultDedicatedModelPushAdapterStartUserPermissionError
-)
+AdapterPushStartResultDedicatedModelPushAdapterStart = Union[
+    AdapterPushStartResultDedicatedModelPushAdapterStartDedicatedModelPushAdapterStartSuccess,
+    AdapterPushStartResultDedicatedModelPushAdapterStartUserPermissionError,
+]
 
 
 class AdapterPushStartVariables(BaseModel):
@@ -787,9 +787,9 @@ class FilePushStartResult(BaseModel):
 
 
 class BasePushStartResult(BaseModel):
-    dedicated_model_push_base_start: BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccess = Field(
-        alias="dedicatedModelPushBaseStart"
-    )
+    dedicated_model_push_base_start: (
+        BasePushStartResultDedicatedModelPushBaseStartDedicatedModelPushBaseStartSuccess
+    ) = Field(alias="dedicatedModelPushBaseStart")
 
 
 class BaseModelListResultDedicatedProject(BaseModel):
@@ -803,9 +803,9 @@ class UserContextResult(BaseModel):
 
 
 class AdapterPushStartResult(BaseModel):
-    dedicated_model_push_adapter_start: AdapterPushStartResultDedicatedModelPushAdapterStart = Field(
-        alias="dedicatedModelPushAdapterStart"
-    )
+    dedicated_model_push_adapter_start: (
+        AdapterPushStartResultDedicatedModelPushAdapterStart
+    ) = Field(alias="dedicatedModelPushAdapterStart")
 
 
 class BaseModelListResult(BaseModel):
