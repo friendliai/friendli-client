@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "friendli-client"
-version = "2.0.0a9"
+version = "2.0.0a10"
 description = "Friendli Suite Client"
 authors = [
     {name = "FriendliAI teams", email = "eng@friendli.ai"},
@@ -19,6 +19,7 @@ dependencies = [
     "questionary>=2.0.1",
     "graphql-core>=3.2.3",
     "websockets>=12.0",
+    "eval-type-backport>=0.2.0",
 ]
 requires-python = "<3.13,>=3.8.1"
 readme = "README.md"
