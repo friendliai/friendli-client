@@ -13,7 +13,7 @@ import typer
 from friendli.schema.api.v1.chat.completions import MessageParam
 from friendli.sdk.client import Friendli
 from friendli.utils.compat import model_dump
-from friendli.utils.decorator import check_api, check_api_params
+from friendli.utils.decorator import check_api
 from friendli.utils.format import secho_error_and_exit
 
 app = typer.Typer(
@@ -24,7 +24,6 @@ app = typer.Typer(
 
 
 @app.command()
-@check_api_params
 @check_api
 def create(
     messages: List[str] = typer.Option(
@@ -45,12 +44,6 @@ def create(
             "See https://docs.friendli.ai/guides/serverless_endpoints/pricing for more "
             "about available models and pricing."
         ),
-    ),
-    endpoint_id: Optional[str] = typer.Option(
-        None,
-        "--endpoint-id",
-        "-e",
-        help="Dedicated endpoint ID to send request.",
     ),
     n: Optional[int] = typer.Option(
         None,
@@ -128,7 +121,7 @@ def create(
     ),
 ):
     """Creates chat completions."""
-    client = Friendli(token=token, team_id=team_id, endpoint_id=endpoint_id)
+    client = Friendli(token=token, team_id=team_id)
     if enable_stream:
         stream = client.chat.completions.create(
             stream=True,

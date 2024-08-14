@@ -296,6 +296,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
 
         request_dict = {
             "stream": stream,
+            "model": model,
             "prompt": prompt,
             "tokens": tokens,
             "timeout_microseconds": timeout_microseconds,
@@ -331,7 +332,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             "forced_output_tokens": forced_output_tokens,
             "eos_token": eos_token,
         }
-        response = self._request(data=request_dict, stream=stream, model=model)
+        response = self._request(data=request_dict, stream=stream)
 
         if stream:
             if self._use_grpc:
@@ -589,6 +590,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
 
         request_dict = {
             "stream": stream,
+            "model": model,
             "prompt": prompt,
             "tokens": tokens,
             "timeout_microseconds": timeout_microseconds,
@@ -624,7 +626,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             "forced_output_tokens": forced_output_tokens,
             "eos_token": eos_token,
         }
-        response = await self._request(data=request_dict, stream=stream, model=model)
+        response = await self._request(data=request_dict, stream=stream)
 
         if stream:
             if self._use_grpc:

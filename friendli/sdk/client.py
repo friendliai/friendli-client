@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Optional, Union
 
 import grpc
@@ -31,7 +32,7 @@ class FriendliClientBase:
         token: Optional[str] = None,
         team_id: Optional[str] = None,
         project_id: Optional[str] = None,
-        endpoint_id: Optional[str] = None,
+        use_dedicated_endpoint: bool = False,
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
@@ -45,7 +46,7 @@ class FriendliClientBase:
             friendli.team_id = team_id
         if project_id is not None:
             friendli.project_id = project_id
-        self._endpoint_id = endpoint_id
+        self._use_dedicated_endpoint = use_dedicated_endpoint
         self._base_url = base_url
         self._use_protobuf = use_protobuf
 
@@ -56,6 +57,10 @@ class FriendliClientBase:
                 )
             if http_client is not None:
                 raise ValueError("You cannot use HTTP client when `use_grpc=True`.")
+            if use_dedicated_endpoint:
+                raise ValueError(
+                    "`use_grpc=True` is not allowed for dedicated endpoints."
+                )
         else:
             if grpc_channel is not None:
                 raise ValueError(
@@ -63,6 +68,9 @@ class FriendliClientBase:
                 )
             if base_url is None:
                 self._base_url = INFERENCE_ENDPOINT_URL
+
+                if use_dedicated_endpoint:
+                    self._base_url = os.path.join(self._base_url, "dedicated")
 
 
 class Friendli(FriendliClientBase):
@@ -80,7 +88,7 @@ class Friendli(FriendliClientBase):
         token: Optional[str] = None,
         team_id: Optional[str] = None,
         project_id: Optional[str] = None,
-        endpoint_id: Optional[str] = None,
+        use_dedicated_endpoint: bool = False,
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
@@ -92,7 +100,7 @@ class Friendli(FriendliClientBase):
             token=token,
             team_id=team_id,
             project_id=project_id,
-            endpoint_id=endpoint_id,
+            use_dedicated_endpoint=use_dedicated_endpoint,
             base_url=base_url,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
@@ -102,7 +110,6 @@ class Friendli(FriendliClientBase):
 
         self.completions = Completions(
             base_url=self._base_url,
-            endpoint_id=self._endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
@@ -110,7 +117,6 @@ class Friendli(FriendliClientBase):
         )
         self.chat = Chat(
             base_url=self._base_url,
-            endpoint_id=self._endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
@@ -118,7 +124,6 @@ class Friendli(FriendliClientBase):
         )
         self.images = Images(
             base_url=self._base_url,
-            endpoint_id=self._endpoint_id,
             http_client=http_client,
         )
 
@@ -155,7 +160,7 @@ class AsyncFriendli(FriendliClientBase):
         token: Optional[str] = None,
         team_id: Optional[str] = None,
         project_id: Optional[str] = None,
-        endpoint_id: Optional[str] = None,
+        use_dedicated_endpoint: bool = False,
         base_url: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
@@ -167,7 +172,7 @@ class AsyncFriendli(FriendliClientBase):
             token=token,
             team_id=team_id,
             project_id=project_id,
-            endpoint_id=endpoint_id,
+            use_dedicated_endpoint=use_dedicated_endpoint,
             base_url=base_url,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
@@ -177,7 +182,6 @@ class AsyncFriendli(FriendliClientBase):
 
         self.completions = AsyncCompletions(
             base_url=self._base_url,
-            endpoint_id=self._endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
@@ -185,7 +189,6 @@ class AsyncFriendli(FriendliClientBase):
         )
         self.chat = AsyncChat(
             base_url=self._base_url,
-            endpoint_id=self._endpoint_id,
             use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
@@ -193,7 +196,6 @@ class AsyncFriendli(FriendliClientBase):
         )
         self.images = AsyncImages(
             base_url=self._base_url,
-            endpoint_id=self._endpoint_id,
             http_client=http_client,
         )
 

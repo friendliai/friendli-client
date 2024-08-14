@@ -122,11 +122,9 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
     def __init__(
         self,
         base_url: Optional[str] = None,
-        endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
     ) -> None:
         """Initializes BaseAPI."""
-        self._endpoint_id = endpoint_id
         self._base_url = base_url
         self._use_protobuf = use_protobuf
 
@@ -150,26 +148,20 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
     def _request_pb_cls(self) -> _ProtoMsgType:
         """Protobuf message class to serialize the data of request body."""
 
-    def _build_http_request(
-        self, data: dict[str, Any], model: Optional[str] = None
-    ) -> httpx.Request:
+    def _build_http_request(self, data: dict[str, Any]) -> httpx.Request:
         """Build request."""
         return self._http_client.build_request(
             method=self._method,
             url=self._build_http_url(),
-            content=self._build_content(data, model),
+            content=self._build_content(data),
             files=self._build_files(data),
             headers=self._get_headers(),
         )
 
     def _build_http_url(self) -> httpx.URL:
         assert self._base_url is not None
-        path = ""
-        if self._endpoint_id is not None:
-            path = "dedicated"
-        path = os.path.join(path, self._api_path)
-        host = httpx.URL(self._base_url)
-        return host.join(path)
+        url = os.path.join(self._base_url, self._api_path)
+        return httpx.URL(url)
 
     def _build_grpc_url(self) -> str:
         if self._base_url is None:
@@ -193,14 +185,7 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
             return files
         return None
 
-    def _build_content(
-        self, data: dict[str, Any], model: Optional[str] = None
-    ) -> bytes | None:
-        if self._endpoint_id is not None:
-            data["model"] = self._endpoint_id
-        else:
-            data["model"] = model
-
+    def _build_content(self, data: dict[str, Any]) -> bytes | None:
         if self._content_type.startswith("multipart/form-data"):
             return None
 
@@ -212,14 +197,7 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
 
         return json.dumps(data).encode()
 
-    def _build_grpc_request(
-        self, data: dict[str, Any], model: Optional[str] = None
-    ) -> pb_message.Message:
-        if self._endpoint_id is not None:
-            data["model"] = self._endpoint_id
-        else:
-            data["model"] = model
-
+    def _build_grpc_request(self, data: dict[str, Any]) -> pb_message.Message:
         pb_cls = self._request_pb_cls
         return pb_cls(**data)
 
@@ -230,7 +208,6 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
     def __init__(
         self,
         base_url: Optional[str] = None,
-        endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[httpx.Client] = None,
@@ -239,7 +216,6 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         """Initializes ServingAPI."""
         super().__init__(
             base_url=base_url,
-            endpoint_id=endpoint_id,
             use_protobuf=use_protobuf,
         )
 
@@ -265,23 +241,12 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
     def _get_grpc_stub(self, channel: grpc.Channel) -> Any:
         raise NotImplementedError  # pragma: no cover
 
-    def _request(
-        self, *, data: dict[str, Any], stream: bool, model: Optional[str] = None
-    ) -> Any:
+    def _request(self, *, data: dict[str, Any], stream: bool) -> Any:
         # TODO: Add retry / handle timeout and etc.
-        if (
-            self._base_url == "https://inference.friendli.ai"
-            and self._endpoint_id is None
-            and model is None
-        ):
-            raise ValueError("`model` is required for serverless endpoints.")
-        if self._endpoint_id is not None and model is not None:
-            raise ValueError("`model` is not allowed for dedicated endpoints.")
-
         data = transform_request_data(data)
 
         if self._use_grpc:
-            grpc_request = self._build_grpc_request(data=data, model=model)
+            grpc_request = self._build_grpc_request(data=data)
             if not self._grpc_channel:
                 self._grpc_channel = grpc.insecure_channel(self._build_grpc_url())
             try:
@@ -293,7 +258,7 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
             grpc_response = self._grpc_stub.Generate(grpc_request)
             return grpc_response
 
-        http_request = self._build_http_request(data=data, model=model)
+        http_request = self._build_http_request(data=data)
         http_response = self._http_client.send(request=http_request, stream=stream)
         self._check_http_error(http_response)
         return http_response
@@ -303,10 +268,13 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
             if response.status_code == 404:
+                endpoint_url = self._build_http_url()
                 raise APIError(
-                    "Endpoint is not found. This may be due to an invalid model name. "
-                    "See https://docs.friendli.ai/guides/serverless_endpoints/pricing "
-                    "to find out availble models."
+                    f"Endpoint ({endpoint_url}) is not found. This may be due to an "
+                    "invalid model name or endpoint ID. For serverless endpoints, see "
+                    "https://docs.friendli.ai/guides/serverless_endpoints/pricing "
+                    "to find out availble models. For dedicated endpoints, check your "
+                    "endpoiont ID again."
                 ) from exc
 
             resp_content = response.read()
@@ -319,16 +287,13 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
     def __init__(
         self,
         base_url: Optional[str] = None,
-        endpoint_id: Optional[str] = None,
         use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[httpx.AsyncClient] = None,
         grpc_channel: Optional[grpc.aio.Channel] = None,
     ) -> None:
         """Initializes AsyncServingAPI."""
-        super().__init__(
-            base_url=base_url, endpoint_id=endpoint_id, use_protobuf=use_protobuf
-        )
+        super().__init__(base_url=base_url, use_protobuf=use_protobuf)
 
         self._use_grpc = use_grpc
         self._http_client = http_client or _DefaultAsyncHttpxClient()
@@ -352,23 +317,12 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
     def _get_grpc_stub(self, channel: grpc.aio.Channel) -> Any:
         raise NotImplementedError  # pragma: no cover
 
-    async def _request(
-        self, *, data: dict[str, Any], stream: bool, model: Optional[str] = None
-    ) -> Any:
+    async def _request(self, *, data: dict[str, Any], stream: bool) -> Any:
         # TODO: Add retry / handle timeout and etc.
-        if (
-            self._base_url == "https://inference.friendli.ai"
-            and self._endpoint_id is None
-            and model is None
-        ):
-            raise ValueError("`model` is required for serverless endpoints.")
-        if self._endpoint_id is not None and model is not None:
-            raise ValueError("`model` is not allowed for dedicated endpoints.")
-
         data = transform_request_data(data)
 
         if self._use_grpc:
-            grpc_request = self._build_grpc_request(data=data, model=model)
+            grpc_request = self._build_grpc_request(data=data)
             if not self._grpc_channel:
                 self._grpc_channel = grpc.aio.insecure_channel(self._build_grpc_url())
             try:
@@ -382,7 +336,7 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
             )
             return grpc_response
 
-        http_request = self._build_http_request(data=data, model=model)
+        http_request = self._build_http_request(data=data)
         http_response = await self._http_client.send(
             request=http_request, stream=stream
         )

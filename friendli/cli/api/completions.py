@@ -12,7 +12,7 @@ import typer
 
 from friendli.sdk.client import Friendli
 from friendli.utils.compat import model_dump
-from friendli.utils.decorator import check_api, check_api_params
+from friendli.utils.decorator import check_api
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -22,7 +22,6 @@ app = typer.Typer(
 
 
 @app.command()
-@check_api_params
 @check_api
 def create(
     prompt: str = typer.Option(
@@ -40,12 +39,6 @@ def create(
             "See https://docs.friendli.ai/guides/serverless_endpoints/pricing for more "
             "about available models and pricing."
         ),
-    ),
-    endpoint_id: Optional[str] = typer.Option(
-        None,
-        "--endpoint-id",
-        "-e",
-        help="Dedicated endpoint ID to send request.",
     ),
     n: Optional[int] = typer.Option(
         None,
@@ -121,7 +114,7 @@ def create(
     team_id: Optional[str] = typer.Option(None, "--team", help="ID of team to run as."),
 ):
     """Creates text completions."""
-    client = Friendli(token=token, team_id=team_id, endpoint_id=endpoint_id)
+    client = Friendli(token=token, team_id=team_id)
     if enable_stream:
         stream = client.completions.create(
             stream=True,

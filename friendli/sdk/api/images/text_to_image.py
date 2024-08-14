@@ -65,6 +65,7 @@ class TextToImage(ServingAPI[Type[V1TextToImageRequest]]):
         """
         request_dict = {
             "prompt": prompt,
+            "model": model,
             "negative_prompt": negative_prompt,
             "num_outputs": num_outputs,
             "num_inference_steps": num_inference_steps,
@@ -72,7 +73,7 @@ class TextToImage(ServingAPI[Type[V1TextToImageRequest]]):
             "seed": seed,
             "response_format": response_format,
         }
-        response = self._request(data=request_dict, stream=False, model=model)
+        response = self._request(data=request_dict, stream=False)
 
         return model_parse(Image, response.json())
 
@@ -127,6 +128,7 @@ class AsyncTextToImage(AsyncServingAPI[Type[V1TextToImageRequest]]):
         """
         request_dict = {
             "prompt": prompt,
+            "model": model,
             "negative_prompt": negative_prompt,
             "num_outputs": num_outputs,
             "num_inference_steps": num_inference_steps,
@@ -134,6 +136,6 @@ class AsyncTextToImage(AsyncServingAPI[Type[V1TextToImageRequest]]):
             "seed": seed,
             "response_format": response_format,
         }
-        response = await self._request(data=request_dict, stream=False, model=model)
+        response = await self._request(data=request_dict, stream=False)
 
         return model_parse(Image, response.json())

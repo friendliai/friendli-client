@@ -148,6 +148,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
         request_dict = {
             "messages": messages,
             "stream": stream,
+            "model": model,
             "frequency_penalty": frequency_penalty,
             "presence_penalty": presence_penalty,
             "repetition_penalty": repetition_penalty,
@@ -166,7 +167,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
             "tool_choice": tool_choice,
             "response_format": response_format,
         }
-        response = self._request(data=request_dict, stream=stream, model=model)
+        response = self._request(data=request_dict, stream=stream)
 
         if stream:
             return ChatCompletionStream(response=response)
@@ -292,6 +293,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
         request_dict = {
             "messages": messages,
             "stream": stream,
+            "model": model,
             "frequency_penalty": frequency_penalty,
             "presence_penalty": presence_penalty,
             "repetition_penalty": repetition_penalty,
@@ -310,7 +312,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
             "tool_choice": tool_choice,
             "response_format": response_format,
         }
-        response = await self._request(data=request_dict, stream=stream, model=model)
+        response = await self._request(data=request_dict, stream=stream)
 
         if stream:
             return AsyncChatCompletionStream(response=response)
