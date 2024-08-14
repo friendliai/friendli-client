@@ -650,8 +650,10 @@ class CompletionStream(GenerationStream[CompletionLine]):
             try:
                 # The last iteration of the stream returns a response with `V1Completion` schema.
                 model_parse(Completion, parsed)
+                self._response.close()
                 raise StopIteration from exc
             except ValidationError:
+                self._response.close()
                 raise InvalidGenerationError(
                     f"Generation result has invalid schema: {str(exc)}"
                 ) from exc
@@ -671,12 +673,15 @@ class CompletionStream(GenerationStream[CompletionLine]):
                 parsed = json.loads(line.strip("data: "))
                 try:
                     # The last iteration of the stream returns a response with `V1Completion` schema.
-                    return model_parse(Completion, parsed)
+                    completion = model_parse(Completion, parsed)
+                    self._response.close()
+                    return completion
                 except ValidationError as exc:
                     try:
                         # Skip the line response.
                         model_parse(CompletionLine, parsed)
                     except ValidationError:
+                        self._response.close()
                         raise InvalidGenerationError(
                             f"Generation result has invalid schema: {str(exc)}"
                         ) from exc
@@ -698,8 +703,10 @@ class AsyncCompletionStream(AsyncGenerationStream[CompletionLine]):
             try:
                 # The last iteration of the stream returns a response with `V1Completion` schema.
                 model_parse(Completion, parsed)
+                await self._response.aclose()
                 raise StopAsyncIteration from exc
             except ValidationError:
+                await self._response.aclose()
                 raise InvalidGenerationError(
                     f"Generation result has invalid schema: {str(exc)}"
                 ) from exc
@@ -719,12 +726,15 @@ class AsyncCompletionStream(AsyncGenerationStream[CompletionLine]):
                 parsed = json.loads(line.strip("data: "))
                 try:
                     # The last iteration of the stream returns a response with `V1Completion` schema.
-                    return model_parse(Completion, parsed)
+                    completion = model_parse(Completion, parsed)
+                    await self._response.aclose()
+                    return completion
                 except ValidationError as exc:
                     try:
                         # Skip the line response.
                         model_parse(CompletionLine, parsed)
                     except ValidationError:
+                        await self._response.aclose()
                         raise InvalidGenerationError(
                             f"Generation result has invalid schema: {str(exc)}"
                         ) from exc

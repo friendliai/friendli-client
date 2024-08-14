@@ -39,6 +39,7 @@ class GenerationStream(ABC, Generic[_GenerationLine]):
 
     def __init__(self, response: httpx.Response) -> None:
         """Initializes generation stream."""
+        self._response = response
         self._iter = response.iter_lines()
 
     def __iter__(self) -> Self:  # noqa: D105
@@ -54,6 +55,7 @@ class AsyncGenerationStream(ABC, Generic[_GenerationLine]):
 
     def __init__(self, response: httpx.Response) -> None:
         """Initializes generation stream."""
+        self._response = response
         self._iter = response.aiter_lines()
 
     def __aiter__(self) -> Self:  # noqa: D105

@@ -329,12 +329,14 @@ class ChatCompletionStream(GenerationStream[ChatCompletionChunk]):
 
         data = line.strip("data: ")
         if data == "[DONE]":
+            self._response.close()
             raise StopIteration
         parsed = json.loads(data)
 
         try:
             return model_parse(ChatCompletionChunk, parsed)
         except ValidationError as exc:
+            self._response.close()
             raise InvalidGenerationError(
                 f"Generation result has invalid schema: {str(exc)}"
             ) from exc
@@ -350,12 +352,14 @@ class AsyncChatCompletionStream(AsyncGenerationStream[ChatCompletionChunk]):
 
         data = line.strip("data: ")
         if data == "[DONE]":
+            await self._response.aclose()
             raise StopAsyncIteration
         parsed = json.loads(data)
 
         try:
             return model_parse(ChatCompletionChunk, parsed)
         except ValidationError as exc:
+            await self._response.aclose()
             raise InvalidGenerationError(
                 f"Generation result has invalid schema: {str(exc)}"
             ) from exc
