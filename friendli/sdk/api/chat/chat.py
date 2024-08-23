@@ -21,7 +21,6 @@ class Chat:
     def __init__(
         self,
         base_url: Optional[str] = None,
-        use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[httpx.Client] = None,
         grpc_channel: Optional[grpc.Channel] = None,
@@ -29,7 +28,6 @@ class Chat:
         """Initializes Chat."""
         self.completions = Completions(
             base_url=base_url,
-            use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
             grpc_channel=grpc_channel,
@@ -48,7 +46,6 @@ class AsyncChat:
     def __init__(
         self,
         base_url: Optional[str] = None,
-        use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[httpx.AsyncClient] = None,
         grpc_channel: Optional[grpc.aio.Channel] = None,
@@ -56,7 +53,6 @@ class AsyncChat:
         """Initializes AsyncChat."""
         self.completions = AsyncCompletions(
             base_url=base_url,
-            use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
             grpc_channel=grpc_channel,

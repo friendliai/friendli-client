@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 from abc import ABC, abstractmethod
+from types import TracebackType
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 
 import grpc
@@ -17,7 +18,6 @@ import grpc.aio
 import grpc.aio._call
 import grpc.aio._channel
 import httpx
-from google.protobuf import json_format
 from google.protobuf import message as pb_message
 from pydantic import BaseModel
 from typing_extensions import Self
@@ -49,6 +49,21 @@ class GenerationStream(ABC, Generic[_GenerationLine]):
     def __next__(self) -> _GenerationLine:
         """Iterates the stream."""
 
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self.close()
+
+    def close(self) -> None:
+        """Close the response and release the connection."""
+        self._response.close()
+
 
 class AsyncGenerationStream(ABC, Generic[_GenerationLine]):
     """Asynchronous generation stream."""
@@ -64,6 +79,21 @@ class AsyncGenerationStream(ABC, Generic[_GenerationLine]):
     @abstractmethod
     async def __anext__(self) -> _GenerationLine:
         """Iterates the stream."""
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        """Close the response and release the connection."""
+        await self._response.aclose()
 
 
 class GrpcGenerationStream(ABC, Generic[_GenerationLine]):
@@ -124,11 +154,9 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
     def __init__(
         self,
         base_url: Optional[str] = None,
-        use_protobuf: bool = False,
     ) -> None:
         """Initializes BaseAPI."""
         self._base_url = base_url
-        self._use_protobuf = use_protobuf
 
     @property
     @abstractmethod
@@ -191,12 +219,6 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
         if self._content_type.startswith("multipart/form-data"):
             return None
 
-        if self._use_protobuf:
-            pb_cls = self._request_pb_cls
-            request_pb = pb_cls()
-            json_format.ParseDict(data, request_pb)
-            return request_pb.SerializeToString()
-
         return json.dumps(data).encode()
 
     def _build_grpc_request(self, data: dict[str, Any]) -> pb_message.Message:
@@ -210,7 +232,6 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
     def __init__(
         self,
         base_url: Optional[str] = None,
-        use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[httpx.Client] = None,
         grpc_channel: Optional[grpc.Channel] = None,
@@ -218,7 +239,6 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         """Initializes ServingAPI."""
         super().__init__(
             base_url=base_url,
-            use_protobuf=use_protobuf,
         )
 
         self._use_grpc = use_grpc
@@ -289,13 +309,12 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
     def __init__(
         self,
         base_url: Optional[str] = None,
-        use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[httpx.AsyncClient] = None,
         grpc_channel: Optional[grpc.aio.Channel] = None,
     ) -> None:
         """Initializes AsyncServingAPI."""
-        super().__init__(base_url=base_url, use_protobuf=use_protobuf)
+        super().__init__(base_url=base_url)
 
         self._use_grpc = use_grpc
         self._http_client = http_client or _DefaultAsyncHttpxClient()

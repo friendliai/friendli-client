@@ -34,7 +34,6 @@ class FriendliClientBase:
         project_id: Optional[str] = None,
         use_dedicated_endpoint: bool = False,
         base_url: Optional[str] = None,
-        use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[Union[httpx.Client, httpx.AsyncClient]] = None,
         grpc_channel: Optional[Union[grpc.Channel, grpc.aio.Channel]] = None,
@@ -48,7 +47,6 @@ class FriendliClientBase:
             friendli.project_id = project_id
         self._use_dedicated_endpoint = use_dedicated_endpoint
         self._base_url = base_url
-        self._use_protobuf = use_protobuf
 
         if use_grpc:
             if base_url is None and grpc_channel is None:
@@ -90,7 +88,6 @@ class Friendli(FriendliClientBase):
         project_id: Optional[str] = None,
         use_dedicated_endpoint: bool = False,
         base_url: Optional[str] = None,
-        use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[httpx.Client] = None,
         grpc_channel: Optional[grpc.Channel] = None,
@@ -102,7 +99,6 @@ class Friendli(FriendliClientBase):
             project_id=project_id,
             use_dedicated_endpoint=use_dedicated_endpoint,
             base_url=base_url,
-            use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
             grpc_channel=grpc_channel,
@@ -110,14 +106,12 @@ class Friendli(FriendliClientBase):
 
         self.completions = Completions(
             base_url=self._base_url,
-            use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
             grpc_channel=grpc_channel,
         )
         self.chat = Chat(
             base_url=self._base_url,
-            use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
             grpc_channel=grpc_channel,
@@ -162,7 +156,6 @@ class AsyncFriendli(FriendliClientBase):
         project_id: Optional[str] = None,
         use_dedicated_endpoint: bool = False,
         base_url: Optional[str] = None,
-        use_protobuf: bool = False,
         use_grpc: bool = False,
         http_client: Optional[httpx.AsyncClient] = None,
         grpc_channel: Optional[grpc.aio.Channel] = None,
@@ -174,7 +167,6 @@ class AsyncFriendli(FriendliClientBase):
             project_id=project_id,
             use_dedicated_endpoint=use_dedicated_endpoint,
             base_url=base_url,
-            use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
             grpc_channel=grpc_channel,
@@ -182,14 +174,12 @@ class AsyncFriendli(FriendliClientBase):
 
         self.completions = AsyncCompletions(
             base_url=self._base_url,
-            use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
             grpc_channel=grpc_channel,
         )
         self.chat = AsyncChat(
             base_url=self._base_url,
-            use_protobuf=use_protobuf,
             use_grpc=use_grpc,
             http_client=http_client,
             grpc_channel=grpc_channel,

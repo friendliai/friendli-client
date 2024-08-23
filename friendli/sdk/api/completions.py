@@ -48,7 +48,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
 
     @property
     def _content_type(self) -> str:
-        return "application/protobuf" if self._use_protobuf else "application/json"
+        return "application/json"
 
     @property
     def _request_pb_cls(self) -> Type[V1CompletionsRequest]:
@@ -354,7 +354,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
 
     @property
     def _content_type(self) -> str:
-        return "application/protobuf" if self._use_protobuf else "application/json"
+        return "application/json"
 
     @property
     def _request_pb_cls(self) -> Type[V1CompletionsRequest]:
@@ -650,13 +650,13 @@ class CompletionStream(GenerationStream[CompletionLine]):
             try:
                 # The last iteration of the stream returns a response with `V1Completion` schema.
                 model_parse(Completion, parsed)
-                self._response.close()
                 raise StopIteration from exc
             except ValidationError:
-                self._response.close()
                 raise InvalidGenerationError(
                     f"Generation result has invalid schema: {str(exc)}"
                 ) from exc
+            finally:
+                self.close()
 
     def wait(self) -> Optional[Completion]:
         """Waits for the generation to complete.
@@ -674,14 +674,14 @@ class CompletionStream(GenerationStream[CompletionLine]):
                 try:
                     # The last iteration of the stream returns a response with `V1Completion` schema.
                     completion = model_parse(Completion, parsed)
-                    self._response.close()
+                    self.close()
                     return completion
                 except ValidationError as exc:
                     try:
                         # Skip the line response.
                         model_parse(CompletionLine, parsed)
                     except ValidationError:
-                        self._response.close()
+                        self.close()
                         raise InvalidGenerationError(
                             f"Generation result has invalid schema: {str(exc)}"
                         ) from exc
@@ -703,13 +703,13 @@ class AsyncCompletionStream(AsyncGenerationStream[CompletionLine]):
             try:
                 # The last iteration of the stream returns a response with `V1Completion` schema.
                 model_parse(Completion, parsed)
-                await self._response.aclose()
                 raise StopAsyncIteration from exc
             except ValidationError:
-                await self._response.aclose()
                 raise InvalidGenerationError(
                     f"Generation result has invalid schema: {str(exc)}"
                 ) from exc
+            finally:
+                await self.close()
 
     async def wait(self) -> Optional[Completion]:  # noqa: D105
         """Waits for the generation to complete.
@@ -727,14 +727,14 @@ class AsyncCompletionStream(AsyncGenerationStream[CompletionLine]):
                 try:
                     # The last iteration of the stream returns a response with `V1Completion` schema.
                     completion = model_parse(Completion, parsed)
-                    await self._response.aclose()
+                    await self.close()
                     return completion
                 except ValidationError as exc:
                     try:
                         # Skip the line response.
                         model_parse(CompletionLine, parsed)
                     except ValidationError:
-                        await self._response.aclose()
+                        await self.close()
                         raise InvalidGenerationError(
                             f"Generation result has invalid schema: {str(exc)}"
                         ) from exc

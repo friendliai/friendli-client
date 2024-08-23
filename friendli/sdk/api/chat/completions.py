@@ -42,7 +42,7 @@ class Completions(ServingAPI[Type[V1ChatCompletionsRequest]]):
 
     @property
     def _content_type(self) -> str:
-        return "application/protobuf" if self._use_protobuf else "application/json"
+        return "application/json"
 
     @property
     def _request_pb_cls(self) -> Type[V1ChatCompletionsRequest]:
@@ -187,7 +187,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1ChatCompletionsRequest]]):
 
     @property
     def _content_type(self) -> str:
-        return "application/protobuf" if self._use_protobuf else "application/json"
+        return "application/json"
 
     @property
     def _request_pb_cls(self) -> Type[V1ChatCompletionsRequest]:
@@ -329,14 +329,14 @@ class ChatCompletionStream(GenerationStream[ChatCompletionChunk]):
 
         data = line.strip("data: ")
         if data == "[DONE]":
-            self._response.close()
+            self.close()
             raise StopIteration
         parsed = json.loads(data)
 
         try:
             return model_parse(ChatCompletionChunk, parsed)
         except ValidationError as exc:
-            self._response.close()
+            self.close()
             raise InvalidGenerationError(
                 f"Generation result has invalid schema: {str(exc)}"
             ) from exc
@@ -352,14 +352,14 @@ class AsyncChatCompletionStream(AsyncGenerationStream[ChatCompletionChunk]):
 
         data = line.strip("data: ")
         if data == "[DONE]":
-            await self._response.aclose()
+            await self.close()
             raise StopAsyncIteration
         parsed = json.loads(data)
 
         try:
             return model_parse(ChatCompletionChunk, parsed)
         except ValidationError as exc:
-            await self._response.aclose()
+            await self.close()
             raise InvalidGenerationError(
                 f"Generation result has invalid schema: {str(exc)}"
             ) from exc
