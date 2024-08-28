@@ -135,7 +135,6 @@ def create(
                 typer.echo(chunk.text, nl=False)
     else:
         completion = client.completions.create(
-            stream=False,
             model=model,
             prompt=prompt,
             frequency_penalty=frequency_penalty,

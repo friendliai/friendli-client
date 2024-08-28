@@ -142,7 +142,6 @@ def create(
                 typer.echo(chunk.choices[0].delta.content or "", nl=False)
     else:
         chat_completion = client.chat.completions.create(
-            stream=False,
             model=model,
             messages=_prepare_messages(messages),
             frequency_penalty=frequency_penalty,

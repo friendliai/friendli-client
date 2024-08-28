@@ -104,7 +104,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
     def create(
         self,
         *,
-        stream: Literal[False],
+        stream: Literal[False] = False,
         model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
@@ -146,7 +146,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
     def create(
         self,
         *,
-        stream: bool,
+        stream: bool = False,
         model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
@@ -256,7 +256,6 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             client = Friendli()
             completion = client.completions.create(
                 prompt="Python is a popular language for",
-                stream=False,
                 max_tokens=100,
                 top_p=0.8,
                 temperature=0.5,
@@ -410,7 +409,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
     async def create(
         self,
         *,
-        stream: Literal[False],
+        stream: Literal[False] = False,
         model: Optional[str] = None,
         prompt: Optional[str] = None,
         tokens: Optional[List[int]] = None,
@@ -548,7 +547,6 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             async def main() -> None:
                 completion = await client.completions.create(
                     prompt="Python is a popular language for",
-                    stream=False,
                     max_tokens=100,
                     top_p=0.8,
                     temperature=0.5,

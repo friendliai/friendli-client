@@ -101,7 +101,9 @@ class GrpcGenerationStream(ABC, Generic[_GenerationLine]):
 
     def __init__(self, response: grpc._channel._MultiThreadedRendezvous) -> None:
         """Initializes generation stream."""
-        self._iter = response
+        self._response = response
+        self._iter = response.__iter__()
+        self._closed = False
 
     def __iter__(self) -> Self:  # noqa: D105
         return self
@@ -110,13 +112,21 @@ class GrpcGenerationStream(ABC, Generic[_GenerationLine]):
     def __next__(self) -> _GenerationLine:
         """Iterates the stream."""
 
+    def cancel(self) -> None:
+        """Cancels the stream."""
+        if not self._closed:
+            self._response.cancel()
+            self._closed = True
+
 
 class AsyncGrpcGenerationStream(ABC, Generic[_GenerationLine]):
     """Generation stream."""
 
-    def __init__(self, response: grpc.aio._call.UnaryStreamCall) -> None:
+    def __init__(self, response: grpc.aio.UnaryStreamCall) -> None:
         """Initializes generation stream."""
+        self._response = response
         self._iter = response.__aiter__()  # type: ignore
+        self._closed = False
 
     def __aiter__(self) -> Self:  # noqa: D105
         return self
@@ -124,6 +134,12 @@ class AsyncGrpcGenerationStream(ABC, Generic[_GenerationLine]):
     @abstractmethod
     async def __anext__(self) -> _GenerationLine:
         """Iterates the stream."""
+
+    def cancel(self):
+        """Cancels the stream."""
+        if not self._closed:
+            self._response.cancel()  # Clean up async resources
+            self._closed = True
 
 
 _HttpxClient = TypeVar("_HttpxClient", bound=Union[httpx.Client, httpx.AsyncClient])

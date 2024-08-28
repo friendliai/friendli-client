@@ -57,7 +57,6 @@ def test_chat_completions(client: Friendli, enable_stream: bool):
         else:
             chat = client.chat.completions.create(
                 messages=messages,
-                stream=False,
                 min_tokens=10,
                 max_tokens=10,
                 top_k=1,
@@ -95,7 +94,6 @@ async def test_chat_completions_async(async_client: AsyncFriendli, enable_stream
         else:
             chat = await async_client.chat.completions.create(
                 messages=messages,
-                stream=False,
                 min_tokens=10,
                 max_tokens=10,
                 top_k=1,
@@ -231,7 +229,6 @@ def test_tool_calling(client: Friendli, enable_stream: bool):
                 "type": "function",
                 "function": {"name": "get_current_weather"},
             },
-            stream=False,
             top_k=1,
         )
 
@@ -264,7 +261,6 @@ def test_tool_calling(client: Friendli, enable_stream: bool):
                 "type": "function",
                 "function": {"name": "get_current_weather"},
             },
-            stream=False,
             top_k=1,
         )
         content = chat.choices[0].message.content

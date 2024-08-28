@@ -4,6 +4,10 @@
 
 from __future__ import annotations
 
+from asyncio import CancelledError
+
+import grpc
+import grpc._channel
 import pytest
 
 from friendli import Friendli
@@ -33,7 +37,6 @@ def test_chat_completions(client: Friendli, enable_stream: bool):
     else:
         chat = client.completions.create(
             prompt=PROMPT,
-            stream=False,
             min_tokens=10,
             max_tokens=10,
         )
@@ -64,7 +67,6 @@ async def test_chat_completions_async(async_client: AsyncFriendli, enable_stream
     else:
         chat = await async_client.completions.create(
             prompt=PROMPT,
-            stream=False,
             min_tokens=10,
             max_tokens=10,
         )
@@ -107,4 +109,57 @@ async def test_chat_completions_grpc_async(async_grpc_client: AsyncFriendli):
         content += chunk_content
         print(chunk_content, end="", flush=True)
     print()  # Add newline after stream output
+    assert content, "Output content is empty"
+
+
+def test_chat_completions_grpc_cancel(grpc_client: Friendli):
+    print(f"PROMPT: {PROMPT}")
+    print("OUTPUT: ", end="")
+    stream = grpc_client.completions.create(
+        prompt=PROMPT,
+        stream=True,
+        min_tokens=10,
+        max_tokens=10,
+    )
+    content = ""
+    try:
+        for chunk in stream:
+            chunk_content = chunk.text or ""
+            content += chunk_content
+            print(chunk_content, end="", flush=True)
+            raise RuntimeError
+    except RuntimeError:
+        stream.cancel()
+    print()  # Add newline after stream output
+
+    with pytest.raises(grpc._channel._MultiThreadedRendezvous):
+        next(stream)
+
+    assert content, "Output content is empty"
+
+
+@pytest.mark.asyncio
+async def test_chat_completions_grpc_async_cancel(async_grpc_client: AsyncFriendli):
+    print(f"PROMPT: {PROMPT}")
+    print("OUTPUT: ", end="")
+    stream = await async_grpc_client.completions.create(
+        prompt=PROMPT,
+        stream=True,
+        min_tokens=10,
+        max_tokens=10,
+    )
+    content = ""
+    try:
+        async for chunk in stream:
+            chunk_content = chunk.text or ""
+            content += chunk_content
+            print(chunk_content, end="", flush=True)
+            raise RuntimeError
+    except RuntimeError:
+        stream.cancel()
+    print()  # Add newline after stream output
+
+    with pytest.raises(CancelledError):
+        await stream.__anext__()
+
     assert content, "Output content is empty"

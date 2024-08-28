@@ -38,7 +38,6 @@ def test_chat_completions(client: Friendli, enable_stream: bool):
         chat = client.completions.create(
             prompt=PROMPT,
             model=model,
-            stream=False,
             min_tokens=10,
             max_tokens=10,
         )
@@ -72,7 +71,6 @@ async def test_chat_completions_async(async_client: AsyncFriendli, enable_stream
         chat = await async_client.completions.create(
             prompt=PROMPT,
             model=model,
-            stream=False,
             min_tokens=10,
             max_tokens=10,
         )
