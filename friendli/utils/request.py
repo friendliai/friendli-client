@@ -11,7 +11,8 @@ import pydantic
 from requests.exceptions import HTTPError
 
 from friendli.utils.compat import model_dump
-from friendli.utils.url import discuss_url
+
+support_email = "support@friendli.ai"
 
 DEFAULT_REQ_TIMEOUT = 600.0
 MAX_RETRIES = 3
@@ -21,15 +22,16 @@ DEFAULT_CONNECTION_LIMITS = httpx.Limits(
 )
 
 
+# pylint: disable=line-too-long
 def decode_http_err(exc: HTTPError) -> str:
     """Decode HTTP error."""
     try:
         if exc.response.status_code == 500:
-            error_str = f"Internal Server Error: Please contact to system admin via {discuss_url}"
+            error_str = f"Internal Server Error: Please contact to system admin via {support_email}."
         elif exc.response.status_code == 404:
             error_str = (
                 "Not Found: The requested resource is not found. Please check it again. "
-                f"If you cannot find out why this error occurs, please visit {discuss_url}."
+                f"If you cannot find out why this error occurs, please contact to system admin via {support_email}."
             )
         else:
             response = exc.response

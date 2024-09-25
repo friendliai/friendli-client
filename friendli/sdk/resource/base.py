@@ -46,12 +46,10 @@ class ResourceApi(ABC, Generic[_Client, _Resource, _ResourceId]):
         """Lists reousrces."""
 
     @overload
-    def _model_parse(self, data: Dict[str, Any]) -> _Resource:
-        ...
+    def _model_parse(self, data: Dict[str, Any]) -> _Resource: ...
 
     @overload
-    def _model_parse(self, data: List[Dict[str, Any]]) -> List[_Resource]:
-        ...
+    def _model_parse(self, data: List[Dict[str, Any]]) -> List[_Resource]: ...
 
     def _model_parse(
         self, data: Union[Dict[str, Any], List[Dict[str, Any]]]

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "friendli-client"
-version = "1.5.4"
+version = "1.5.5"
 description = "Client of Friendli Suite."
 license = "Apache-2.0"
 authors = ["FriendliAI teams <eng@friendli.ai>"]
@@ -27,12 +27,12 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
 python = "^3.8.1"
-requests = "^2"
+requests = "^2.32.0"
 PyYaml = "^6.0.1"
 typer = "^0.9.0"
 rich = "^12.2.0"
 jsonschema = "^4.17.3"
-tqdm = "^4.48.0"
+tqdm = "^4.66.3"
 pydantic = {extras = ["email"], version = ">=1.9.0, <3"}
 injector = "^0.21.0"
 protobuf = "^5.26.1"
@@ -54,7 +54,7 @@ coverage = "^7.2.7"
 pytest-asyncio = "^0.15.1"
 pytest-cov = "^4.1.0"
 requests-mock = "^1.11.0"
-black = "^23.3.0"
+black = "^24.3.0"
 isort = "^5.12.0"
 mypy = "^1.4.1"
 pydocstyle = "^6.3.0"
@@ -63,9 +63,9 @@ toml = "^0.10.2"
 types-pyyaml = "^6.0.12.10"
 types-jsonschema = "^4.17.0.8"
 types-python-dateutil = "^2.8.19.13"
-types-requests = "^2.31.0.1"
+types-requests = "^2.32.0"
 types-toml = "^0.10.8.6"
-types-tqdm = "^4.65.0.1"
+types-tqdm = "^4.66.0"
 typer = "^0.9.0"
 
 [tool.isort]

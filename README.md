@@ -252,15 +252,18 @@ from friendli import Friendli
 
 client = Friendli(base_url="0.0.0.0:8000", use_grpc=True)
 
-chat_completion = client.chat.completions.create(
+stream = client.chat.completions.create(
     messages=[
         {
             "role": "user",
             "content": "Tell me how to make a delicious pancake",
         }
     ],
+    stream=True,  # Only streaming mode is available
 )
-print(chat_completion.choices[0].message.content)
+
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="", flush=True)
 ```
 
 ## Configuring the HTTP Client

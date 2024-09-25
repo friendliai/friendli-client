@@ -17,6 +17,24 @@ from friendli.schema.api.v1.codegen import response_format_pb2 as _response_form
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class SoftPrompt(_message.Message):
+    __slots__ = ("token_index_start", "token_index_end", "embeddings", "id")
+    TOKEN_INDEX_START_FIELD_NUMBER: _ClassVar[int]
+    TOKEN_INDEX_END_FIELD_NUMBER: _ClassVar[int]
+    EMBEDDINGS_FIELD_NUMBER: _ClassVar[int]
+    ID_FIELD_NUMBER: _ClassVar[int]
+    token_index_start: int
+    token_index_end: int
+    embeddings: _containers.RepeatedScalarFieldContainer[float]
+    id: int
+    def __init__(
+        self,
+        token_index_start: _Optional[int] = ...,
+        token_index_end: _Optional[int] = ...,
+        embeddings: _Optional[_Iterable[float]] = ...,
+        id: _Optional[int] = ...,
+    ) -> None: ...
+
 class V1CompletionsRequest(_message.Message):
     __slots__ = (
         "stream",
@@ -56,6 +74,7 @@ class V1CompletionsRequest(_message.Message):
         "forced_output_tokens",
         "eos_token",
         "response_format",
+        "soft_prompts",
     )
 
     class BeamSearchType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
@@ -63,6 +82,7 @@ class V1CompletionsRequest(_message.Message):
         DETERMINISTIC: _ClassVar[V1CompletionsRequest.BeamSearchType]
         STOCHASTIC: _ClassVar[V1CompletionsRequest.BeamSearchType]
         NAIVE_SAMPLING: _ClassVar[V1CompletionsRequest.BeamSearchType]
+
     DETERMINISTIC: V1CompletionsRequest.BeamSearchType
     STOCHASTIC: V1CompletionsRequest.BeamSearchType
     NAIVE_SAMPLING: V1CompletionsRequest.BeamSearchType
@@ -72,6 +92,7 @@ class V1CompletionsRequest(_message.Message):
         TOKENS_FIELD_NUMBER: _ClassVar[int]
         tokens: _containers.RepeatedScalarFieldContainer[int]
         def __init__(self, tokens: _Optional[_Iterable[int]] = ...) -> None: ...
+
     STREAM_FIELD_NUMBER: _ClassVar[int]
     MODEL_FIELD_NUMBER: _ClassVar[int]
     PROMPT_FIELD_NUMBER: _ClassVar[int]
@@ -109,6 +130,7 @@ class V1CompletionsRequest(_message.Message):
     FORCED_OUTPUT_TOKENS_FIELD_NUMBER: _ClassVar[int]
     EOS_TOKEN_FIELD_NUMBER: _ClassVar[int]
     RESPONSE_FORMAT_FIELD_NUMBER: _ClassVar[int]
+    SOFT_PROMPTS_FIELD_NUMBER: _ClassVar[int]
     stream: bool
     model: str
     prompt: str
@@ -150,6 +172,7 @@ class V1CompletionsRequest(_message.Message):
     forced_output_tokens: _containers.RepeatedScalarFieldContainer[int]
     eos_token: _containers.RepeatedScalarFieldContainer[int]
     response_format: _response_format_pb2.ResponseFormat
+    soft_prompts: _containers.RepeatedCompositeFieldContainer[SoftPrompt]
     def __init__(
         self,
         stream: bool = ...,
@@ -197,26 +220,31 @@ class V1CompletionsRequest(_message.Message):
         response_format: _Optional[
             _Union[_response_format_pb2.ResponseFormat, _Mapping]
         ] = ...,
+        soft_prompts: _Optional[_Iterable[_Union[SoftPrompt, _Mapping]]] = ...,
     ) -> None: ...
 
 class V1CompletionsResponse(_message.Message):
-    __slots__ = ("event", "token", "text")
+    __slots__ = ("event", "token", "text", "soft_prompt_ids")
 
     class Event(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
         __slots__ = ()
         TOKEN_SAMPLED: _ClassVar[V1CompletionsResponse.Event]
         COMPLETE: _ClassVar[V1CompletionsResponse.Event]
+
     TOKEN_SAMPLED: V1CompletionsResponse.Event
     COMPLETE: V1CompletionsResponse.Event
     EVENT_FIELD_NUMBER: _ClassVar[int]
     TOKEN_FIELD_NUMBER: _ClassVar[int]
     TEXT_FIELD_NUMBER: _ClassVar[int]
+    SOFT_PROMPT_IDS_FIELD_NUMBER: _ClassVar[int]
     event: V1CompletionsResponse.Event
     token: _containers.RepeatedScalarFieldContainer[int]
     text: str
+    soft_prompt_ids: _containers.RepeatedScalarFieldContainer[int]
     def __init__(
         self,
         event: _Optional[_Union[V1CompletionsResponse.Event, str]] = ...,
         token: _Optional[_Iterable[int]] = ...,
         text: _Optional[str] = ...,
+        soft_prompt_ids: _Optional[_Iterable[int]] = ...,
     ) -> None: ...

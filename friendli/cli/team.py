@@ -20,7 +20,7 @@ app = typer.Typer(
 
 team_table_formatter = TableFormatter(
     name="Teams",
-    fields=["node.id", "node.name", "node.dedicated.plan"],
+    fields=["node.id", "node.name", "node.dedicatedSubplan.tier"],
     headers=["ID", "Name", "Dedicated Plan"],
     substitute_exact_match_only=False,
 )
@@ -38,12 +38,12 @@ def list_teams():
         if current_team_id is not None and team["node"]["id"] == current_team_id:
             team["node"]["id"] = f"[bold green]* {team['node']['id']}"
             team["node"]["name"] = f"[bold green]{team['node']['name']}"
-            if team["node"]["dedicated"] is not None:
-                team["node"]["dedicated"][
-                    "plan"
-                ] = f"[bold green]{team['node']['dedicated']['plan']}"
+            if team["node"]["dedicatedSubplan"] is not None:
+                team["node"]["dedicatedSubplan"][
+                    "tier"
+                ] = f"[bold green]{team['node']['dedicatedSubplan']['tier']}"
             else:
-                team["node"]["dedicated"] = {"plan": "[bold green]-"}
+                team["node"]["dedicatedSubplan"] = {"tier": "[bold green]-"}
         else:
             team["node"]["id"] = f"  {team['node']['id']}"
 

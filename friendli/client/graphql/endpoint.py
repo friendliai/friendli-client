@@ -9,86 +9,10 @@ from typing import Any, Dict, List
 from friendli.client.graphql.base import GqlClient
 
 CreateEndpointOp = """
-mutation CreateEndpointWithHfModel($input: DedicatedEndpointCreateWithHfInput!) {
-    dedicatedEndpointCreateWithHf(input: $input) {
-        ... on UserPermissionError {
-            message
-        }
-        ... on TeamNotExistError {
-            message
-        }
-        ... on DedicatedEndpointCreateWithHfSuccess {
-            endpoint {
-                id
-                name
-                numGpu
-                gpuType
-                hfModelRepo
-                status
-                endpointUrl
-                createdBy {
-                    email
-                    id
-                    name
-                }
-                createdAt
-                updatedAt
-            }
-        }
-    }
-}
-"""
-
-ListEndpointsOp = """
-query ListDedicatedEndpointsInProject($id: ID!) {
-    dedicatedProject(id: $id) {
-        id
-        name
-        endpoints {
-            totalCount
-            edges {
-                node {
-                    id
-                    name
-                    hfModelRepo
-                    gpuType
-                    numGpu
-                    hfModelRepo
-                    status
-                    phase {
-                        ... on DedicatedEndpointPhaseRunning {
-                            msg
-                            desiredReplica
-                            currReplica
-                        }
-                        ... on DedicatedEndpointPhaseInitializing {
-                            step
-                            msg
-                        }
-                    }
-                    endpointUrl
-                    createdBy {
-                        email
-                        id
-                        name
-                    }
-                    advancedConfig {
-                        maxBatchSize
-                        autoscalingMin
-                        autoscalingMax
-                    }
-                    createdAt
-                    updatedAt
-                }
-            }
-        }
-    }
-}
-"""
-
-GetEndpointOp = """
-query GetDedicatedEndpoint($dedicatedEndpointId: ID!) {
-    dedicatedEndpoint(id: $dedicatedEndpointId) {
+mutation CreateEndpoint($input: DedicatedEndpointCreateWithHfInput!) {
+  dedicatedEndpointCreateWithHf(input: $input) {
+    ... on DedicatedEndpointCreateWithHfSuccess {
+      endpoint {
         id
         name
         hfModelRepo
@@ -96,64 +20,120 @@ query GetDedicatedEndpoint($dedicatedEndpointId: ID!) {
         numGpu
         status
         phase {
-            ... on DedicatedEndpointPhaseInitializing {
-                msg
-                step
-            }
-            ... on DedicatedEndpointPhaseRunning {
-                currReplica
-                msg
-                desiredReplica
-            }
+          ... on DedicatedEndpointPhaseInitializing {
+            msg
+            step
+          }
+          ... on DedicatedEndpointPhaseRunning {
+            msg
+            currReplica
+            desiredReplica
+          }
         }
         endpointUrl
         createdBy {
-            email
-            id
-            name
+          id
+          name
+          email
         }
         createdAt
         updatedAt
-        advancedConfig {
-            autoscalingMax
-            autoscalingMin
-            maxBatchSize
-        }
+      }
     }
+    ... on UserPermissionError {
+      message
+    }
+    ... on TeamNotExistError {
+      message
+    }
+  }
+}
+"""
+
+ListEndpointsOp = """
+query ListEndpoints($projectId: ID!) {
+  dedicatedProject(id: $projectId) {
+    id
+    endpoints {
+      edges {
+        node {
+          id
+          name
+          hfModelRepo
+          gpuType
+          numGpu
+          status
+          createdAt
+        }
+      }
+    }
+  }
+}
+"""
+
+GetEndpointOp = """
+query GetEndpoint($endpointId: ID!) {
+  dedicatedEndpoint(id: $endpointId) {
+    id
+    name
+    hfModelRepo
+    gpuType
+    numGpu
+    status
+    phase {
+      ... on DedicatedEndpointPhaseInitializing {
+        msg
+        step
+      }
+      ... on DedicatedEndpointPhaseRunning {
+        msg
+        currReplica
+        desiredReplica
+      }
+    }
+    endpointUrl
+    createdBy {
+      id
+      name
+      email
+    }
+    createdAt
+    updatedAt
+  }
 }
 """
 
 TerminateEndpointOp = """
 mutation TerminateEndpoint($input: DedicatedEndpointTerminateInput!) {
-    dedicatedEndpointTerminate(input: $input) {
-        ... on DedicatedEndpointTerminateSuccess {
-            endpoint {
-                id
-            }
-        }
-        ... on UserPermissionError {
-            message
-        }
-        ... on TeamNotExistError {
-            message
-        }
+  dedicatedEndpointTerminate(input: $input) {
+    ... on DedicatedEndpointTerminateSuccess {
+      endpoint {
+        id
+      }
     }
+    ... on UserPermissionError {
+      message
+    }
+    ... on TeamNotExistError {
+      message
+    }
+  }
 }
 """
 
 ListInstancesOp = """
-query DedicatedInstanceList {
-    dedicatedInstanceList {
-        id
-        name
-        disabledReason
-        disabled
-        options {
-            quantity
-            pricePerHour
-            id
-        }
+query ListInstances {
+  dedicatedInstanceList {
+    id
+    name
+    disabled
+    disabledReason
+    options {
+      id
+      quantity
+      pricePerHour
     }
+  }
 }
 """
 
@@ -190,14 +170,14 @@ class EndpointGqlClient(GqlClient):
 
     def list(self, project_id: str) -> List[Dict[str, Any]]:
         """List team projects."""
-        response = self.run(query=ListEndpointsOp, variables={"id": project_id})
+        response = self.run(query=ListEndpointsOp, variables={"projectId": project_id})
         return response["dedicatedProject"]["endpoints"]["edges"]
 
     def get(self, endpoint_id: str) -> Dict[str, Any]:
         """Get endpoint data."""
         response = self.run(
             query=GetEndpointOp,
-            variables={"dedicatedEndpointId": endpoint_id},
+            variables={"endpointId": endpoint_id},
         )
         return response["dedicatedEndpoint"]
 

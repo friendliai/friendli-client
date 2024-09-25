@@ -22,6 +22,7 @@ from friendli.schema.api.v1.completions import (
     BeamSearchType,
     Completion,
     CompletionLine,
+    SoftPrompt,
     TokenSequenceParam,
 )
 from friendli.sdk.api.base import (
@@ -97,6 +98,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
+        soft_prompts: Optional[List[SoftPrompt]] = None,
     ) -> Union[CompletionStream, CompletionGrpcStream]:
         """[skip-doc]."""
 
@@ -140,6 +142,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
+        soft_prompts: Optional[List[SoftPrompt]] = None,
     ) -> Completion:
         """[skip-doc]."""
 
@@ -182,6 +185,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
+        soft_prompts: Optional[List[SoftPrompt]] = None,
     ) -> Union[CompletionStream, Completion, CompletionGrpcStream]:
         """Creates a completion.
 
@@ -292,6 +296,10 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             raise ValueError(
                 "Setting `stream=True` is required as only response-streaming RPC is supported."
             )
+        if not self._use_grpc and soft_prompts:
+            raise ValueError(
+                "Setting `use_grpc=True` is required as only soft prompts is supported."
+            )
 
         request_dict = {
             "stream": stream,
@@ -330,6 +338,7 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             "include_output_logprobs": include_output_logprobs,
             "forced_output_tokens": forced_output_tokens,
             "eos_token": eos_token,
+            "soft_prompts": soft_prompts,
         }
         response = self._request(data=request_dict, stream=stream)
 
@@ -402,6 +411,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
+        soft_prompts: Optional[List[SoftPrompt]] = None,
     ) -> Union[AsyncCompletionStream, AsyncCompletionGrpcStream]:
         """[skip-doc]."""
 
@@ -445,6 +455,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
+        soft_prompts: Optional[List[SoftPrompt]] = None,
     ) -> Completion:
         """[skip-doc]."""
 
@@ -487,6 +498,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         include_output_logprobs: Optional[bool] = None,
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
+        soft_prompts: Optional[List[SoftPrompt]] = None,
     ) -> Union[AsyncCompletionStream, AsyncCompletionGrpcStream, Completion]:
         """Creates a completion asynchronously.
 
@@ -585,6 +597,10 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             raise ValueError(
                 "Setting `stream=True` is required as only response-streaming RPC is supported."
             )
+        if not self._use_grpc and soft_prompts:
+            raise ValueError(
+                "Setting `use_grpc=True` is required as only soft prompts is supported."
+            )
 
         request_dict = {
             "stream": stream,
@@ -623,6 +639,7 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             "include_output_logprobs": include_output_logprobs,
             "forced_output_tokens": forced_output_tokens,
             "eos_token": eos_token,
+            "soft_prompts": soft_prompts,
         }
         response = await self._request(data=request_dict, stream=stream)
 
@@ -742,24 +759,62 @@ class AsyncCompletionStream(AsyncGenerationStream[CompletionLine]):
 class CompletionGrpcStream(GrpcGenerationStream[CompletionLine]):
     """Completion stream."""
 
+    def __init__(self, response: grpc._channel._MultiThreadedRendezvous) -> None:
+        super().__init__(response)
+        self._finished = False
+
     def __next__(self) -> CompletionLine:  # noqa: D105
+        if self._finished:
+            raise StopIteration
+
         line = next(self._iter)
         while not line:
             line = next(self._iter)
 
         if line.event == 1:  # COMPLETE
+            self._finished = True
+            if line.soft_prompt_ids:
+                return CompletionLine(
+                    event="",
+                    text=line.text,
+                    token=None,
+                    soft_prompt_ids=line.soft_prompt_ids,
+                )
             raise StopIteration
-        return CompletionLine(event="", text=line.text, token=line.token[0])
+        return CompletionLine(
+            event="",
+            text=line.text,
+            token=line.token[0],
+        )
 
 
 class AsyncCompletionGrpcStream(AsyncGrpcGenerationStream[CompletionLine]):
     """Completion stream."""
 
+    def __init__(self, response: grpc.aio.UnaryStreamCall) -> None:
+        super().__init__(response)
+        self._finished = False
+
     async def __anext__(self) -> CompletionLine:  # noqa: D105
+        if self._finished:
+            raise StopAsyncIteration
+
         line = await self._iter.__anext__()
         while not line:
             line = await self._iter.__anext__()
 
         if line.event == 1:  # COMPLETE
+            self._finished = True
+            if line.soft_prompt_ids:
+                return CompletionLine(
+                    event="",
+                    text=line.text,
+                    token=None,
+                    soft_prompt_ids=line.soft_prompt_ids,
+                )
             raise StopAsyncIteration
-        return CompletionLine(event="", text=line.text, token=line.token[0])
+        return CompletionLine(
+            event="",
+            text=line.text,
+            token=line.token[0],
+        )

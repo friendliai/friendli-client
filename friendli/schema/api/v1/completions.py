@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 from typing_extensions import Required, TypeAlias, TypedDict
@@ -48,4 +48,14 @@ class CompletionLine(BaseModel):
     event: str
     index: int = 0
     text: str = ""
-    token: int
+    token: Optional[int]
+    soft_prompt_ids: List[int] = []
+
+
+class SoftPrompt(BaseModel):
+    """Soft prompt param schema."""
+
+    token_index_start: int
+    token_index_end: int
+    embeddings: List[float]
+    id: Optional[int]

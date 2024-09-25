@@ -8,15 +8,16 @@ from typing import Any, Dict, List
 
 from friendli.client.graphql.base import GqlClient
 
-TeamProjectsOp = """
-query ClientTeam($input: ID!) {
+ListProjectsInTeamOp = """
+query ListProjectsInTeam($input: ID!) {
   clientTeam(id: $input) {
-    projects {
-      edges {
-        node {
-          id
-          name
-          state
+    dedicatedSubplan {
+      projects {
+        edges {
+          node {
+            id
+            name
+          }
         }
       }
     }
@@ -30,12 +31,13 @@ class TeamGqlClient(GqlClient):
 
     def get_projects(self, team_id: str) -> List[Dict[str, Any]]:
         """List team projects."""
-        response = self.run(query=TeamProjectsOp, variables={"input": team_id})
-        return response["clientTeam"]["projects"]["edges"]
+        response = self.run(query=ListProjectsInTeamOp, variables={"input": team_id})
+        return response["clientTeam"]["dedicatedSubplan"]["projects"]["edges"]
 
     def get_project_ids(self, team_id: str) -> List[str]:
         """List project IDs."""
-        response = self.run(query=TeamProjectsOp, variables={"input": team_id})
+        response = self.run(query=ListProjectsInTeamOp, variables={"input": team_id})
         return [
-            edge["node"]["id"] for edge in response["clientTeam"]["projects"]["edges"]
+            edge["node"]["id"]
+            for edge in response["clientTeam"]["dedicatedSubplan"]["projects"]["edges"]
         ]

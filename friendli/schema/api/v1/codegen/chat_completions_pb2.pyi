@@ -29,6 +29,7 @@ class ToolCall(_message.Message):
         def __init__(
             self, name: _Optional[str] = ..., arguments: _Optional[str] = ...
         ) -> None: ...
+
     ID_FIELD_NUMBER: _ClassVar[int]
     TYPE_FIELD_NUMBER: _ClassVar[int]
     FUNCTION_FIELD_NUMBER: _ClassVar[int]
@@ -80,6 +81,7 @@ class Tool(_message.Message):
             description: _Optional[str] = ...,
             parameters: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...,
         ) -> None: ...
+
     TYPE_FIELD_NUMBER: _ClassVar[int]
     FUNCTION_FIELD_NUMBER: _ClassVar[int]
     type: str
@@ -126,6 +128,7 @@ class V1ChatCompletionsRequest(_message.Message):
         def __init__(
             self, key: _Optional[int] = ..., value: _Optional[float] = ...
         ) -> None: ...
+
     MESSAGES_FIELD_NUMBER: _ClassVar[int]
     MODEL_FIELD_NUMBER: _ClassVar[int]
     FREQUENCY_PENALTY_FIELD_NUMBER: _ClassVar[int]

@@ -8,6 +8,14 @@ package orca;
 
 import "response_format.proto";
 
+message SoftPrompt {
+    int32 token_index_start = 1;
+    int32 token_index_end = 2;
+    // embeddings of length end - start, or empty if uuid is provided
+    repeated float embeddings = 3;
+    optional uint64 id = 4;
+}
+
 message V1CompletionsRequest {
   message TokenSequence {
     repeated int32 tokens = 1;
@@ -64,6 +72,8 @@ message V1CompletionsRequest {
   repeated int32 eos_token = 46;
 
   optional ResponseFormat response_format = 61;
+
+  repeated SoftPrompt soft_prompts = 68;
 }
 
 message V1CompletionsResponse {
@@ -74,6 +84,7 @@ message V1CompletionsResponse {
   Event event = 1;
   repeated int32 token = 2;
   optional string text = 3;
+  repeated uint64 soft_prompt_ids = 5;
 }
 
 service TextGenerationService {

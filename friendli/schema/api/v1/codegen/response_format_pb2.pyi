@@ -20,6 +20,7 @@ class ResponseFormat(_message.Message):
         text: _ClassVar[ResponseFormat.Type]
         json_object: _ClassVar[ResponseFormat.Type]
         regex: _ClassVar[ResponseFormat.Type]
+
     text: ResponseFormat.Type
     json_object: ResponseFormat.Type
     regex: ResponseFormat.Type

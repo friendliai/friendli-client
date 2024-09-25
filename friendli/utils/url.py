@@ -8,8 +8,6 @@ from urllib.parse import urljoin, urlparse
 
 from typing_extensions import deprecated
 
-discuss_url = "https://discuss.friendli.ai/"
-
 
 def get_host(url: str) -> str:
     """Get a host part of a URL."""

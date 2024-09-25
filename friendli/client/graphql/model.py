@@ -8,17 +8,15 @@ from typing import Any, Dict, List
 
 from friendli.client.graphql.base import GqlClient
 
-GetModelListInProjectOp = """
-query GetDedicatedModelListInProject($id: ID!) {
-  dedicatedProject(id: $id) {
+ListModelsInProjectOp = """
+query ListModelsInProject($projectId: ID!) {
+  dedicatedProject(id: $projectId) {
     id
-    name
     models {
-      totalCount
       edges {
         node {
-          name
           id
+          name
         }
       }
     }
@@ -32,5 +30,7 @@ class ModelGqlClient(GqlClient):
 
     def list(self, project_id: str) -> List[Dict[str, Any]]:
         """List models in the project."""
-        response = self.run(query=GetModelListInProjectOp, variables={"id": project_id})
+        response = self.run(
+            query=ListModelsInProjectOp, variables={"projectId": project_id}
+        )
         return response["dedicatedProject"]["models"]["edges"]

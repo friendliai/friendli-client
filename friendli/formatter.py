@@ -263,9 +263,11 @@ class TreeFormatter(Formatter):
     def _build_tree(self, data: List[Dict[str, Any]]) -> Tree:
         root = Tree("/")
         paths = [
-            f"{d['path']}"
-            if os.path.isabs(d["path"])
-            else f"{os.path.join(self._root, d['path'])}"
+            (
+                f"{d['path']}"
+                if os.path.isabs(d["path"])
+                else f"{os.path.join(self._root, d['path'])}"
+            )
             for d in data
         ]
         sizes = [d["size"] for d in data]

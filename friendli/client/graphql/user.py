@@ -9,49 +9,47 @@ from typing import Any, Dict, List
 from friendli.client.graphql.base import GqlClient
 
 GetCurrentUserInfoOp = """
-query GetClientSession {
-    clientSession {
-        user {
-            id
-            name
-            email
-        }
+query GetCurrentUserInfo {
+  clientSession {
+    user {
+      id
+      name
+      email
     }
+  }
 }
 """
 
-GetUserTeamsOp = """
-query GetClientTeams {
-    clientSession {
-        user {
-            teams {
-                edges {
-                    node {
-                        id
-                        name
-                        state
-                        dedicated {
-                            plan
-                        }
-                    }
-                }
+ListTeamsOp = """
+query ListTeams {
+  clientSession {
+    user {
+      teams {
+        edges {
+          node {
+            id
+            name
+            dedicatedSubplan {
+              tier
             }
+          }
         }
+      }
     }
+  }
 }
 """
 
 GetUserDefaultTeamOp = """
-query GetDefaultTeam {
-    clientUser {
-        teamDefault {
-            team {
-                id
-                name
-                state
-            }
-        }
+query GetUserDefaultTeam {
+  clientUser {
+    teamDefault {
+      team {
+        id
+        name
+      }
     }
+  }
 }
 """
 
@@ -66,12 +64,12 @@ class UserGqlClient(GqlClient):
 
     def get_teams(self) -> List[Dict[str, Any]]:
         """List user teams."""
-        response = self.run(query=GetUserTeamsOp)
+        response = self.run(query=ListTeamsOp)
         return response["clientSession"]["user"]["teams"]["edges"]
 
     def get_team_ids(self) -> List[str]:
         """List team IDs."""
-        response = self.run(query=GetUserTeamsOp)
+        response = self.run(query=ListTeamsOp)
         return [
             edge["node"]["id"]
             for edge in response["clientSession"]["user"]["teams"]["edges"]
