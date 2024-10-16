@@ -83,6 +83,8 @@ table_formatter = TableFormatter(
 panel_formatter.add_substitution_rule(
     "INITIALIZING", "[bold yellow]INITIALIZING[/bold yellow]"
 )
+panel_formatter.add_substitution_rule("AWAKING", "[bold yellow]AWAKING[/bold yellow]")
+panel_formatter.add_substitution_rule("UPDATING", "[bold yellow]UPDATING[/bold yellow]")
 panel_formatter.add_substitution_rule("RUNNING", "[bold green]RUNNING[/bold green]")
 panel_formatter.add_substitution_rule("SLEEPING", "[bold cyan]SLEEPING[/bold cyan]")
 panel_formatter.add_substitution_rule(
@@ -94,6 +96,8 @@ panel_formatter.add_substitution_rule("TERMINATED", "[bold]TERMINATED[/bold]")
 table_formatter.add_substitution_rule(
     "INITIALIZING", "[bold yellow]INITIALIZING[/bold yellow]"
 )
+table_formatter.add_substitution_rule("AWAKING", "[bold yellow]AWAKING[/bold yellow]")
+table_formatter.add_substitution_rule("UPDATING", "[bold yellow]UPDATING[/bold yellow]")
 table_formatter.add_substitution_rule("RUNNING", "[bold green]RUNNING[/bold green]")
 table_formatter.add_substitution_rule("SLEEPING", "[bold cyan]SLEEPING[/bold cyan]")
 table_formatter.add_substitution_rule(

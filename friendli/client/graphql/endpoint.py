@@ -63,7 +63,14 @@ query ListEndpoints($projectId: ID!) {
           gpuType
           numGpu
           status
+          endpointUrl
+          createdBy {
+            id
+            name
+            email
+          }
           createdAt
+          updatedAt
         }
       }
     }

@@ -34,8 +34,8 @@ def create(
             "A message in `ROLE CONTENT` format. Repeat this option to add multiple messages."
         ),
     ),
-    model: Optional[str] = typer.Option(
-        None,
+    model: str = typer.Option(
+        ...,
         "--model",
         "-m",
         case_sensitive=True,

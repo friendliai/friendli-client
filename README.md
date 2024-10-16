@@ -3,11 +3,7 @@ Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 -->
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://docs.friendli.ai/img/logo_dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://docs.friendli.ai/img/logo.svg">
-    <img width="30%" alt="Friendli Logo" src="https://docs.friendli.ai/img/logo.svg">
-  </picture>
+  <img width="10%" alt="Friendli Logo" src="https://friendli.ai/icon.svg">
 </p>
 
 <h2><p align="center">Supercharge Generative AI Serving with Friendli 🚀</p></h2>
@@ -46,7 +42,7 @@ pip install friendli-client
 >
 > ```python
 > from friendli import Friendli
-> 
+>
 > client = Friendli(token="YOUR PERSONAL ACCESS TOKEN")
 > ```
 

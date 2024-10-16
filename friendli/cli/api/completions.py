@@ -30,8 +30,8 @@ def create(
         "-p",
         help="The input text to generate completion for.",
     ),
-    model: Optional[str] = typer.Option(
-        None,
+    model: str = typer.Option(
+        ...,
         "--model",
         "-m",
         help=(
