@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "friendli-client"
-version = "1.5.5"
+version = "1.5.6"
 description = "Client of Friendli Suite."
 license = "Apache-2.0"
 authors = ["FriendliAI teams <eng@friendli.ai>"]
@@ -38,7 +38,7 @@ injector = "^0.21.0"
 protobuf = "^5.26.1"
 types-protobuf = "^5.26.0.20240422"
 httpx = "^0.24.1"
-fastapi = "^0.104.0"
+fastapi = "^0.115.2"
 uvicorn = "^0.23.2"
 gql = "^3.4.1"
 grpcio-tools = "^1.64.1"
