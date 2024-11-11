@@ -41,7 +41,7 @@ def create(
         case_sensitive=True,
         help=(
             "The model to use for chat completions. "
-            "See https://docs.friendli.ai/guides/serverless_endpoints/pricing for more "
+            "See https://friendli.ai/docs/guides/serverless_endpoints/pricing for more "
             "about available models and pricing."
         ),
     ),
@@ -160,7 +160,8 @@ def _prepare_messages(messages: List[str]) -> List[MessageParam]:
     for message in messages:
         role, content = message.split(" ", 1)
         if role not in ("user", "assistant", "system"):
-            secho_error_and_exit("The role should be one of {user, assistant, system}.")
+            secho_error_and_exit(
+                "The role should be one of {user, assistant, system}.")
 
         processed_message: MessageParam = {
             "role": role,

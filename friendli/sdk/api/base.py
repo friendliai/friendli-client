@@ -142,7 +142,8 @@ class AsyncGrpcGenerationStream(ABC, Generic[_GenerationLine]):
             self._closed = True
 
 
-_HttpxClient = TypeVar("_HttpxClient", bound=Union[httpx.Client, httpx.AsyncClient])
+_HttpxClient = TypeVar(
+    "_HttpxClient", bound=Union[httpx.Client, httpx.AsyncClient])
 _ProtoMsgType = TypeVar("_ProtoMsgType", bound=Type[pb_message.Message])
 
 
@@ -286,7 +287,8 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
         if self._use_grpc:
             grpc_request = self._build_grpc_request(data=data)
             if not self._grpc_channel:
-                self._grpc_channel = grpc.insecure_channel(self._build_grpc_url())
+                self._grpc_channel = grpc.insecure_channel(
+                    self._build_grpc_url())
             try:
                 if not self._grpc_stub:
                     self._grpc_stub = self._get_grpc_stub(self._grpc_channel)
@@ -297,7 +299,8 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
             return grpc_response
 
         http_request = self._build_http_request(data=data)
-        http_response = self._http_client.send(request=http_request, stream=stream)
+        http_response = self._http_client.send(
+            request=http_request, stream=stream)
         self._check_http_error(http_response)
         return http_response
 
@@ -308,9 +311,10 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
             if response.status_code == 404:
                 endpoint_url = self._build_http_url()
                 raise APIError(
-                    f"Endpoint ({endpoint_url}) is not found. This may be due to an "
+                    f"Endpoint ({
+                        endpoint_url}) is not found. This may be due to an "
                     "invalid model name or endpoint ID. For serverless endpoints, see "
-                    "https://docs.friendli.ai/guides/serverless_endpoints/pricing "
+                    "https://friendli.ai/docs/guides/serverless_endpoints/pricing "
                     "to find out availble models. For dedicated endpoints, check your "
                     "endpoiont ID again."
                 ) from exc
@@ -361,7 +365,8 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
         if self._use_grpc:
             grpc_request = self._build_grpc_request(data=data)
             if not self._grpc_channel:
-                self._grpc_channel = grpc.aio.insecure_channel(self._build_grpc_url())
+                self._grpc_channel = grpc.aio.insecure_channel(
+                    self._build_grpc_url())
             try:
                 if not self._grpc_stub:
                     self._grpc_stub = self._get_grpc_stub(self._grpc_channel)
@@ -388,7 +393,7 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
             if response.status_code == 404:
                 raise APIError(
                     "Endpoint is not found. This may be due to an invalid model name. "
-                    "See https://docs.friendli.ai/guides/serverless_endpoints/pricing "
+                    "See https://friendli.ai/docs/guides/serverless_endpoints/pricing "
                     "to find out availble models."
                 ) from exc
 

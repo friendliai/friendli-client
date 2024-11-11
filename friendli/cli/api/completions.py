@@ -36,7 +36,7 @@ def create(
         "-m",
         help=(
             "The model to use for chat completions. "
-            "See https://docs.friendli.ai/guides/serverless_endpoints/pricing for more "
+            "See https://friendli.ai/docs/guides/serverless_endpoints/pricing for more "
             "about available models and pricing."
         ),
     ),
@@ -111,7 +111,8 @@ def create(
     token: Optional[str] = typer.Option(
         None, "--token", "-t", help="Personal access token for auth."
     ),
-    team_id: Optional[str] = typer.Option(None, "--team", help="ID of team to run as."),
+    team_id: Optional[str] = typer.Option(
+        None, "--team", help="ID of team to run as."),
 ):
     """Creates text completions."""
     client = Friendli(token=token, team_id=team_id)

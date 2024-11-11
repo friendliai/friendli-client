@@ -11,7 +11,7 @@ include = ["friendli/py.typed"]
 readme = "README.md"
 homepage = "https://friendli.ai/"
 repository = "https://github.com/friendliai/friendli-client"
-documentation = "https://docs.friendli.ai/"
+documentation = "https://friendli.ai/docs/"
 keywords = ["generative-ai", "serving", "llm", "inference", "finetuning"]
 
 [tool.poetry.scripts]
