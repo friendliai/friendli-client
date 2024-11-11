@@ -18,7 +18,7 @@ Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
   <a href="https://pypi.org/project/friendli-client/">
       <img alt="PyPi Package Version" src="https://img.shields.io/pypi/v/friendli-client?logo=PyPI&logoColor=white">
   </a>
-  <a href="https://docs.friendli.ai/">
+  <a href="https://friendli.ai/docs/">
     <img alt="Documentation" src="https://img.shields.io/badge/read-doc-blue?logo=ReadMe&logoColor=white">
   </a>
   <a href="https://github.com/friendliai/friendli-client/blob/main/LICENSE">
@@ -51,7 +51,7 @@ pip install friendli-client
 [Friendli Serverless Endpoint](https://friendli.ai/products/serverless-endpoints) offer a simple, click-and-play interface for accessing popular open-source models like Llama 3.1.
 With pay-per-token billing, this is ideal for exploration and experimentation.
 
-To interact with models hosted by serverless endpoints, provide the model code you want to use in the `model` argument. Refer to the [pricing table](https://docs.friendli.ai/guides/serverless_endpoints/pricing/) for a list of available model codes and their pricing.
+To interact with models hosted by serverless endpoints, provide the model code you want to use in the `model` argument. Refer to the [pricing table](https://friendli.ai/docs/guides/serverless_endpoints/pricing/) for a list of available model codes and their pricing.
 
 ```python
 from friendli import Friendli
@@ -536,4 +536,4 @@ For further information about the `friendli` command, run `friendli --help` in y
 This will provide you with a detailed list of available options and usage instructions.
 
 > [!TIP]
-> **Check out our [official documentation](https://docs.friendli.ai/) to learn more!**
+> **Check out our [official documentation](https://friendli.ai/docs/) to learn more!**
