@@ -310,7 +310,7 @@ class ServingAPI(BaseAPI[httpx.Client, _ProtoMsgType]):
                 raise APIError(
                     f"Endpoint ({endpoint_url}) is not found. This may be due to an "
                     "invalid model name or endpoint ID. For serverless endpoints, see "
-                    "https://docs.friendli.ai/guides/serverless_endpoints/pricing "
+                    "https://friendli.ai/docs/guides/serverless_endpoints/pricing "
                     "to find out availble models. For dedicated endpoints, check your "
                     "endpoiont ID again."
                 ) from exc
@@ -388,7 +388,7 @@ class AsyncServingAPI(BaseAPI[httpx.AsyncClient, _ProtoMsgType]):
             if response.status_code == 404:
                 raise APIError(
                     "Endpoint is not found. This may be due to an invalid model name. "
-                    "See https://docs.friendli.ai/guides/serverless_endpoints/pricing "
+                    "See https://friendli.ai/docs/guides/serverless_endpoints/pricing "
                     "to find out availble models."
                 ) from exc
 

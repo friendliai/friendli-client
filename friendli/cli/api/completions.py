@@ -36,7 +36,7 @@ def create(
         "-m",
         help=(
             "The model to use for chat completions. "
-            "See https://docs.friendli.ai/guides/serverless_endpoints/pricing for more "
+            "See https://friendli.ai/docs/guides/serverless_endpoints/pricing for more "
             "about available models and pricing."
         ),
     ),

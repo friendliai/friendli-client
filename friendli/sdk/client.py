@@ -20,7 +20,7 @@ from friendli.sdk.api.images.images import AsyncImages, Images
 from friendli.sdk.resource.endpoint import EndpointApi
 from friendli.sdk.resource.model import ModelApi
 
-INFERENCE_ENDPOINT_URL = "https://inference.friendli.ai"
+INFERENCE_ENDPOINT_URL = "https://api.friendli.ai"
 
 
 class FriendliClientBase:
@@ -69,6 +69,8 @@ class FriendliClientBase:
 
                 if use_dedicated_endpoint:
                     self._base_url = os.path.join(self._base_url, "dedicated")
+                else:
+                    self._base_url = os.path.join(self._base_url, "serverless")
 
 
 class Friendli(FriendliClientBase):

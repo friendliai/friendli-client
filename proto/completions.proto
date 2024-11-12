@@ -74,6 +74,9 @@ message V1CompletionsRequest {
   optional ResponseFormat response_format = 61;
 
   repeated SoftPrompt soft_prompts = 68;
+
+  repeated int32 position_ids = 70;
+  optional int32 generation_offset = 71;
 }
 
 message V1CompletionsResponse {

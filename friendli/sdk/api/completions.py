@@ -99,6 +99,8 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
         soft_prompts: Optional[List[SoftPrompt]] = None,
+        position_ids: Optional[List[int]] = None,
+        generation_offset: Optional[int] = None,
     ) -> Union[CompletionStream, CompletionGrpcStream]:
         """[skip-doc]."""
 
@@ -143,6 +145,8 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
         soft_prompts: Optional[List[SoftPrompt]] = None,
+        position_ids: Optional[List[int]] = None,
+        generation_offset: Optional[int] = None,
     ) -> Completion:
         """[skip-doc]."""
 
@@ -186,6 +190,8 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
         soft_prompts: Optional[List[SoftPrompt]] = None,
+        position_ids: Optional[List[int]] = None,
+        generation_offset: Optional[int] = None,
     ) -> Union[CompletionStream, Completion, CompletionGrpcStream]:
         """Creates a completion.
 
@@ -244,6 +250,9 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             include_output_logprobs (Optional[bool], optional): Whether to include the output logprobs to the generation output. Defaults to None.
             forced_output_tokens (Optional[List[int]], optional): A token sequence that is enforced as a generation output. This option can be used when evaluating the model for the datasets with multi-choice problems (e.g., [HellaSwag](https://huggingface.co/datasets/hellaswag), [MMLU](https://huggingface.co/datasets/cais/mmlu)). Use this option with `include_output_logprobs` to get logprobs for the evaluation. Defaults to None.
             eos_token (Optional[List[int]], optional): A list of endpoint sentence tokens. Defaults to None.
+            soft_prompts (Optional[List[SoftPrompt]], optional): A list of SoftPrompt. Defaults to None.
+            position_ids (Optional[List[int]], optional): A list of position indices. If specified, each prompt token's position id will be interpreted as this value. Defaults to None.
+            generation_offset (Optional[int], optional): A position index of the first generated token. Defaults to None.
 
         Raises:
             APIError: Raised when the HTTP API request fails.
@@ -339,6 +348,8 @@ class Completions(ServingAPI[Type[V1CompletionsRequest]]):
             "forced_output_tokens": forced_output_tokens,
             "eos_token": eos_token,
             "soft_prompts": soft_prompts,
+            "position_ids": position_ids,
+            "generation_offset": generation_offset,
         }
         response = self._request(data=request_dict, stream=stream)
 
@@ -412,6 +423,8 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
         soft_prompts: Optional[List[SoftPrompt]] = None,
+        position_ids: Optional[List[int]] = None,
+        generation_offset: Optional[int] = None,
     ) -> Union[AsyncCompletionStream, AsyncCompletionGrpcStream]:
         """[skip-doc]."""
 
@@ -456,6 +469,8 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
         soft_prompts: Optional[List[SoftPrompt]] = None,
+        position_ids: Optional[List[int]] = None,
+        generation_offset: Optional[int] = None,
     ) -> Completion:
         """[skip-doc]."""
 
@@ -499,6 +514,8 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
         forced_output_tokens: Optional[List[int]] = None,
         eos_token: Optional[List[int]] = None,
         soft_prompts: Optional[List[SoftPrompt]] = None,
+        position_ids: Optional[List[int]] = None,
+        generation_offset: Optional[int] = None,
     ) -> Union[AsyncCompletionStream, AsyncCompletionGrpcStream, Completion]:
         """Creates a completion asynchronously.
 
@@ -539,6 +556,9 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             include_output_logprobs (Optional[bool], optional): Whether to include the output logprobs to the generation output. Defaults to None.
             forced_output_tokens (Optional[List[int]], optional): A token sequence that is enforced as a generation output. This option can be used when evaluating the model for the datasets with multi-choice problems (e.g., [HellaSwag](https://huggingface.co/datasets/hellaswag), [MMLU](https://huggingface.co/datasets/cais/mmlu)). Use this option with `include_output_logprobs` to get logprobs for the evaluation. Defaults to None.
             eos_token (Optional[List[int]], optional): A list of endpoint sentence tokens. Defaults to None.
+            soft_prompts (Optional[List[SoftPrompt]], optional): A list of SoftPrompt. Defaults to None.
+            position_ids (Optional[List[int]], optional): A list of position indices. If specified, each prompt token's position id will be interpreted as this value. Defaults to None.
+            generation_offset (Optional[int], optional): A position index of the first generated token. Defaults to None.
 
         Raises:
             APIError: Raised when the HTTP API request fails.
@@ -640,6 +660,8 @@ class AsyncCompletions(AsyncServingAPI[Type[V1CompletionsRequest]]):
             "forced_output_tokens": forced_output_tokens,
             "eos_token": eos_token,
             "soft_prompts": soft_prompts,
+            "position_ids": position_ids,
+            "generation_offset": generation_offset,
         }
         response = await self._request(data=request_dict, stream=stream)
 

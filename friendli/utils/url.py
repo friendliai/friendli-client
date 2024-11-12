@@ -99,8 +99,8 @@ class StagingURLProvider(URLProvider):
     auth_url = "https://pfauth-staging.friendli.ai/"
     meter_url = "https://pfmeter-staging.friendli.ai/"
     observatory_url = "https://pfo-staging.friendli.ai/"
-    web_backend_url = "https://api-staging.friendli.ai/"
-    training_url = "https://api-staging.friendli.ai/api/"
+    web_backend_url = "https://api-internal-staging.friendli.ai/"
+    training_url = "https://api-internal-staging.friendli.ai/api/"
 
 
 class DevURLProvider(URLProvider):
@@ -112,5 +112,5 @@ class DevURLProvider(URLProvider):
     auth_url = "https://pfauth-dev.friendli.ai/"
     meter_url = "https://pfmeter-dev.friendli.ai/"
     observatory_url = "https://pfo-dev.friendli.ai/"
-    web_backend_url = "https://api-dev.friendli.ai/"
-    training_url = "https://api-dev.friendli.ai/api/"
+    web_backend_url = "https://api-internal-dev.friendli.ai/"
+    training_url = "https://api-internal-dev.friendli.ai/api/"

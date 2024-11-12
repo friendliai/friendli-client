@@ -91,7 +91,7 @@ def oauth2_login() -> Tuple[str, str]:
   <div class="message-box">
     <h1>Authentication was successful</h1>
     <p>You can now close this window and return to CLI.</p>
-    <p>Redirecting to <a href="https://docs.friendli.ai/">Friendli Documentation</a> in <span id="countdown">10</span> seconds.</p>
+    <p>Redirecting to <a href="https://friendli.ai/docs/">Friendli Documentation</a> in <span id="countdown">10</span> seconds.</p>
   </div>
   <script>
     var timeLeft = 10;
@@ -102,7 +102,7 @@ def oauth2_login() -> Tuple[str, str]:
       countdownElement.innerHTML = timeLeft;
       if (timeLeft <= 0) {
         clearInterval(timerId);
-        window.location.href = "https://docs.friendli.ai/";
+        window.location.href = "https://friendli.ai/docs/";
       }
     }, 1000);
   </script>

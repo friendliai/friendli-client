@@ -75,6 +75,8 @@ class V1CompletionsRequest(_message.Message):
         "eos_token",
         "response_format",
         "soft_prompts",
+        "position_ids",
+        "generation_offset",
     )
 
     class BeamSearchType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
@@ -131,6 +133,8 @@ class V1CompletionsRequest(_message.Message):
     EOS_TOKEN_FIELD_NUMBER: _ClassVar[int]
     RESPONSE_FORMAT_FIELD_NUMBER: _ClassVar[int]
     SOFT_PROMPTS_FIELD_NUMBER: _ClassVar[int]
+    POSITION_IDS_FIELD_NUMBER: _ClassVar[int]
+    GENERATION_OFFSET_FIELD_NUMBER: _ClassVar[int]
     stream: bool
     model: str
     prompt: str
@@ -173,6 +177,8 @@ class V1CompletionsRequest(_message.Message):
     eos_token: _containers.RepeatedScalarFieldContainer[int]
     response_format: _response_format_pb2.ResponseFormat
     soft_prompts: _containers.RepeatedCompositeFieldContainer[SoftPrompt]
+    position_ids: _containers.RepeatedScalarFieldContainer[int]
+    generation_offset: int
     def __init__(
         self,
         stream: bool = ...,
@@ -221,6 +227,8 @@ class V1CompletionsRequest(_message.Message):
             _Union[_response_format_pb2.ResponseFormat, _Mapping]
         ] = ...,
         soft_prompts: _Optional[_Iterable[_Union[SoftPrompt, _Mapping]]] = ...,
+        position_ids: _Optional[_Iterable[int]] = ...,
+        generation_offset: _Optional[int] = ...,
     ) -> None: ...
 
 class V1CompletionsResponse(_message.Message):
