@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-import os
 from typing import Optional, Union
+from urllib.parse import urljoin
 
 import grpc
 import grpc.aio
@@ -20,7 +20,7 @@ from friendli.sdk.api.images.images import AsyncImages, Images
 from friendli.sdk.resource.endpoint import EndpointApi
 from friendli.sdk.resource.model import ModelApi
 
-INFERENCE_ENDPOINT_URL = "https://api.friendli.ai"
+INFERENCE_ENDPOINT_URL = "https://api.friendli.ai/"
 
 
 class FriendliClientBase:
@@ -68,9 +68,9 @@ class FriendliClientBase:
                 self._base_url = INFERENCE_ENDPOINT_URL
 
                 if use_dedicated_endpoint:
-                    self._base_url = os.path.join(self._base_url, "dedicated")
+                    self._base_url = urljoin(self._base_url, "dedicated")
                 else:
-                    self._base_url = os.path.join(self._base_url, "serverless")
+                    self._base_url = urljoin(self._base_url, "serverless")
 
 
 class Friendli(FriendliClientBase):

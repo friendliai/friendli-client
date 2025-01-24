@@ -7,10 +7,10 @@
 from __future__ import annotations
 
 import json
-import os
 from abc import ABC, abstractmethod
 from types import TracebackType
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
+from urllib.parse import urljoin
 
 import grpc
 import grpc._channel
@@ -206,7 +206,8 @@ class BaseAPI(ABC, Generic[_HttpxClient, _ProtoMsgType]):
 
     def _build_http_url(self) -> httpx.URL:
         assert self._base_url is not None
-        url = os.path.join(self._base_url, self._api_path)
+        base_url = self._base_url.rstrip("/") + "/"
+        url = urljoin(base_url, self._api_path)
         return httpx.URL(url)
 
     def _build_grpc_url(self) -> str:
