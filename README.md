@@ -2,6 +2,12 @@
 Copyright (c) 2022-present, FriendliAI Inc. All rights reserved.
 -->
 
+# DEPRECATED [![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
+This is no longer supported, please consider using [Friendli Python SDK](https://pypi.org/project/friendli/) instead.
+
+---
+
 <p align="center">
   <img width="10%" alt="Friendli Logo" src="https://friendli.ai/icon.svg">
 </p>
